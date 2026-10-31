@@ -67,3 +67,19 @@ main { max-width: 1200px; }
 .standings td, .standings th { padding: 5px 8px; }
 .standings tr.qualified td:first-child { border-left: 3px solid var(--accent); }
 .matchlist { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
+.vetobanner { font-size: 17px; }
+.vetobanner.mine { border-color: var(--accent); }
+.vetogrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.vetomap { display: flex; flex-direction: column; gap: 4px; text-align: left; background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 8px; cursor: default; font: inherit; }
+.vetomap img, .vetomap .noimg { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 4px; background: var(--bg); }
+.vetomap .vname { font-weight: 600; }
+.vetomap .vstate { font-size: 12px; color: var(--muted); min-height: 32px; }
+.vetomap.click { cursor: pointer; border-color: var(--accent); }
+.vetomap.click:hover { background: #232a35; }
+.vetomap.ban { opacity: .45; }
+.vetomap.ban img { filter: grayscale(1); }
+.vetomap.pick { border-color: #3fb950; }
+.vetomap.decider { border-color: var(--accent); }
+.vetosteps li { padding: 2px 0; color: var(--muted); }
+.vetosteps li.done { color: var(--text); }
+.vetosteps li.current { color: var(--accent); font-weight: 700; }

@@ -9,7 +9,7 @@ export interface TournamentRow {
   status: 'registration' | 'running' | 'finished'; champion_team_id: number | null;
   stage_mode: 'playoff' | 'groups'; group_format: 'round_robin' | 'swiss' | 'gsl' | null; groups_count: number;
   advance: number; swiss_rounds: number | null; group_best_of: number; has_playoff: number;
-  phase: 'playoff' | 'groups' | 'groups_done';
+  phase: 'playoff' | 'groups' | 'groups_done'; veto_enabled: number;
 }
 
 export interface MatchRow {
@@ -19,7 +19,7 @@ export interface MatchRow {
   winner: 'a' | 'b' | null; status: Status; best_of: number; score_a: number; score_b: number; forced: number;
   server_id: number | null; maps_json: string | null; live: number; paused: number;
   cur_map_no: number; cur_score_a: number; cur_score_b: number; series_a: number; series_b: number; note: string | null;
-  stage: 'group' | 'playoff'; group_no: number | null;
+  stage: 'group' | 'playoff'; group_no: number | null; veto_json: string | null;
 }
 
 export const getTournament = (id: number) =>

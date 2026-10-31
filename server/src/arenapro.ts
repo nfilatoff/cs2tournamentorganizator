@@ -25,6 +25,8 @@ export interface MapRef {
   name: string;
   // Что передаётся в maplist: ID Workshop-карты или имя файла стандартной карты
   ref: string;
+  // Сторона из вето (team1_ct, team2_t, knife ...); без вето играется нож
+  side?: string;
 }
 
 export function tournamentMapPool(tid: number): MapRef[] {
@@ -76,7 +78,7 @@ export function buildMatchConfig(i: MatchConfigInput) {
     team2: { id: String(i.teamB.id), name: clean(i.teamB.name), players: players(i.teamB.players) },
     num_maps: i.maps.length,
     maplist: i.maps.map((m) => m.ref),
-    map_sides: i.maps.map(() => 'knife'),
+    map_sides: i.maps.map((m) => m.side ?? 'knife'),
     skip_veto: true,
     clinch_series: true,
     players_per_team: i.teamSize,

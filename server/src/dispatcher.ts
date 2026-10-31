@@ -2,7 +2,8 @@ import { db, tx } from './db.js';
 import { AppError, E, encode, errBody } from './errors.js';
 import { config } from './config.js';
 import { Rcon } from './rcon.js';
-import { eventToken, pickMaps, tournamentMapPool } from './arenapro.js';
+import { eventToken } from './arenapro.js';
+import { matchMaps, vetoComplete } from './vetoStore.js';
 import {
   clearRuntime, getMatchRow, getTournament, loadMatches, saveMatches, teamName, type MatchRow,
 } from './tournamentStore.js';
@@ -83,8 +84,7 @@ export function release(tid: number, matchId: number, note: string | null = null
 // Запускает матч на сервере. Бросает ошибку с понятным текстом, если не получилось.
 async function startOnServer(tid: number, row: MatchRow, server: ServerRow): Promise<void> {
   const t = getTournament(tid)!;
-  const pool = tournamentMapPool(tid);
-  const maps = pickMaps(pool, row.best_of);
+  const maps = matchMaps(t, row);
   if (!reserve(tid, row, server.id, JSON.stringify(maps))) throw new AppError('matchTaken');
 
   try {
@@ -132,6 +132,13 @@ export async function dispatchAll(): Promise<void> {
       ORDER BY m.tournament_id, m.id
     `).all() as unknown as MatchRow[];
     for (const row of waiting) {
+      // Пока капитаны не закончили вето, матч не запускается
+      const t = getTournament(row.tournament_id);
+      try {
+        if (!t || !vetoComplete(t, row)) continue;
+      } catch {
+        continue;
+      }
       const server = freeServers()[0];
       if (!server) return;
       try {
@@ -150,6 +157,8 @@ export async function dispatchOne(matchId: number, serverId?: number): Promise<v
   const row = getMatchRow(matchId);
   if (!row) throw new AppError('matchNotFound');
   if (row.status !== 'ready' || row.server_id !== null) throw new AppError('matchNotReadyToStart');
+  const t = getTournament(row.tournament_id);
+  if (t && !vetoComplete(t, row)) throw new AppError('vetoPending');
   let server: ServerRow | undefined;
   if (serverId !== undefined) {
     server = getServer(serverId);

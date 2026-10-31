@@ -38,6 +38,7 @@ const tournamentBody = z.object({
   swissRounds: z.number().int().min(1).max(15).optional(),
   groupBestOf: BEST_OF.default(1),
   hasPlayoff: z.boolean().default(true),
+  vetoEnabled: z.boolean().default(true),
 });
 
 // Проверка настроек группового этапа при создании и изменении турнира
@@ -137,11 +138,12 @@ export async function tournamentRoutes(app: FastifyInstance): Promise<void> {
     const id = tx(() => {
       const res = db.prepare(`INSERT INTO tournaments
         (name, format, team_size, max_teams, default_best_of, bo_config, grand_final_reset, auto_dispatch,
-        stage_mode, group_format, groups_count, advance, swiss_rounds, group_best_of, has_playoff, phase)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+        stage_mode, group_format, groups_count, advance, swiss_rounds, group_best_of, has_playoff, phase, veto_enabled)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
         .run(d.name, d.format, d.teamSize, d.maxTeams, d.defaultBestOf, JSON.stringify(d.boConfig), d.grandFinalReset ? 1 : 0, d.autoDispatch ? 1 : 0,
           d.stageMode, d.stageMode === 'groups' ? d.groupFormat ?? null : null, d.stageMode === 'groups' ? d.groupsCount : 1,
-          d.advance, d.swissRounds ?? null, d.groupBestOf, d.hasPlayoff ? 1 : 0, d.stageMode === 'groups' ? 'groups' : 'playoff');
+          d.advance, d.swissRounds ?? null, d.groupBestOf, d.hasPlayoff ? 1 : 0, d.stageMode === 'groups' ? 'groups' : 'playoff',
+          d.vetoEnabled ? 1 : 0);
       const tid = Number(res.lastInsertRowid);
       if (!setMaps(tid, d.mapIds)) throw new Error('map');
       return tid;
@@ -170,10 +172,10 @@ export async function tournamentRoutes(app: FastifyInstance): Promise<void> {
     tx(() => {
       db.prepare(`UPDATE tournaments SET name = ?, format = ?, team_size = ?, max_teams = ?, default_best_of = ?,
         bo_config = ?, grand_final_reset = ?, auto_dispatch = ?, stage_mode = ?, group_format = ?, groups_count = ?, advance = ?,
-        swiss_rounds = ?, group_best_of = ?, has_playoff = ?, phase = ? WHERE id = ?`)
+        swiss_rounds = ?, group_best_of = ?, has_playoff = ?, phase = ?, veto_enabled = ? WHERE id = ?`)
         .run(d.name, d.format, d.teamSize, d.maxTeams, d.defaultBestOf, JSON.stringify(d.boConfig), d.grandFinalReset ? 1 : 0, d.autoDispatch ? 1 : 0,
           d.stageMode, d.stageMode === 'groups' ? d.groupFormat ?? null : null, d.stageMode === 'groups' ? d.groupsCount : 1,
-          d.advance, d.swissRounds ?? null, d.groupBestOf, d.hasPlayoff ? 1 : 0, d.stageMode === 'groups' ? 'groups' : 'playoff', t.id);
+          d.advance, d.swissRounds ?? null, d.groupBestOf, d.hasPlayoff ? 1 : 0, d.stageMode === 'groups' ? 'groups' : 'playoff', d.vetoEnabled ? 1 : 0, t.id);
       if (!setMaps(t.id, d.mapIds)) throw new Error('map');
     });
     return details(getTournament(t.id)!);

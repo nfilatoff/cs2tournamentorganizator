@@ -12,6 +12,7 @@ import { Account } from './pages/Account';
 import { Tournaments } from './pages/Tournaments';
 import { TournamentForm } from './pages/TournamentForm';
 import { TournamentView } from './pages/TournamentView';
+import { VetoPage } from './pages/VetoPage';
 
 export function App() {
   const { t, lang, setLang } = useI18n();
@@ -57,6 +58,7 @@ export function App() {
           <Route path="/tournaments" element={<Tournaments me={me} />} />
           <Route path="/tournaments/new" element={me.kind === 'admin' ? <TournamentForm /> : <Navigate to="/login" />} />
           <Route path="/tournaments/:id" element={<TournamentView me={me} />} />
+          <Route path="/tournaments/:id/matches/:code/veto" element={<VetoPage />} />
           <Route path="/teams" element={me.kind === 'admin' ? <AdminTeams /> : me.kind === 'player' ? <Teams me={me} /> : <Navigate to="/login" />} />
           <Route path="/login" element={<Login onLogin={refresh} />} />
           <Route path="/servers" element={me.kind === 'admin' ? <Servers /> : <Navigate to="/login" />} />

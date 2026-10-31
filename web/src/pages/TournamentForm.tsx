@@ -19,6 +19,7 @@ export function TournamentForm() {
   const [boConfig, setBoConfig] = useState<Record<string, number>>({});
   const [reset, setReset] = useState(true);
   const [autoDispatch, setAutoDispatch] = useState(true);
+  const [vetoEnabled, setVetoEnabled] = useState(true);
   const [maps, setMaps] = useState<MapItem[]>([]);
   const [picked, setPicked] = useState<number[]>([]);
   const [rounds, setRounds] = useState<RoundDef[]>([]);
@@ -67,7 +68,7 @@ export function TournamentForm() {
       const created = await api<TournamentDetails>('/api/tournaments', {
         method: 'POST',
         body: {
-          name, format, teamSize, maxTeams, defaultBestOf: defaultBo, boConfig: cfg, grandFinalReset: reset, autoDispatch, mapIds: picked,
+          name, format, teamSize, maxTeams, defaultBestOf: defaultBo, boConfig: cfg, grandFinalReset: reset, autoDispatch, vetoEnabled, mapIds: picked,
           stageMode: withGroups ? 'groups' : 'playoff',
           ...(withGroups ? {
             groupFormat, groupsCount: groupsN, advance, groupBestOf: groupBo, hasPlayoff,
@@ -186,6 +187,11 @@ export function TournamentForm() {
           <input type="checkbox" checked={autoDispatch} onChange={(e) => setAutoDispatch(e.target.checked)} />
           {t('form.autoDispatch')}
         </label>
+        <label style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 }}>
+          <input type="checkbox" checked={vetoEnabled} onChange={(e) => setVetoEnabled(e.target.checked)} />
+          {t('form.vetoEnabled')}
+        </label>
+        <p className="muted">{t('form.vetoHint')}</p>
       </div>
 
       <div className="card">

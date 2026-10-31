@@ -5,6 +5,8 @@ import {
 import { buildBracket, minTeams, roundFromEnd, type BMatch, type Entry, type Source } from './bracket.js';
 import type { MapRef } from './arenapro.js';
 import { assignGroups } from './groups.js';
+import { tournamentMapPool } from './arenapro.js';
+import { vetoSummary } from './vetoStore.js';
 import { groupsOf, seedsOf, suggestedPlayoff, swissTotal, tableOf } from './groupStage.js';
 
 type Seeds = Map<number, number>;
@@ -20,7 +22,7 @@ function fromDto(src: Source) {
   return src.t === 'seed' ? null : { kind: src.t, code: src.code };
 }
 
-function runtimeDto(r: MatchRow | undefined, servers: Map<number, ServerInfo>) {
+function runtimeDto(r: MatchRow | undefined, servers: Map<number, ServerInfo>, veto: unknown = null) {
   if (!r) return {};
   const refs = r.maps_json ? (JSON.parse(r.maps_json) as MapRef[]) : [];
   const played = db.prepare('SELECT map_no, score_a, score_b, winner FROM match_maps WHERE match_id = ? ORDER BY map_no')
@@ -28,6 +30,7 @@ function runtimeDto(r: MatchRow | undefined, servers: Map<number, ServerInfo>) {
   const server = r.server_id ? servers.get(r.server_id) : undefined;
   return {
     matchId: r.id,
+    veto,
     server: server ?? null,
     live: !!r.live,
     paused: !!r.paused,
@@ -39,7 +42,8 @@ function runtimeDto(r: MatchRow | undefined, servers: Map<number, ServerInfo>) {
   };
 }
 
-function matchDtos(ms: BMatch[], seeds: Seeds, rows?: Map<string, MatchRow>, servers?: Map<number, ServerInfo>) {
+function matchDtos(ms: BMatch[], seeds: Seeds, rows?: Map<string, MatchRow>, servers?: Map<number, ServerInfo>, t?: TournamentRow) {
+  const poolSize = t ? tournamentMapPool(t.id).length : 0;
   return ms.map((m) => ({
     code: m.code, bracket: m.bracket, round: m.round, position: m.position,
     stage: m.bracket === 'G' ? ('group' as const) : ('playoff' as const),
@@ -48,7 +52,7 @@ function matchDtos(ms: BMatch[], seeds: Seeds, rows?: Map<string, MatchRow>, ser
     from: [fromDto(m.srcA), fromDto(m.srcB)],
     a: entryDto(m.a, seeds), b: entryDto(m.b, seeds), status: m.status, winner: m.winner,
     bestOf: m.bestOf, scoreA: m.scoreA, scoreB: m.scoreB, forced: m.forced,
-    ...(rows && servers ? runtimeDto(rows.get(m.code), servers) : {}),
+    ...(rows && servers ? runtimeDto(rows.get(m.code), servers, t && rows.get(m.code) ? vetoSummary(t, rows.get(m.code)!, poolSize) : null) : {}),
   }));
 }
 
@@ -102,7 +106,8 @@ export function details(t: TournamentRow) {
     champion: t.champion_team_id ? { id: t.champion_team_id, name: teamName(t.champion_team_id) } : null,
     teams: teams.map((x) => ({ id: x.team_id, name: x.name, seed: x.seed, roster: JSON.parse(x.roster) as number[] })),
     maps: maps.map((m) => ({ id: m.id, name: m.name, workshopId: m.workshop_id, mapFile: m.map_file, imageUrl: m.image_url })),
-    matches: matchDtos(ms, seeds, rows, servers),
+    vetoEnabled: !!t.veto_enabled,
+    matches: matchDtos(ms, seeds, rows, servers, t),
     groupConfig: groupConfigDto(t),
     groups: groupsDto(t, ms, seeds),
   };

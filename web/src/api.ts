@@ -46,6 +46,7 @@ export interface MatchDto {
   a: EntryDto; b: EntryDto; status: 'pending' | 'ready' | 'live' | 'done' | 'bye' | 'skipped';
   winner: 'a' | 'b' | null; bestOf: number; scoreA: number; scoreB: number; forced: boolean;
   matchId?: number;
+  veto?: { done: boolean; step: number; total: number } | null;
   server?: { id: number; name: string; host: string; port: number } | null;
   live?: boolean;
   paused?: boolean;
@@ -61,6 +62,7 @@ export interface TournamentDetails extends Omit<TournamentSummary, 'teamCount'> 
   boConfig: Record<string, number>;
   grandFinalReset: boolean;
   autoDispatch: boolean;
+  vetoEnabled: boolean;
   groupConfig: GroupConfig;
   groups: GroupsInfo | null;
   champion: { id: number; name: string } | null;
@@ -110,4 +112,19 @@ export interface PlayoffPreview {
 export interface Preview {
   matches: MatchDto[];
   groupAssignment?: { no: number; teams: { id: number; name: string; seed: number }[] }[];
+}
+
+export interface VetoDto {
+  bestOf: number;
+  status: 'veto' | 'done';
+  locked: boolean;
+  teams: { a: { id: number; name: string }; b: { id: number; name: string } };
+  pool: { id: number; name: string; imageUrl: string | null }[];
+  template: { kind: 'ban' | 'pick' | 'decider'; team: 'a' | 'b' | null }[];
+  actions: { mapId: number; kind: 'ban' | 'pick' | 'decider'; by: 'a' | 'b' | null; side?: 'ct' | 't' }[];
+  remaining: number[];
+  next: { type: 'ban' | 'pick' | 'side'; team: 'a' | 'b' } | { type: 'done' };
+  you: 'a' | 'b' | 'admin' | null;
+  canAct: boolean;
+  result: { mapId: number; name: string; side: string; pickedBy: 'a' | 'b' | null }[] | null;
 }

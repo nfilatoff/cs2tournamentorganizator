@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link, useParams } from 'react-router-dom';
 import type { EntryDto, MatchDto } from '../api';
 import { useI18n } from '../i18n';
 
@@ -28,6 +29,7 @@ function Slot({ entry, score, won }: { entry: EntryDto; score: number; won: bool
 // Карточка матча. Без actions показывает только состояние (предпросмотр, вид для игроков).
 export function MatchCard({ m, actions }: { m: MatchDto; actions?: MatchActions }) {
   const { t, err } = useI18n();
+  const { id } = useParams();
   const [a, setA] = useState(0);
   const [b, setB] = useState(0);
   const need = Math.ceil(m.bestOf / 2);
@@ -37,6 +39,13 @@ export function MatchCard({ m, actions }: { m: MatchDto; actions?: MatchActions 
       <div className="mhead"><span>{m.code}</span><span>{m.forced ? t('match.byAdmin') : `BO${m.bestOf}`}</span></div>
       <Slot entry={m.a} score={m.status === 'live' ? m.seriesA ?? 0 : m.scoreA} won={m.winner === 'a' && m.status === 'done'} />
       <Slot entry={m.b} score={m.status === 'live' ? m.seriesB ?? 0 : m.scoreB} won={m.winner === 'b' && m.status === 'done'} />
+      {m.veto && (
+        <div className="livebox">
+          <Link to={`/tournaments/${id}/matches/${m.code}/veto`}>
+            {m.veto.done ? t('veto.view') : t('veto.open', { step: m.veto.step, total: m.veto.total })}
+          </Link>
+        </div>
+      )}
       {m.status === 'live' && (
         <div className="livebox">
           <div>

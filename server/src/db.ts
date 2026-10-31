@@ -194,3 +194,7 @@ addColumn('tournament_teams', 'group_no', 'INTEGER');
 addColumn('tournament_teams', 'playoff_seed', 'INTEGER');
 addColumn('matches', 'stage', "TEXT NOT NULL DEFAULT 'playoff'");
 addColumn('matches', 'group_no', 'INTEGER');
+
+// Вето карт
+addColumn('matches', 'veto_json', 'TEXT');
+addColumn('tournaments', 'veto_enabled', 'INTEGER NOT NULL DEFAULT 1');
