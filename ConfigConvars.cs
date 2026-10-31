@@ -17,7 +17,7 @@ namespace ArenaPro
 
         public FakeConVar<bool> everyoneIsAdmin = new("arenapro_everyone_is_admin", "If set to true, all the players will have admin privilege. Default: false", false);
 
-        public FakeConVar<bool> showCreditsOnMatchStart = new("arenapro_show_credits_on_match_start", "Whether to show 'ArenaPro Plugin by WD-' message on match start. Default: true", true);
+        public FakeConVar<bool> showCreditsOnMatchStart = new("arenapro_show_credits_on_match_start", "Whether to show 'ArenaPro Plugin by WD-' message on match start. Default: false", false);
 
         public FakeConVar<string> hostnameFormat = new("arenapro_hostname_format", "The server hostname to use. Set to \"\" to disable/use existing. Default: ArenaPro | {TEAM1} vs {TEAM2}", "ArenaPro | {TEAM1} vs {TEAM2}");
 
