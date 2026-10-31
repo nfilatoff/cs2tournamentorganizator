@@ -162,6 +162,7 @@
   "arenapro.ready.captainunready": "{green}{0}{default} ya no está listo.",
   "arenapro.ready.captainmustready": "Capitán de {green}{0}{default}: escribe {green}.ready{default} para empezar el partido.",
   "arenapro.ready.captainmodetimeleft": "El partido debe empezar en {green}{0}{default}; si no, gana el equipo con más jugadores en el servidor.",
+  "arenapro.ready.hudtimeleft": "Time left to start: {0}",
   "arenapro.ready.coinflip": "Ambos equipos tienen los mismos jugadores: el ganador se elige al azar.",
   "arenapro.pause.techpausecalled": "{green}{0}{default} ha pedido una pausa técnica ({1}/{2}). Escribe .unpause para reanudar la partida.",
   "arenapro.pause.anyonecanunpause": "Se ha alcanzado la duración máxima de la pausa técnica. Ahora cualquiera puede usar {green}.unpause{default}.",

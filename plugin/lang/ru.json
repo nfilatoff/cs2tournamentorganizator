@@ -151,6 +151,7 @@
     "arenapro.ready.captainunready": "{green}{0}{default} больше не готова.",
     "arenapro.ready.captainmustready": "Капитан {green}{0}{default}: напишите {green}.ready{default}, чтобы начать матч.",
     "arenapro.ready.captainmodetimeleft": "Матч должен начаться в течение {green}{0}{default}, иначе победа присуждается команде, у которой больше игроков на сервере.",
+    "arenapro.ready.hudtimeleft": "Время до начала матча: {0}",
     "arenapro.ready.coinflip": "У команд поровну игроков: победитель выбран случайно.",
     "arenapro.pause.techpausecalled": "{green}{0}{default} взяла техническую паузу ({1}/{2}). Введите .unpause, чтобы возобновить матч.",
     "arenapro.pause.anyonecanunpause": "Достигнута максимальная длительность технической паузы. Теперь любой может ввести {green}.unpause{default}.",

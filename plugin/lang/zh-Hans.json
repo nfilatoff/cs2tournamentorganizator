@@ -162,6 +162,7 @@
     "arenapro.ready.captainunready": "{green}{0}{default} is no longer ready.",
     "arenapro.ready.captainmustready": "Captain of {green}{0}{default}: type {green}.ready{default} to start the match.",
     "arenapro.ready.captainmodetimeleft": "The match must start within {green}{0}{default}, otherwise the team with more players on the server wins.",
+    "arenapro.ready.hudtimeleft": "Time left to start: {0}",
     "arenapro.ready.coinflip": "Both teams have as many players: the winner is drawn at random.",
     "arenapro.pause.techpausecalled": "{green}{0}{default} 发起了技术暂停 ({1}/{2})。输入 .unpause 来解除暂停。",
     "arenapro.pause.anyonecanunpause": "技术暂停已达到最长时间。现在任何人都可以输入 {green}.unpause{default} 解除暂停。",

@@ -219,6 +219,12 @@ namespace ArenaPro
                 if (outcome == ReadyTimeOutcome.Waiting)
                 {
                     int timeLeft = timeLimit - readyTimeWaitingUsed;
+                    // The chat only reminds now and then, so the remaining time is also shown every second in the center of the screen.
+                    string hudText = Localizer["arenapro.ready.hudtimeleft", ReadyTimeLogic.FormatTime(timeLeft)];
+                    foreach (var player in playerData.Values)
+                    {
+                        if (player.IsValid && !player.IsBot) player.PrintToCenter(hudText);
+                    }
                     if (!ReadyTimeLogic.ShouldWarn(timeLeft)) return;
                     string formattedTimeLeft = ReadyTimeLogic.FormatTime(timeLeft);
                     if (IsCaptainReadyMode())
