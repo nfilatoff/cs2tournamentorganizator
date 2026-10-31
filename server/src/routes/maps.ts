@@ -1,4 +1,5 @@
 import type { FastifyInstance } from 'fastify';
+import { E } from '../errors.js';
 import { z } from 'zod';
 import { db } from '../db.js';
 import { requireAdmin } from '../auth.js';
@@ -31,7 +32,7 @@ export async function mapRoutes(app: FastifyInstance): Promise<void> {
 
   app.post('/api/maps', async (req, reply) => {
     const body = addBody.safeParse(req.body);
-    if (!body.success) return reply.code(400).send({ error: 'Некорректные данные карты' });
+    if (!body.success) return reply.code(400).send(E('badMap'));
 
     let name: string;
     let workshopId: string | null = null;
@@ -40,7 +41,7 @@ export async function mapRoutes(app: FastifyInstance): Promise<void> {
 
     if ('workshop' in body.data) {
       workshopId = parseWorkshopId(body.data.workshop);
-      if (!workshopId) return reply.code(400).send({ error: 'Не удалось найти ID в ссылке' });
+      if (!workshopId) return reply.code(400).send(E('noWorkshopId'));
       const item = await fetchWorkshopItem(workshopId);
       name = body.data.name ?? item?.title ?? `Workshop ${workshopId}`;
       imageUrl = item?.preview ?? null;
@@ -56,16 +57,16 @@ export async function mapRoutes(app: FastifyInstance): Promise<void> {
         id: Number(res.lastInsertRowid), name, workshop_id: workshopId, map_file: mapFile, image_url: imageUrl,
       }));
     } catch {
-      return reply.code(409).send({ error: 'Такая карта уже добавлена' });
+      return reply.code(409).send(E('mapExists'));
     }
   });
 
   app.delete<{ Params: { id: string } }>('/api/maps/:id', async (req, reply) => {
     try {
       const res = db.prepare('DELETE FROM maps WHERE id = ?').run(Number(req.params.id));
-      if (res.changes === 0) return reply.code(404).send({ error: 'Карта не найдена' });
+      if (res.changes === 0) return reply.code(404).send(E('mapNotFound'));
     } catch {
-      return reply.code(409).send({ error: 'Карта входит в пул турнира' });
+      return reply.code(409).send(E('mapInPool'));
     }
     return { ok: true };
   });

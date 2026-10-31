@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { AppError } from './errors.js';
 import { buildBracket, champion, forceWinner, reportResult, seedOrder, undoResult, type BMatch, type Format } from './bracket.js';
 
 const ids = (n: number) => Array.from({ length: n }, (_, i) => i + 1);
@@ -55,7 +56,7 @@ test('double elimination: каждый вылетает после двух по
         assert.ok(ms.every((m) => ['done', 'bye', 'skipped'].includes(m.status)), `${label}: остались несыгранные`);
         // Без переигровки проигравший гранд-финал чемпиону нижней сетки остаётся с одним поражением.
         const gf1 = ms.find((m) => m.code === 'GF-1')!;
-        const runnerUp = !reset && gf1.winner === 'b' && gf1.a.k === 'team' ? gf1.a.id : null;
+        const runnerUp = !ms.some((m) => m.code === 'GF-2') && gf1.winner === 'b' && gf1.a.k === 'team' ? gf1.a.id : null;
         for (let t = 1; t <= n; t++) {
           const l = losses.get(t) ?? 0;
           assert.ok(l <= 2, `${label}: команда ${t} проиграла ${l} раз`);
@@ -77,7 +78,7 @@ test('BO3: счёт проверяется', () => {
   reportResult(ms, m.code, 2, 1);
   assert.equal(m.status, 'done');
   assert.equal(m.winner, 'a');
-  assert.throws(() => reportResult(ms, m.code, 2, 0), /уже сыгран|не готов/);
+  assert.throws(() => reportResult(ms, m.code, 2, 0), (e) => e instanceof AppError && e.code === 'matchNotReady');
 });
 
 test('bye получают лучшие сиды', () => {
@@ -105,7 +106,7 @@ test('undoResult запрещён, пока сыграны следующие м
   reportResult(ms, 'W1-1', 1, 0);
   reportResult(ms, 'W1-2', 1, 0);
   reportResult(ms, 'W2-1', 1, 0);
-  assert.throws(() => undoResult(ms, 'W1-1'), /W2-1/);
+  assert.throws(() => undoResult(ms, 'W1-1'), (e) => e instanceof AppError && e.code === 'undoBlocked' && String(e.params?.matches).includes('W2-1'));
   assert.equal(champion(ms, 'single'), 1);
   undoResult(ms, 'W2-1');
   assert.equal(champion(ms, 'single'), null);
@@ -180,4 +181,15 @@ test('случайная игра с отменами последних рез�
       }
     }
   }
+});
+
+test('double elimination на 2 командах: переигровка включена даже без галочки', () => {
+  const ms = buildBracket(ids(2), 'double', { grandFinalReset: false });
+  assert.ok(ms.some((m) => m.code === 'GF-2'));
+  reportResult(ms, 'W1-1', 1, 0);
+  reportResult(ms, 'GF-1', 0, 1); // проигравший первого матча выиграл второй
+  assert.equal(champion(ms, 'double'), null, 'при 1:1 чемпиона быть не должно');
+  assert.equal(ms.find((m) => m.code === 'GF-2')!.status, 'ready');
+  reportResult(ms, 'GF-2', 0, 1);
+  assert.equal(champion(ms, 'double'), 2);
 });

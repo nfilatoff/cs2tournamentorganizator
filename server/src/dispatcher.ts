@@ -1,4 +1,5 @@
 import { db, tx } from './db.js';
+import { AppError, E, encode, errBody } from './errors.js';
 import { config } from './config.js';
 import { Rcon } from './rcon.js';
 import { eventToken, pickMaps, tournamentMapPool } from './arenapro.js';
@@ -84,7 +85,7 @@ async function startOnServer(tid: number, row: MatchRow, server: ServerRow): Pro
   const t = getTournament(tid)!;
   const pool = tournamentMapPool(tid);
   const maps = pickMaps(pool, row.best_of);
-  if (!reserve(tid, row, server.id, JSON.stringify(maps))) throw new Error('Матч уже занят');
+  if (!reserve(tid, row, server.id, JSON.stringify(maps))) throw new AppError('matchTaken');
 
   try {
     const url = `${config.publicUrl}/api/arenapro/config/${row.id}`;
@@ -97,15 +98,15 @@ async function startOnServer(tid: number, row: MatchRow, server: ServerRow): Pro
         const st = parseStatus(await r.exec('get5_status'));
         if (st && st.matchId === row.id && st.gamestate !== 'none') return;
       }
-      throw new Error('Сервер не подтвердил загрузку матча (проверьте PUBLIC_URL и доступность панели с сервера)');
+      throw new AppError('serverNoConfirm');
     });
     db.prepare('UPDATE game_servers SET last_error = NULL WHERE id = ?').run(server.id);
     void t;
   } catch (e) {
-    const msg = (e as Error).message;
-    release(tid, row.id, `Не удалось запустить на сервере «${server.name}»: ${msg}`);
+    const reason = errBody(e);
+    release(tid, row.id, encode(E('noteStartFailed', { server: server.name, reason })));
     db.prepare('UPDATE game_servers SET cooldown_until = ?, last_error = ? WHERE id = ?')
-      .run(Date.now() + COOLDOWN_MS, msg, server.id);
+      .run(Date.now() + COOLDOWN_MS, encode(reason), server.id);
     throw e;
   }
 }
@@ -147,18 +148,18 @@ export async function dispatchAll(): Promise<void> {
 // Ручной запуск конкретного матча (на выбранном или любом свободном сервере).
 export async function dispatchOne(matchId: number, serverId?: number): Promise<void> {
   const row = getMatchRow(matchId);
-  if (!row) throw new Error('Матч не найден');
-  if (row.status !== 'ready' || row.server_id !== null) throw new Error('Матч не готов к запуску');
+  if (!row) throw new AppError('matchNotFound');
+  if (row.status !== 'ready' || row.server_id !== null) throw new AppError('matchNotReadyToStart');
   let server: ServerRow | undefined;
   if (serverId !== undefined) {
     server = getServer(serverId);
-    if (!server) throw new Error('Сервер не найден');
+    if (!server) throw new AppError('serverNotFound');
     if (freeServers().every((s) => s.id !== server!.id)) {
-      throw new Error('Сервер занят или недавно не ответил, подождите 30 секунд');
+      throw new AppError('serverCooldown');
     }
   } else {
     server = freeServers()[0];
-    if (!server) throw new Error('Нет свободных серверов');
+    if (!server) throw new AppError('noFreeServers');
   }
   await startOnServer(row.tournament_id, row, server);
 }

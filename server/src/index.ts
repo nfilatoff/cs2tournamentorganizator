@@ -1,4 +1,5 @@
 import { existsSync } from 'node:fs';
+import { E } from './errors.js';
 import { randomBytes } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -44,7 +45,7 @@ const webDist = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'web',
 if (existsSync(webDist)) {
   await app.register(fastifyStatic, { root: webDist });
   app.setNotFoundHandler((req, reply) => {
-    if (req.url.startsWith('/api/')) return reply.code(404).send({ error: 'Не найдено' });
+    if (req.url.startsWith('/api/')) return reply.code(404).send(E('notFound'));
     return reply.sendFile('index.html');
   });
 }

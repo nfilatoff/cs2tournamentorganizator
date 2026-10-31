@@ -1,6 +1,6 @@
 export class ApiError extends Error {
-  constructor(public status: number, message: string) {
-    super(message);
+  constructor(public status: number, public code: string, public params?: Record<string, unknown>) {
+    super(code);
   }
 }
 
@@ -10,8 +10,8 @@ export async function api<T>(path: string, init?: { method?: string; body?: unkn
     headers: init?.body !== undefined ? { 'content-type': 'application/json' } : undefined,
     body: init?.body !== undefined ? JSON.stringify(init.body) : undefined,
   });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new ApiError(res.status, (data as { error?: string }).error ?? 'Ошибка запроса');
+  const data = (await res.json().catch(() => ({}))) as { error?: string; params?: Record<string, unknown> };
+  if (!res.ok) throw new ApiError(res.status, data.error ?? 'internal', data.params);
   return data as T;
 }
 

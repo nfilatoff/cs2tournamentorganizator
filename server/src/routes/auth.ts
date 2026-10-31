@@ -1,4 +1,5 @@
 import type { FastifyInstance } from 'fastify';
+import { E } from '../errors.js';
 import { z } from 'zod';
 import { db } from '../db.js';
 import { config } from '../config.js';
@@ -10,11 +11,11 @@ const loginBody = z.object({ username: z.string().min(1), password: z.string().m
 export async function authRoutes(app: FastifyInstance): Promise<void> {
   app.post('/api/auth/admin/login', async (req, reply) => {
     const body = loginBody.safeParse(req.body);
-    if (!body.success) return reply.code(400).send({ error: 'Укажите логин и пароль' });
+    if (!body.success) return reply.code(400).send(E('needCredentials'));
     const admin = db.prepare('SELECT id, username, password_hash FROM admins WHERE username = ?')
       .get(body.data.username) as { id: number; username: string; password_hash: string } | undefined;
     const ok = admin ? await verifyPassword(body.data.password, admin.password_hash) : false;
-    if (!admin || !ok) return reply.code(401).send({ error: 'Неверный логин или пароль' });
+    if (!admin || !ok) return reply.code(401).send(E('badCredentials'));
     createSession(reply, 'admin', admin.id);
     return { kind: 'admin', username: admin.username };
   });
@@ -24,7 +25,7 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
   app.get('/api/auth/steam/callback', async (req, reply) => {
     const query = req.query as Record<string, string>;
     const steamId = await verifySteamCallback(query);
-    if (!steamId) return reply.code(401).send({ error: 'Steam не подтвердил вход' });
+    if (!steamId) return reply.code(401).send(E('steamRejected'));
 
     const existing = db.prepare('SELECT id FROM players WHERE steam_id = ?').get(steamId) as { id: number } | undefined;
     let playerId: number;

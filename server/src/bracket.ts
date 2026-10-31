@@ -1,3 +1,4 @@
+import { AppError } from './errors.js';
 // Движок сеток: чистая логика без БД. Поддерживает single и double elimination
 // для любого числа команд (недостающие места до степени двойки заполняются bye).
 
@@ -70,7 +71,7 @@ export function buildBracket(
   format: Format,
   opts: { grandFinalReset?: boolean; bestOf?: (bracket: BracketId, roundFromEnd: number) => number } = {},
 ): BMatch[] {
-  if (teamIds.length < minTeams(format)) throw new Error('Слишком мало команд для этого формата');
+  if (teamIds.length < minTeams(format)) throw new AppError('tooFewTeams');
   const k = bracketExponent(teamIds.length);
   const size = 2 ** k;
   const order = seedOrder(size);
@@ -116,7 +117,8 @@ export function buildBracket(
     const lastL = 2 * k - 2;
     // На 2 командах нижней сетки нет: проигравший единственного матча сразу идёт в гранд-финал
     matches.push(mk('GF', 1, 1, win(`W${k}-1`), k === 1 ? lose('W1-1') : win(`L${lastL}-1`)));
-    if (opts.grandFinalReset ?? true) {
+    // На 2 командах переигровка обязательна: иначе чемпион определялся бы при счёте 1:1
+    if ((opts.grandFinalReset ?? true) || k === 1) {
       matches.push(mk('GF', 2, 1, { t: 'slot', code: 'GF-1', side: 'a' }, { t: 'slot', code: 'GF-1', side: 'b' }));
     }
   }
@@ -135,20 +137,6 @@ export function maxRound(matches: BMatch[], bracket: BracketId): number {
 // 1 = последний раунд своей сетки (финал), 2 = предпоследний и т.д.
 export function roundFromEnd(matches: BMatch[], m: Pick<BMatch, 'bracket' | 'round'>): number {
   return maxRound(matches, m.bracket) - m.round + 1;
-}
-
-export function roundLabel(bracket: BracketId, fromEnd: number, format: Format): string {
-  if (bracket === 'GF') return 'Гранд-финал';
-  if (bracket === 'W') {
-    const side = format === 'double' ? ' верхней сетки' : '';
-    if (fromEnd === 1) return `Финал${side}`;
-    if (fromEnd === 2) return `Полуфинал${side}`;
-    if (fromEnd === 3) return `Четвертьфинал${side}`;
-    return `${format === 'double' ? 'Верхняя сетка' : 'Раунд'}, ${fromEnd} с конца`;
-  }
-  if (fromEnd === 1) return 'Финал нижней сетки';
-  if (fromEnd === 2) return 'Полуфинал нижней сетки';
-  return `Нижняя сетка, ${fromEnd} с конца`;
 }
 
 // Пересчитывает участников и статусы по источникам, пока есть изменения.
@@ -204,13 +192,13 @@ export function settle(matches: BMatch[]): void {
 // Фиксирует результат матча и продвигает участников. Бросает ошибку при неверных данных.
 export function reportResult(matches: BMatch[], code: string, scoreA: number, scoreB: number): void {
   const m = matches.find((x) => x.code === code);
-  if (!m) throw new Error('Матч не найден');
-  if (m.status !== 'ready' && m.status !== 'live') throw new Error('Матч ещё не готов или уже сыгран');
+  if (!m) throw new AppError('matchNotFound');
+  if (m.status !== 'ready' && m.status !== 'live') throw new AppError('matchNotReady');
   const need = Math.ceil(m.bestOf / 2);
   const hi = Math.max(scoreA, scoreB);
   const lo = Math.min(scoreA, scoreB);
   if (!Number.isInteger(scoreA) || !Number.isInteger(scoreB) || hi !== need || lo >= need || lo < 0) {
-    throw new Error(`Для BO${m.bestOf} победитель должен выиграть ${need} карт(ы)`);
+    throw new AppError('scoreInvalid', { bo: m.bestOf, need });
   }
   m.scoreA = scoreA;
   m.scoreB = scoreB;
@@ -220,8 +208,8 @@ export function reportResult(matches: BMatch[], code: string, scoreA: number, sc
 // Админ назначает победителя без счёта (например, при неявке или сбое сервера).
 export function forceWinner(matches: BMatch[], code: string, winner: 'a' | 'b'): void {
   const m = matches.find((x) => x.code === code);
-  if (!m) throw new Error('Матч не найден');
-  if (m.status !== 'ready' && m.status !== 'live') throw new Error('Матч ещё не готов или уже сыгран');
+  if (!m) throw new AppError('matchNotFound');
+  if (m.status !== 'ready' && m.status !== 'live') throw new AppError('matchNotReady');
   finish(matches, m, winner, true);
 }
 
@@ -241,8 +229,8 @@ function finish(matches: BMatch[], m: BMatch, winner: 'a' | 'b', forced: boolean
 // сначала нужно отменить их результаты.
 export function undoResult(matches: BMatch[], code: string): void {
   const target = matches.find((x) => x.code === code);
-  if (!target) throw new Error('Матч не найден');
-  if (target.status !== 'done') throw new Error('У матча нет результата');
+  if (!target) throw new AppError('matchNotFound');
+  if (target.status !== 'done') throw new AppError('noResult');
 
   const refs = (m: BMatch, c: string) =>
     [m.srcA, m.srcB].some((s) => s.t !== 'seed' && s.code === c);
@@ -259,7 +247,7 @@ export function undoResult(matches: BMatch[], code: string): void {
   }
   const blocking = matches.filter((m) => dependents.has(m.code) && (m.status === 'done' || m.status === 'live'));
   if (blocking.length > 0) {
-    throw new Error(`Сначала отмените результат матча ${blocking.map((m) => m.code).join(', ')}`);
+    throw new AppError('undoBlocked', { matches: blocking.map((m) => m.code).join(', ') });
   }
 
   for (const m of matches) {

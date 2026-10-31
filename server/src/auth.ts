@@ -1,4 +1,5 @@
 import { randomBytes, scrypt as scryptCb, timingSafeEqual } from 'node:crypto';
+import { E } from './errors.js';
 import { promisify } from 'node:util';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { db } from './db.js';
@@ -58,9 +59,9 @@ export function getSession(req: FastifyRequest): Session | null {
 }
 
 export async function requireAdmin(req: FastifyRequest, reply: FastifyReply): Promise<void> {
-  if (getSession(req)?.kind !== 'admin') await reply.code(401).send({ error: 'Нужен вход администратора' });
+  if (getSession(req)?.kind !== 'admin') await reply.code(401).send(E('needAdmin'));
 }
 
 export async function requirePlayer(req: FastifyRequest, reply: FastifyReply): Promise<void> {
-  if (getSession(req)?.kind !== 'player') await reply.code(401).send({ error: 'Нужен вход через Steam' });
+  if (getSession(req)?.kind !== 'player') await reply.code(401).send(E('needSteam'));
 }

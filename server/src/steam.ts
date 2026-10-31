@@ -38,7 +38,7 @@ export async function verifySteamCallback(query: Record<string, string>): Promis
 
 // Публичный XML-профиль: без API-ключа, достаточно для ника и аватара.
 export async function fetchSteamProfile(steamId: string): Promise<{ name: string; avatar: string | null }> {
-  const fallback = { name: `Игрок ${steamId.slice(-6)}`, avatar: null };
+  const fallback = { name: `Player ${steamId.slice(-6)}`, avatar: null };
   try {
     const res = await fetch(`https://steamcommunity.com/profiles/${steamId}?xml=1`);
     const xml = await res.text();

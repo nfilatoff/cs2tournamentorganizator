@@ -1,4 +1,5 @@
 import type { FastifyInstance } from 'fastify';
+import { E, decode, errBody } from '../errors.js';
 import { z } from 'zod';
 import { db } from '../db.js';
 import { requireAdmin } from '../auth.js';
@@ -26,29 +27,29 @@ export async function serverRoutes(app: FastifyInstance): Promise<void> {
 
   app.post('/api/servers', async (req, reply) => {
     const body = serverBody.safeParse(req.body);
-    if (!body.success) return reply.code(400).send({ error: 'Некорректные данные сервера' });
+    if (!body.success) return reply.code(400).send(E('badServer'));
     const { name, host, port, rconPassword } = body.data;
     try {
       const res = db.prepare('INSERT INTO game_servers (name, host, port, rcon_password) VALUES (?, ?, ?, ?)')
         .run(name, host, port, rconPassword);
       return reply.code(201).send({ id: Number(res.lastInsertRowid), name, host, port });
     } catch {
-      return reply.code(409).send({ error: 'Сервер с таким адресом уже есть' });
+      return reply.code(409).send(E('serverExists'));
     }
   });
 
   app.put<{ Params: { id: string } }>('/api/servers/:id', async (req, reply) => {
     const body = serverBody.partial({ rconPassword: true }).safeParse(req.body);
-    if (!body.success) return reply.code(400).send({ error: 'Некорректные данные сервера' });
+    if (!body.success) return reply.code(400).send(E('badServer'));
     const id = Number(req.params.id);
     const cur = db.prepare('SELECT * FROM game_servers WHERE id = ?').get(id) as Row | undefined;
-    if (!cur) return reply.code(404).send({ error: 'Сервер не найден' });
+    if (!cur) return reply.code(404).send(E('serverNotFound'));
     const { name, host, port, rconPassword } = body.data;
     try {
       db.prepare('UPDATE game_servers SET name = ?, host = ?, port = ?, rcon_password = ? WHERE id = ?')
         .run(name, host, port, rconPassword ?? cur.rcon_password, id);
     } catch {
-      return reply.code(409).send({ error: 'Сервер с таким адресом уже есть' });
+      return reply.code(409).send(E('serverExists'));
     }
     return { id, name, host, port };
   });
@@ -56,9 +57,9 @@ export async function serverRoutes(app: FastifyInstance): Promise<void> {
   app.delete<{ Params: { id: string } }>('/api/servers/:id', async (req, reply) => {
     try {
       const res = db.prepare('DELETE FROM game_servers WHERE id = ?').run(Number(req.params.id));
-      if (res.changes === 0) return reply.code(404).send({ error: 'Сервер не найден' });
+      if (res.changes === 0) return reply.code(404).send(E('serverNotFound'));
     } catch {
-      return reply.code(409).send({ error: 'На сервере идёт матч' });
+      return reply.code(409).send(E('serverBusy'));
     }
     return { ok: true };
   });
@@ -66,7 +67,7 @@ export async function serverRoutes(app: FastifyInstance): Promise<void> {
   // Проверка связи: RCON и состояние матча на сервере
   app.get<{ Params: { id: string } }>('/api/servers/:id/status', async (req, reply) => {
     const server = getServer(Number(req.params.id));
-    if (!server) return reply.code(404).send({ error: 'Сервер не найден' });
+    if (!server) return reply.code(404).send(E('serverNotFound'));
     const busy = db.prepare('SELECT code, tournament_id FROM matches WHERE server_id = ?').get(server.id) as
       { code: string; tournament_id: number } | undefined;
     try {
@@ -77,10 +78,10 @@ export async function serverRoutes(app: FastifyInstance): Promise<void> {
         paused: st?.paused ?? false,
         serverMatchId: st?.matchId ?? null,
         panelMatch: busy ?? null,
-        lastError: server.last_error,
+        lastError: decode(server.last_error),
       };
     } catch (e) {
-      return { online: false, error: (e as Error).message, panelMatch: busy ?? null, lastError: server.last_error };
+      return { online: false, error: errBody(e), panelMatch: busy ?? null, lastError: decode(server.last_error) };
     }
   });
 }

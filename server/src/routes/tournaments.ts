@@ -1,4 +1,5 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+import { E, encode, errBody } from '../errors.js';
 import { z } from 'zod';
 import { db, tx } from '../db.js';
 import { getSession, requireAdmin } from '../auth.js';
@@ -9,7 +10,7 @@ import {
 import { dispatchAll, dispatchOne, endMatchOnServer, getServer, release, withRcon } from '../dispatcher.js';
 import type { MapRef } from '../arenapro.js';
 import {
-  buildBracket, champion, forceWinner, minTeams, reportResult, roundFromEnd, roundLabel, undoResult,
+  buildBracket, champion, forceWinner, minTeams, reportResult, roundFromEnd, undoResult,
   type BracketId, type Entry, type Format,
 } from '../bracket.js';
 
@@ -32,16 +33,16 @@ const tournamentBody = z.object({
 function previewRounds(format: Format, maxTeams: number) {
   const ids = Array.from({ length: Math.max(maxTeams, minTeams(format)) }, (_, i) => i + 1);
   const ms = buildBracket(ids, format);
-  const seen = new Map<string, string>();
+  const seen = new Map<string, { bracket: BracketId; fromEnd: number }>();
   for (const bracket of ['W', 'L', 'GF'] as const) {
     const rounds = [...new Set(ms.filter((m) => m.bracket === bracket).map((m) => m.round))].sort((x, y) => x - y);
     for (const r of rounds) {
       const fromEnd = roundFromEnd(ms, { bracket, round: r });
       const key = bracket === 'GF' ? 'GF' : `${bracket}${fromEnd}`;
-      if (!seen.has(key)) seen.set(key, roundLabel(bracket, fromEnd, format));
+      if (!seen.has(key)) seen.set(key, { bracket, fromEnd });
     }
   }
-  return [...seen].map(([key, label]) => ({ key, label }));
+  return [...seen].map(([key, v]) => ({ key, ...v }));
 }
 
 function entryDto(e: Entry) {
@@ -71,7 +72,7 @@ function details(t: TournamentRow) {
     maps: maps.map((m) => ({ id: m.id, name: m.name, workshopId: m.workshop_id, mapFile: m.map_file, imageUrl: m.image_url })),
     matches: ms.map((m) => ({
       code: m.code, bracket: m.bracket, round: m.round, position: m.position,
-      roundLabel: roundLabel(m.bracket, roundFromEnd(ms, m), t.format),
+      roundFromEnd: roundFromEnd(ms, m),
       a: entryDto(m.a), b: entryDto(m.b), status: m.status, winner: m.winner,
       bestOf: m.bestOf, scoreA: m.scoreA, scoreB: m.scoreB, forced: m.forced,
       ...runtimeDto(rows.get(m.code), servers),
@@ -119,7 +120,7 @@ async function freeServerOf(row: MatchRow | undefined): Promise<void> {
 
 async function requireTournament(req: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
   const t = getTournament(Number(req.params.id));
-  if (!t) await reply.code(404).send({ error: 'Турнир не найден' });
+  if (!t) await reply.code(404).send(E('tournamentNotFound'));
   return t;
 }
 
@@ -139,7 +140,7 @@ export async function tournamentRoutes(app: FastifyInstance): Promise<void> {
   app.get('/api/tournaments/rounds-preview', async (req, reply) => {
     const q = z.object({ format: z.enum(['single', 'double']), maxTeams: z.coerce.number().int().min(2).max(64) })
       .safeParse(req.query);
-    if (!q.success) return reply.code(400).send({ error: 'Некорректные параметры' });
+    if (!q.success) return reply.code(400).send(E('badParams'));
     return previewRounds(q.data.format, q.data.maxTeams);
   });
 
@@ -151,10 +152,10 @@ export async function tournamentRoutes(app: FastifyInstance): Promise<void> {
   // --- Админ ---
   app.post('/api/tournaments', { preHandler: requireAdmin }, async (req, reply) => {
     const body = tournamentBody.safeParse(req.body);
-    if (!body.success) return reply.code(400).send({ error: 'Некорректные данные турнира' });
+    if (!body.success) return reply.code(400).send(E('badTournament'));
     const d = body.data;
     if (d.maxTeams < minTeams(d.format)) {
-      return reply.code(400).send({ error: `Минимум команд для этого формата: ${minTeams(d.format)}` });
+      return reply.code(400).send(E('minTeams', { n: minTeams(d.format) }));
     }
     const id = tx(() => {
       const res = db.prepare(`INSERT INTO tournaments
@@ -170,18 +171,18 @@ export async function tournamentRoutes(app: FastifyInstance): Promise<void> {
   app.put<{ Params: { id: string } }>('/api/tournaments/:id', { preHandler: requireAdmin }, async (req, reply) => {
     const t = await requireTournament(req, reply);
     if (!t) return;
-    if (t.status !== 'registration') return reply.code(409).send({ error: 'Турнир уже начался' });
+    if (t.status !== 'registration') return reply.code(409).send(E('alreadyStarted'));
     const body = tournamentBody.safeParse(req.body);
-    if (!body.success) return reply.code(400).send({ error: 'Некорректные данные турнира' });
+    if (!body.success) return reply.code(400).send(E('badTournament'));
     const d = body.data;
     if (d.maxTeams < minTeams(d.format)) {
-      return reply.code(400).send({ error: `Минимум команд для этого формата: ${minTeams(d.format)}` });
+      return reply.code(400).send(E('minTeams', { n: minTeams(d.format) }));
     }
     const registered = (db.prepare('SELECT COUNT(*) AS n FROM tournament_teams WHERE tournament_id = ?')
       .get(t.id) as { n: number }).n;
-    if (registered > d.maxTeams) return reply.code(409).send({ error: 'Уже зарегистрировано больше команд' });
+    if (registered > d.maxTeams) return reply.code(409).send(E('tooManyRegistered'));
     if (d.teamSize !== t.team_size && registered > 0) {
-      return reply.code(409).send({ error: 'Нельзя менять размер команды при наличии заявок' });
+      return reply.code(409).send(E('teamSizeLocked'));
     }
     tx(() => {
       db.prepare(`UPDATE tournaments SET name = ?, format = ?, team_size = ?, max_teams = ?, default_best_of = ?,
@@ -202,17 +203,17 @@ export async function tournamentRoutes(app: FastifyInstance): Promise<void> {
   app.post<{ Params: { id: string } }>('/api/tournaments/:id/start', { preHandler: requireAdmin }, async (req, reply) => {
     const t = await requireTournament(req, reply);
     if (!t) return;
-    if (t.status !== 'registration') return reply.code(409).send({ error: 'Турнир уже начался' });
+    if (t.status !== 'registration') return reply.code(409).send(E('alreadyStarted'));
     const body = z.object({ shuffle: z.boolean().default(false) }).safeParse(req.body ?? {});
     const shuffle = body.success ? body.data.shuffle : false;
 
     const teamIds = (db.prepare('SELECT team_id FROM tournament_teams WHERE tournament_id = ? ORDER BY registered_at, rowid')
       .all(t.id) as unknown as { team_id: number }[]).map((r) => r.team_id);
     if (teamIds.length < minTeams(t.format)) {
-      return reply.code(409).send({ error: `Нужно минимум ${minTeams(t.format)} команды(ы)` });
+      return reply.code(409).send(E('needMinTeams', { n: minTeams(t.format) }));
     }
     const mapCount = (db.prepare('SELECT COUNT(*) AS n FROM tournament_maps WHERE tournament_id = ?').get(t.id) as { n: number }).n;
-    if (mapCount === 0) return reply.code(409).send({ error: 'Добавьте карты в пул турнира' });
+    if (mapCount === 0) return reply.code(409).send(E('needMaps'));
 
     if (shuffle) {
       for (let i = teamIds.length - 1; i > 0; i--) {
@@ -242,16 +243,16 @@ export async function tournamentRoutes(app: FastifyInstance): Promise<void> {
     { preHandler: requireAdmin },
     async (req, reply) => {
       const t = getTournament(Number(req.params.id));
-      if (!t) return reply.code(404).send({ error: 'Турнир не найден' });
-      if (t.status !== 'running') return reply.code(409).send({ error: 'Турнир не идёт' });
+      if (!t) return reply.code(404).send(E('tournamentNotFound'));
+      if (t.status !== 'running') return reply.code(409).send(E('notRunning'));
       const body = z.object({ scoreA: z.number().int().min(0), scoreB: z.number().int().min(0) }).safeParse(req.body);
-      if (!body.success) return reply.code(400).send({ error: 'Укажите счёт' });
+      if (!body.success) return reply.code(400).send(E('needScore'));
       const ms = loadMatches(t.id);
       const row = getMatchRowByCode(t.id, req.params.code);
       try {
         reportResult(ms, req.params.code, body.data.scoreA, body.data.scoreB);
       } catch (e) {
-        return reply.code(400).send({ error: (e as Error).message });
+        return reply.code(400).send(errBody(e));
       }
       commit(t, ms);
       await freeServerOf(row);
@@ -266,16 +267,16 @@ export async function tournamentRoutes(app: FastifyInstance): Promise<void> {
     { preHandler: requireAdmin },
     async (req, reply) => {
       const t = getTournament(Number(req.params.id));
-      if (!t) return reply.code(404).send({ error: 'Турнир не найден' });
-      if (t.status !== 'running') return reply.code(409).send({ error: 'Турнир не идёт' });
+      if (!t) return reply.code(404).send(E('tournamentNotFound'));
+      if (t.status !== 'running') return reply.code(409).send(E('notRunning'));
       const body = z.object({ winner: z.enum(['a', 'b']) }).safeParse(req.body);
-      if (!body.success) return reply.code(400).send({ error: 'Укажите победителя' });
+      if (!body.success) return reply.code(400).send(E('needWinner'));
       const ms = loadMatches(t.id);
       const row = getMatchRowByCode(t.id, req.params.code);
       try {
         forceWinner(ms, req.params.code, body.data.winner);
       } catch (e) {
-        return reply.code(400).send({ error: (e as Error).message });
+        return reply.code(400).send(errBody(e));
       }
       commit(t, ms);
       await freeServerOf(row);
@@ -290,13 +291,13 @@ export async function tournamentRoutes(app: FastifyInstance): Promise<void> {
     { preHandler: requireAdmin },
     async (req, reply) => {
       const t = getTournament(Number(req.params.id));
-      if (!t) return reply.code(404).send({ error: 'Турнир не найден' });
-      if (t.status === 'registration') return reply.code(409).send({ error: 'Турнир не начался' });
+      if (!t) return reply.code(404).send(E('tournamentNotFound'));
+      if (t.status === 'registration') return reply.code(409).send(E('notStarted'));
       const ms = loadMatches(t.id);
       try {
         undoResult(ms, req.params.code);
       } catch (e) {
-        return reply.code(400).send({ error: (e as Error).message });
+        return reply.code(400).send(errBody(e));
       }
       commit(t, ms);
       void dispatchAll();
@@ -314,26 +315,26 @@ export async function tournamentRoutes(app: FastifyInstance): Promise<void> {
 
   app.post<{ Params: { id: string; code: string } }>('/api/tournaments/:id/matches/:code/dispatch', ctrl, async (req, reply) => {
     const { t, row } = liveMatch(req);
-    if (!t || !row) return reply.code(404).send({ error: 'Матч не найден' });
+    if (!t || !row) return reply.code(404).send(E('matchNotFound'));
     const body = z.object({ serverId: z.number().int().optional() }).safeParse(req.body ?? {});
     try {
       await dispatchOne(row.id, body.success ? body.data.serverId : undefined);
     } catch (e) {
-      return reply.code(409).send({ error: (e as Error).message });
+      return reply.code(409).send(errBody(e));
     }
     return details(getTournament(t.id)!);
   });
 
   app.post<{ Params: { id: string; code: string } }>('/api/tournaments/:id/matches/:code/pause', ctrl, async (req, reply) => {
     const { t, row, server } = liveMatch(req);
-    if (!t || !row) return reply.code(404).send({ error: 'Матч не найден' });
-    if (!server) return reply.code(409).send({ error: 'Матч не запущен на сервере' });
+    if (!t || !row) return reply.code(404).send(E('matchNotFound'));
+    if (!server) return reply.code(409).send(E('matchNotOnServer'));
     const body = z.object({ paused: z.boolean() }).safeParse(req.body);
-    if (!body.success) return reply.code(400).send({ error: 'Укажите paused' });
+    if (!body.success) return reply.code(400).send(E('badRequest'));
     try {
       await withRcon(server, (r) => r.exec(body.data.paused ? 'css_forcepause' : 'css_forceunpause'));
     } catch (e) {
-      return reply.code(502).send({ error: `Сервер не ответил: ${(e as Error).message}` });
+      return reply.code(502).send(E('serverNoReply', { reason: errBody(e) }));
     }
     return details(getTournament(t.id)!);
   });
@@ -341,24 +342,24 @@ export async function tournamentRoutes(app: FastifyInstance): Promise<void> {
   // Переиграть текущую карту с первого раунда: восстановление бэкапа нулевого раунда.
   app.post<{ Params: { id: string; code: string } }>('/api/tournaments/:id/matches/:code/restart-map', ctrl, async (req, reply) => {
     const { t, row, server } = liveMatch(req);
-    if (!t || !row) return reply.code(404).send({ error: 'Матч не найден' });
-    if (!server || !row.live) return reply.code(409).send({ error: 'Карта ещё не началась' });
+    if (!t || !row) return reply.code(404).send(E('matchNotFound'));
+    if (!server || !row.live) return reply.code(409).send(E('mapNotStarted'));
     try {
       const out = await withRcon(server, (r) => r.exec('css_restore 0'));
       db.prepare('UPDATE matches SET cur_score_a = 0, cur_score_b = 0 WHERE id = ?').run(row.id);
       return { ...details(getTournament(t.id)!), serverReply: out.trim() };
     } catch (e) {
-      return reply.code(502).send({ error: `Сервер не ответил: ${(e as Error).message}` });
+      return reply.code(502).send(E('serverNoReply', { reason: errBody(e) }));
     }
   });
 
   // Переиграть матч целиком: остановить на сервере, сбросить счёт серии и запустить заново.
   app.post<{ Params: { id: string; code: string } }>('/api/tournaments/:id/matches/:code/restart-match', ctrl, async (req, reply) => {
     const { t, row, server } = liveMatch(req);
-    if (!t || !row) return reply.code(404).send({ error: 'Матч не найден' });
-    if (!server) return reply.code(409).send({ error: 'Матч не запущен на сервере' });
+    if (!t || !row) return reply.code(404).send(E('matchNotFound'));
+    if (!server) return reply.code(409).send(E('matchNotOnServer'));
     await endMatchOnServer(server);
-    release(t.id, row.id, 'Матч перезапущен администратором');
+    release(t.id, row.id, encode(E('noteRestarted')));
     void dispatchAll();
     return details(getTournament(t.id)!);
   });
@@ -367,7 +368,7 @@ export async function tournamentRoutes(app: FastifyInstance): Promise<void> {
     const t = await requireTournament(req, reply);
     if (!t) return;
     const body = z.object({ enabled: z.boolean() }).safeParse(req.body);
-    if (!body.success) return reply.code(400).send({ error: 'Укажите enabled' });
+    if (!body.success) return reply.code(400).send(E('badRequest'));
     db.prepare('UPDATE tournaments SET auto_dispatch = ? WHERE id = ?').run(body.data.enabled ? 1 : 0, t.id);
     if (body.data.enabled) void dispatchAll();
     return details(getTournament(t.id)!);
@@ -376,35 +377,35 @@ export async function tournamentRoutes(app: FastifyInstance): Promise<void> {
   // --- Регистрация команд: капитан или админ ---
   app.post<{ Params: { id: string } }>('/api/tournaments/:id/teams', async (req, reply) => {
     const session = getSession(req);
-    if (!session) return reply.code(401).send({ error: 'Нужен вход' });
+    if (!session) return reply.code(401).send(E('needLogin'));
     const t = await requireTournament(req, reply);
     if (!t) return;
-    if (t.status !== 'registration') return reply.code(409).send({ error: 'Регистрация закрыта' });
+    if (t.status !== 'registration') return reply.code(409).send(E('registrationClosed'));
     const body = z.object({ teamId: z.number().int(), playerIds: z.array(z.number().int()).optional() }).safeParse(req.body);
-    if (!body.success) return reply.code(400).send({ error: 'Укажите команду' });
+    if (!body.success) return reply.code(400).send(E('needTeam'));
 
     const team = db.prepare('SELECT id, captain_id FROM teams WHERE id = ?')
       .get(body.data.teamId) as { id: number; captain_id: number } | undefined;
-    if (!team) return reply.code(404).send({ error: 'Команда не найдена' });
+    if (!team) return reply.code(404).send(E('teamNotFound'));
     if (session.kind === 'player' && team.captain_id !== session.userId) {
-      return reply.code(403).send({ error: 'Регистрировать команду может только капитан' });
+      return reply.code(403).send(E('onlyCaptainRegister'));
     }
     const memberIds = (db.prepare('SELECT player_id FROM team_members WHERE team_id = ? ORDER BY joined_at, player_id')
       .all(team.id) as unknown as { player_id: number }[]).map((r) => r.player_id);
     const roster = body.data.playerIds ?? memberIds.slice(0, t.team_size);
     if (roster.length !== t.team_size || new Set(roster).size !== roster.length || !roster.every((p) => memberIds.includes(p))) {
-      return reply.code(400).send({ error: `Нужно выбрать ровно ${t.team_size} игроков из команды` });
+      return reply.code(400).send(E('rosterSize', { n: t.team_size }));
     }
     const count = (db.prepare('SELECT COUNT(*) AS n FROM tournament_teams WHERE tournament_id = ?').get(t.id) as { n: number }).n;
-    if (count >= t.max_teams) return reply.code(409).send({ error: 'Все места заняты' });
+    if (count >= t.max_teams) return reply.code(409).send(E('noSlots'));
     if (db.prepare('SELECT 1 FROM tournament_teams WHERE tournament_id = ? AND team_id = ?').get(t.id, team.id)) {
-      return reply.code(409).send({ error: 'Команда уже зарегистрирована' });
+      return reply.code(409).send(E('alreadyRegistered'));
     }
     const others = db.prepare('SELECT roster FROM tournament_teams WHERE tournament_id = ?')
       .all(t.id) as unknown as { roster: string }[];
     const taken = new Set(others.flatMap((o) => JSON.parse(o.roster) as number[]));
     if (roster.some((p) => taken.has(p))) {
-      return reply.code(409).send({ error: 'Кто-то из игроков уже заявлен в другой команде этого турнира' });
+      return reply.code(409).send(E('playerTaken'));
     }
     db.prepare('INSERT INTO tournament_teams (tournament_id, team_id, roster) VALUES (?, ?, ?)')
       .run(t.id, team.id, JSON.stringify(roster));
@@ -413,14 +414,14 @@ export async function tournamentRoutes(app: FastifyInstance): Promise<void> {
 
   app.delete<{ Params: { id: string; teamId: string } }>('/api/tournaments/:id/teams/:teamId', async (req, reply) => {
     const session = getSession(req);
-    if (!session) return reply.code(401).send({ error: 'Нужен вход' });
+    if (!session) return reply.code(401).send(E('needLogin'));
     const t = getTournament(Number(req.params.id));
-    if (!t) return reply.code(404).send({ error: 'Турнир не найден' });
-    if (t.status !== 'registration') return reply.code(409).send({ error: 'Регистрация закрыта' });
+    if (!t) return reply.code(404).send(E('tournamentNotFound'));
+    if (t.status !== 'registration') return reply.code(409).send(E('registrationClosed'));
     const teamId = Number(req.params.teamId);
     if (session.kind === 'player') {
       const team = db.prepare('SELECT captain_id FROM teams WHERE id = ?').get(teamId) as { captain_id: number } | undefined;
-      if (team?.captain_id !== session.userId) return reply.code(403).send({ error: 'Только капитан может снять заявку' });
+      if (team?.captain_id !== session.userId) return reply.code(403).send(E('onlyCaptainUnregister'));
     }
     db.prepare('DELETE FROM tournament_teams WHERE tournament_id = ? AND team_id = ?').run(t.id, teamId);
     return details(t);

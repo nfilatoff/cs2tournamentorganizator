@@ -1,4 +1,5 @@
 import { randomBytes, timingSafeEqual } from 'node:crypto';
+import { AppError } from './errors.js';
 import { db, getSetting, setSetting } from './db.js';
 import { config } from './config.js';
 
@@ -39,7 +40,7 @@ export function tournamentMapPool(tid: number): MapRef[] {
 
 // Карты матча. Пока вето для капитанов не готово, берутся первые карты пула по порядку.
 export function pickMaps(pool: MapRef[], bestOf: number): MapRef[] {
-  if (pool.length < bestOf) throw new Error(`В пуле ${pool.length} карт, а нужно ${bestOf} для BO${bestOf}`);
+  if (pool.length < bestOf) throw new AppError('poolTooSmall', { have: pool.length, need: bestOf });
   return pool.slice(0, bestOf);
 }
 

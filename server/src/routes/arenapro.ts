@@ -1,4 +1,5 @@
 import type { FastifyInstance } from 'fastify';
+import { E, encode, errBody } from '../errors.js';
 import { db, tx } from '../db.js';
 import { buildMatchConfig, rosterOf, tokenMatches, type MapRef } from '../arenapro.js';
 import { reportResult } from '../bracket.js';
@@ -62,7 +63,7 @@ export function handleEvent(ev: ArenaEvent): void {
         reportResult(ms, row.code, s1, s2);
       } catch (e) {
         db.prepare('UPDATE matches SET note = ? WHERE id = ?')
-          .run(`Сервер прислал результат ${s1}:${s2}, но он не подходит: ${(e as Error).message}. Назначьте победителя вручную.`, row.id);
+          .run(encode(E('noteBadResult', { s1, s2, reason: errBody(e) })), row.id);
         return;
       }
       tx(() => {
@@ -80,14 +81,14 @@ export function handleEvent(ev: ArenaEvent): void {
 export async function arenaproRoutes(app: FastifyInstance): Promise<void> {
   // Игровой сервер забирает конфиг матча по этой ссылке (arenapro_loadmatch_url)
   app.get<{ Params: { id: string } }>('/api/arenapro/config/:id', async (req, reply) => {
-    if (!tokenMatches(req.headers.authorization)) return reply.code(401).send({ error: 'Нет доступа' });
+    if (!tokenMatches(req.headers.authorization)) return reply.code(401).send(E('noAccess'));
     const row = getMatchRow(Number(req.params.id));
-    if (!row || !row.maps_json) return reply.code(404).send({ error: 'Матч не найден' });
+    if (!row || !row.maps_json) return reply.code(404).send(E('matchNotFound'));
     const t = getTournament(row.tournament_id)!;
     const entry = (json: string) => JSON.parse(json) as { k: string; id?: number };
     const a = entry(row.entry_a);
     const b = entry(row.entry_b);
-    if (a.k !== 'team' || b.k !== 'team') return reply.code(409).send({ error: 'Соперники ещё не определены' });
+    if (a.k !== 'team' || b.k !== 'team') return reply.code(409).send(E('opponentsTbd'));
     return buildMatchConfig({
       matchId: row.id,
       teamSize: t.team_size,
@@ -99,16 +100,16 @@ export async function arenaproRoutes(app: FastifyInstance): Promise<void> {
 
   // Сюда сервер шлёт события матча (arenapro_remote_log_url)
   app.post('/api/arenapro/events', async (req, reply) => {
-    if (!tokenMatches(req.headers.authorization)) return reply.code(401).send({ error: 'Нет доступа' });
+    if (!tokenMatches(req.headers.authorization)) return reply.code(401).send(E('noAccess'));
     const ev = req.body as ArenaEvent | undefined;
     if (!ev || typeof ev.event !== 'string' || typeof ev.matchid !== 'number') {
-      return reply.code(400).send({ error: 'Некорректное событие' });
+      return reply.code(400).send(E('badEvent'));
     }
     try {
       handleEvent(ev);
     } catch (e) {
       req.log.error(e, 'ошибка обработки события');
-      return reply.code(500).send({ error: 'Ошибка обработки' });
+      return reply.code(500).send(E('processingFailed'));
     }
     return { ok: true };
   });

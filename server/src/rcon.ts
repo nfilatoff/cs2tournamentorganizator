@@ -1,4 +1,5 @@
 import net from 'node:net';
+import { AppError } from './errors.js';
 
 // Клиент Source RCON (TCP). Подходит для CS2.
 const AUTH = 3;
@@ -27,13 +28,13 @@ export class Rcon {
   private constructor(private socket: net.Socket) {
     socket.on('data', (d: Buffer) => this.onData(d));
     socket.on('error', (e) => this.fail(e));
-    socket.on('close', () => this.fail(new Error('RCON: соединение закрыто')));
+    socket.on('close', () => this.fail(new AppError('rconClosed')));
   }
 
   static async connect(host: string, port: number, password: string, timeoutMs = 5000): Promise<Rcon> {
     const socket = await new Promise<net.Socket>((resolve, reject) => {
       const s = net.connect({ host, port });
-      const timer = setTimeout(() => { s.destroy(); reject(new Error('RCON: таймаут подключения')); }, timeoutMs);
+      const timer = setTimeout(() => { s.destroy(); reject(new AppError('rconConnectTimeout')); }, timeoutMs);
       s.once('connect', () => { clearTimeout(timer); resolve(s); });
       s.once('error', (e) => { clearTimeout(timer); reject(e); });
     });
@@ -43,7 +44,7 @@ export class Rcon {
     for (;;) {
       const p = await rcon.read(timeoutMs);
       if (p.type !== AUTH_RESPONSE) continue;
-      if (p.id === -1) { rcon.close(); throw new Error('RCON: неверный пароль'); }
+      if (p.id === -1) { rcon.close(); throw new AppError('rconBadPassword'); }
       break;
     }
     return rcon;
@@ -83,7 +84,7 @@ export class Rcon {
       if (this.failure) return reject(this.failure);
       const timer = setTimeout(() => {
         this.waiters = this.waiters.filter((x) => x !== take);
-        reject(new Error('RCON: таймаут ответа'));
+        reject(new AppError('rconTimeout'));
       }, timeoutMs);
       this.waiters.push(take);
     });
@@ -102,7 +103,7 @@ export class Rcon {
       try {
         p = await this.read(wait);
       } catch (e) {
-        if ((e as Error).message === 'RCON: таймаут ответа') return out;
+        if (e instanceof AppError && e.code === 'rconTimeout') return out;
         throw e;
       }
       if (p.id === id) {

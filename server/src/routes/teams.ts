@@ -1,4 +1,5 @@
 import { randomBytes } from 'node:crypto';
+import { E } from '../errors.js';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { db, tx } from '../db.js';
@@ -62,7 +63,7 @@ export async function teamRoutes(app: FastifyInstance): Promise<void> {
 
   app.post('/api/teams', async (req, reply) => {
     const body = z.object({ name: z.string().trim().min(2).max(30) }).safeParse(req.body);
-    if (!body.success) return reply.code(400).send({ error: 'Название команды: от 2 до 30 символов' });
+    if (!body.success) return reply.code(400).send(E('teamNameLength'));
     const pid = playerId(req);
     try {
       const team = tx(() => {
@@ -75,21 +76,21 @@ export async function teamRoutes(app: FastifyInstance): Promise<void> {
       });
       return reply.code(201).send(teamDto(team));
     } catch {
-      return reply.code(409).send({ error: 'Команда с таким названием уже есть' });
+      return reply.code(409).send(E('teamNameTaken'));
     }
   });
 
   app.post('/api/teams/join', async (req, reply) => {
     const body = z.object({ code: z.string().trim().min(1) }).safeParse(req.body);
-    if (!body.success) return reply.code(400).send({ error: 'Введите код команды' });
+    if (!body.success) return reply.code(400).send(E('needCode'));
     const team = db.prepare('SELECT * FROM teams WHERE join_code = ?')
       .get(body.data.code.toUpperCase()) as unknown as TeamRow | undefined;
-    if (!team) return reply.code(404).send({ error: 'Команда с таким кодом не найдена' });
+    if (!team) return reply.code(404).send(E('codeNotFound'));
     const pid = playerId(req);
     if (members(team.id).some((m) => m.player_id === pid)) {
-      return reply.code(409).send({ error: 'Вы уже в этой команде' });
+      return reply.code(409).send(E('alreadyMember'));
     }
-    if (members(team.id).length >= MAX_MEMBERS) return reply.code(409).send({ error: 'В команде нет мест' });
+    if (members(team.id).length >= MAX_MEMBERS) return reply.code(409).send(E('teamFull'));
     db.prepare('INSERT INTO team_members (team_id, player_id) VALUES (?, ?)').run(team.id, pid);
     return teamDto(team);
   });
@@ -99,14 +100,14 @@ export async function teamRoutes(app: FastifyInstance): Promise<void> {
     const pid = playerId(req);
     const team = db.prepare('SELECT * FROM teams WHERE id = ?').get(id) as unknown as TeamRow | undefined;
     if (!team || !members(id).some((m) => m.player_id === pid)) {
-      return reply.code(404).send({ error: 'Вы не состоите в этой команде' });
+      return reply.code(404).send(E('notMember'));
     }
     if (inActiveRoster(id, pid)) {
-      return reply.code(409).send({ error: 'Вы в составе команды на незавершённом турнире' });
+      return reply.code(409).send(E('selfInActiveRoster'));
     }
     const rest = members(id).filter((m) => m.player_id !== pid);
     if (rest.length === 0 && inActiveTournament(id)) {
-      return reply.code(409).send({ error: 'Команда участвует в турнире' });
+      return reply.code(409).send(E('teamInTournament'));
     }
     tx(() => {
       db.prepare('DELETE FROM team_members WHERE team_id = ? AND player_id = ?').run(id, pid);
@@ -121,23 +122,35 @@ export async function teamRoutes(app: FastifyInstance): Promise<void> {
 
   app.post<{ Params: { id: string } }>('/api/teams/:id/kick', async (req, reply) => {
     const body = z.object({ playerId: z.number().int() }).safeParse(req.body);
-    if (!body.success) return reply.code(400).send({ error: 'Укажите игрока' });
+    if (!body.success) return reply.code(400).send(E('needPlayer'));
     const id = Number(req.params.id);
     const team = db.prepare('SELECT * FROM teams WHERE id = ?').get(id) as unknown as TeamRow | undefined;
-    if (!team || team.captain_id !== playerId(req)) return reply.code(403).send({ error: 'Только капитан может исключать игроков' });
-    if (body.data.playerId === team.captain_id) return reply.code(400).send({ error: 'Капитана исключить нельзя' });
+    if (!team || team.captain_id !== playerId(req)) return reply.code(403).send(E('onlyCaptainKick'));
+    if (body.data.playerId === team.captain_id) return reply.code(400).send(E('cannotKickCaptain'));
     if (inActiveRoster(id, body.data.playerId)) {
-      return reply.code(409).send({ error: 'Игрок в составе команды на незавершённом турнире' });
+      return reply.code(409).send(E('playerInActiveRoster'));
     }
     db.prepare('DELETE FROM team_members WHERE team_id = ? AND player_id = ?').run(id, body.data.playerId);
     return { ok: true };
   });
 
+  // Капитан передаёт роль другому участнику команды
+  app.post<{ Params: { id: string } }>('/api/teams/:id/captain', async (req, reply) => {
+    const body = z.object({ playerId: z.number().int() }).safeParse(req.body);
+    if (!body.success) return reply.code(400).send(E('needPlayer'));
+    const id = Number(req.params.id);
+    const team = db.prepare('SELECT * FROM teams WHERE id = ?').get(id) as unknown as TeamRow | undefined;
+    if (!team || team.captain_id !== playerId(req)) return reply.code(403).send(E('onlyCaptainAssign'));
+    if (!members(id).some((m) => m.player_id === body.data.playerId)) return reply.code(400).send(E('notTeamMember'));
+    db.prepare('UPDATE teams SET captain_id = ? WHERE id = ?').run(body.data.playerId, id);
+    return teamDto({ ...team, captain_id: body.data.playerId });
+  });
+
   app.delete<{ Params: { id: string } }>('/api/teams/:id', async (req, reply) => {
     const id = Number(req.params.id);
     const team = db.prepare('SELECT * FROM teams WHERE id = ?').get(id) as unknown as TeamRow | undefined;
-    if (!team || team.captain_id !== playerId(req)) return reply.code(403).send({ error: 'Только капитан может удалить команду' });
-    if (inActiveTournament(id)) return reply.code(409).send({ error: 'Команда участвует в турнире' });
+    if (!team || team.captain_id !== playerId(req)) return reply.code(403).send(E('onlyCaptainDelete'));
+    if (inActiveTournament(id)) return reply.code(409).send(E('teamInTournament'));
     db.prepare('DELETE FROM teams WHERE id = ?').run(id);
     return { ok: true };
   });

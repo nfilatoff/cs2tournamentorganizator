@@ -68,7 +68,7 @@ export function boFn(t: TournamentRow) {
 
 export function teamName(id: number): string {
   const r = db.prepare('SELECT name FROM teams WHERE id = ?').get(id) as { name: string } | undefined;
-  return r?.name ?? `Команда ${id}`;
+  return r?.name ?? `Team ${id}`;
 }
 
 // Сохраняет матчи и пересчитывает статус турнира: есть чемпион — завершён, иначе идёт.
