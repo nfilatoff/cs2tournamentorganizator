@@ -63,7 +63,7 @@ export async function fetchWorkshopItem(id: string): Promise<{ title: string; pr
     };
     const d = json.response?.publishedfiledetails?.[0];
     if (!d || d.result !== 1 || !d.title) return null;
-    return { title: d.title, preview: d.preview_url ?? null };
+    return { title: d.title.replace(/\s+/g, ' ').trim(), preview: d.preview_url ?? null };
   } catch {
     return null;
   }

@@ -28,7 +28,7 @@ const tournamentBody = z.object({
   maxTeams: z.number().int().min(minTeams('single')).max(64),
   defaultBestOf: BEST_OF.default(1),
   boConfig: z.record(z.string().regex(/^(W\d+|L\d+|GF)$/), BEST_OF).default({}),
-  grandFinalReset: z.boolean().default(true),
+  grandFinalReset: z.boolean().default(false),
   autoDispatch: z.boolean().default(true),
   mapIds: z.array(z.number().int()).max(MAX_MAPS),
   stageMode: z.enum(['playoff', 'groups']).default('playoff'),

@@ -9,6 +9,7 @@ export function Maps() {
   const [mapFile, setMapFile] = useState('');
   const [stdName, setStdName] = useState('');
   const [error, setError] = useState('');
+  const [info, setInfo] = useState('');
 
   const load = useCallback(() => {
     api<MapItem[]>('/api/maps').then(setMaps).catch((e) => setError(err(e)));
@@ -36,6 +37,17 @@ export function Maps() {
     void submit({ mapFile, name: stdName }, () => { setMapFile(''); setStdName(''); });
   };
 
+  const addDefaults = async () => {
+    setError('');
+    try {
+      const r = await api<{ added: number }>('/api/maps/defaults', { method: 'POST', body: {} });
+      setInfo(t('maps.addedDefaults', { n: r.added }));
+      load();
+    } catch (e) {
+      setError(err(e));
+    }
+  };
+
   const remove = async (id: number) => {
     setError('');
     try {
@@ -48,7 +60,11 @@ export function Maps() {
 
   return (
     <>
-      <h1>{t('maps.title')}</h1>
+      <div className="between">
+        <h1>{t('maps.title')}</h1>
+        <button className="ghost" onClick={addDefaults}>{t('maps.addDefaults')}</button>
+      </div>
+      {info && <p className="muted">{info}</p>}
       <form className="card row" onSubmit={addWorkshop}>
         <label style={{ flex: 1, minWidth: 260 }}>
           {t('maps.workshopLabel')}

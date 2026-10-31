@@ -84,7 +84,6 @@ export const ru = {
   'form.teamSize': 'Игроков в команде',
   'form.series': 'Серии (BO)',
   'form.defaultBo': 'По умолчанию',
-  'form.reset': 'Переигровка гранд-финала, если побеждает чемпион нижней сетки',
   'form.roundsHint': 'Раунды считаются с конца сетки, поэтому настройки сохранятся, даже если команд придёт меньше.',
   'form.autoDispatch': 'Автоматически запускать готовые матчи на свободных серверах',
   'form.mapPool': 'Пул карт ({n}/{max})',
@@ -392,6 +391,13 @@ export const ru = {
   'home.att.vetoMany': '{tournament}: матчей ждут вето карт: {n}',
   'home.att.queuedManualMany': '{tournament}: матчей готово, автозапуск выключен: {n}. Запустите их вручную',
   'home.att.queuedNoServerMany': '{tournament}: матчей ждут свободного сервера: {n}',
+  'maps.addDefaults': 'Добавить стандартный пул CS2',
+  'maps.addedDefaults': 'Добавлено карт: {n}',
+  'round.wb': 'WB {n}',
+  'round.lb': 'LB {n}',
+  'round.gfReset': 'Переигровка гранд-финала (если нужна)',
+  'form.reset': 'Переигровка гранд-финала, если побеждает чемпион нижней сетки (по умолчанию выключена: один гранд-финал)',
+  'group.gslNote': 'В GSL очки не считаются. Выходят победитель матча победителей и победитель решающего матча. Пунктир: куда идёт проигравший.',
 };
 
 export type Dict = Record<keyof typeof ru, string>;

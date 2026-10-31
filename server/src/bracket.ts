@@ -118,7 +118,7 @@ export function buildBracket(
     // На 2 командах нижней сетки нет: проигравший единственного матча сразу идёт в гранд-финал
     matches.push(mk('GF', 1, 1, win(`W${k}-1`), k === 1 ? lose('W1-1') : win(`L${lastL}-1`)));
     // На 2 командах переигровка обязательна: иначе чемпион определялся бы при счёте 1:1
-    if ((opts.grandFinalReset ?? true) || k === 1) {
+    if ((opts.grandFinalReset ?? false) || k === 1) {
       matches.push(mk('GF', 2, 1, { t: 'slot', code: 'GF-1', side: 'a' }, { t: 'slot', code: 'GF-1', side: 'b' }));
     }
   }

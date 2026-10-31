@@ -198,3 +198,5 @@ addColumn('matches', 'group_no', 'INTEGER');
 // Вето карт
 addColumn('matches', 'veto_json', 'TEXT');
 addColumn('tournaments', 'veto_enabled', 'INTEGER NOT NULL DEFAULT 1');
+
+db.exec("UPDATE maps SET name = trim(replace(replace(name, char(10), ' '), char(13), ' '))");

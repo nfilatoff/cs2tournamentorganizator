@@ -1,10 +1,29 @@
 import { useEffect, useState } from 'react';
 import { api, type MatchDto, type PlayoffPreview, type StandingRow, type TournamentDetails } from '../api';
 import { useI18n } from '../i18n';
-import { BracketTree } from './BracketTree';
+import { BracketTree, Canvas, gslLayout } from './BracketTree';
 import { MatchCard, type MatchActions } from './MatchCard';
 
 const groupName = (no: number) => String.fromCharCode(64 + no);
+
+// В GSL нет очков: показывается только результат (победы и поражения), а места появляются, когда группа сыграна
+function GslStandings({ rows, complete, advance }: { rows: StandingRow[]; complete: boolean; advance: number }) {
+  const { t } = useI18n();
+  return (
+    <table className="standings">
+      <thead><tr><th>#</th><th>{t('st.team')}</th><th>{t('st.wl')}</th></tr></thead>
+      <tbody>
+        {rows.map((r) => (
+          <tr key={r.teamId} className={complete && r.rank <= advance ? 'qualified' : ''}>
+            <td>{complete ? r.rank : '–'}</td>
+            <td>{r.name}</td>
+            <td>{r.wins}-{r.losses}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
 
 function Standings({ rows, swiss, advance }: { rows: StandingRow[]; swiss: boolean; advance: number }) {
   const { t } = useI18n();
@@ -56,9 +75,19 @@ export function GroupsView({ tr, actions }: { tr: TournamentDetails; actions?: M
               {swiss ? t('group.swiss', { n: tr.groups!.swissTotal ?? 0 }) : t('group.title', { name: groupName(g.no) })}
               <span className="muted"> · {t(`gf.${cfg.format ?? 'round_robin'}` as 'gf.swiss')}</span>
             </h2>
-            <Standings rows={g.standings} swiss={swiss} advance={cfg.advance} />
-            <p className="muted">{t('group.advanceNote', { n: cfg.advance })}</p>
-            {rounds.map((r) => (
+            {cfg.format === 'gsl' ? (
+              <>
+                <GslStandings rows={g.standings} complete={ms.every((m) => m.status === 'done' || m.status === 'bye')} advance={cfg.advance} />
+                <p className="muted">{t('group.gslNote', { n: cfg.advance })}</p>
+                <Canvas layout={gslLayout(ms, (r) => roundTitle(t, 'gsl', r))} actions={actions} />
+              </>
+            ) : (
+              <>
+                <Standings rows={g.standings} swiss={swiss} advance={cfg.advance} />
+                <p className="muted">{t('group.advanceNote', { n: cfg.advance })}</p>
+              </>
+            )}
+            {cfg.format !== 'gsl' && rounds.map((r) => (
               <div key={r}>
                 <div className="roundname" style={{ margin: '12px 0 6px' }}>{roundTitle(t, cfg.format, r)}</div>
                 <div className="matchlist">

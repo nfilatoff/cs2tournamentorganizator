@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { db } from '../db.js';
 import { requireAdmin } from '../auth.js';
 import { fetchWorkshopItem, parseWorkshopId } from '../steam.js';
+import { addDefaultMaps } from '../defaultMaps.js';
 
 interface Row { id: number; name: string; workshop_id: string | null; map_file: string | null; image_url: string | null }
 
@@ -43,11 +44,12 @@ export async function mapRoutes(app: FastifyInstance): Promise<void> {
       workshopId = parseWorkshopId(body.data.workshop);
       if (!workshopId) return reply.code(400).send(E('noWorkshopId'));
       const item = await fetchWorkshopItem(workshopId);
-      name = body.data.name ?? item?.title ?? `Workshop ${workshopId}`;
+      name = (body.data.name ?? item?.title ?? `Workshop ${workshopId}`).trim();
       imageUrl = item?.preview ?? null;
     } else {
       mapFile = body.data.mapFile;
       name = body.data.name;
+      if (db.prepare('SELECT 1 FROM maps WHERE map_file = ?').get(mapFile)) return reply.code(409).send(E('mapExists'));
     }
 
     try {
@@ -60,6 +62,9 @@ export async function mapRoutes(app: FastifyInstance): Promise<void> {
       return reply.code(409).send(E('mapExists'));
     }
   });
+
+  // Добавляет недостающие карты стандартного пула CS2
+  app.post('/api/maps/defaults', async () => ({ added: addDefaultMaps() }));
 
   app.delete<{ Params: { id: string } }>('/api/maps/:id', async (req, reply) => {
     try {

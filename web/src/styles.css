@@ -87,3 +87,5 @@ main { max-width: 1200px; }
 ul.attention { list-style: none; margin: 0; padding: 0; }
 ul.attention li { padding: 8px 0; border-bottom: 1px solid var(--line); }
 ul.attention li:last-child { border-bottom: 0; }
+.treehead { align-self: end; padding-bottom: 4px; }
+.links path.dashed { stroke-dasharray: 5 4; opacity: .6; }

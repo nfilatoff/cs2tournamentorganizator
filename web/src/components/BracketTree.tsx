@@ -11,10 +11,10 @@ interface Props {
 }
 
 interface Pos { col: number; row: number }
+interface Head { col: number; row: number; label: string }
 
 // Вертикальный центр матча в «полустроках»: у первого раунда шаг 2, дальше среднее между питающими матчами.
-function layout(ms: MatchDto[]): { pos: Map<string, Pos>; rows: number; rounds: number[] } {
-  const rounds = [...new Set(ms.map((m) => m.round))].sort((x, y) => x - y);
+function centersOf(ms: MatchDto[]): Map<string, number> {
   const byCode = new Map(ms.map((m) => [m.code, m]));
   const center = new Map<string, number>();
   const calc = (m: MatchDto): number => {
@@ -27,47 +27,107 @@ function layout(ms: MatchDto[]): { pos: Map<string, Pos>; rows: number; rounds: 
     center.set(m.code, c);
     return c;
   };
-  const pos = new Map<string, Pos>();
-  let rows = 0;
-  for (const m of ms) {
-    const c = calc(m);
-    pos.set(m.code, { col: rounds.indexOf(m.round), row: Math.round(c) });
-    rows = Math.max(rows, Math.round(c) + 1);
-  }
-  return { pos, rows, rounds };
+  ms.forEach(calc);
+  return center;
 }
 
-function Section({ title, ms, format, bracket, actions }: {
-  title: string; ms: MatchDto[]; format: 'single' | 'double'; bracket: 'W' | 'L' | 'GF'; actions?: MatchActions;
-}) {
-  const { t } = useI18n();
-  const { pos, rows, rounds } = useMemo(() => layout(ms), [ms]);
+const maxOf = (m: Map<string, number>) => Math.max(0, ...m.values());
+const roundsOf = (ms: MatchDto[]) => [...new Set(ms.map((m) => m.round))].sort((a, b) => a - b);
+
+interface Layout { ms: MatchDto[]; pos: Map<string, Pos>; heads: Head[]; cols: number; rows: number; loserLinks?: boolean }
+
+// Сетка на выбывание: колонки по раундам
+function singleLayout(ms: MatchDto[], label: (m: MatchDto) => string): Layout {
+  const c = centersOf(ms);
+  const rounds = roundsOf(ms);
+  const pos = new Map<string, Pos>();
+  ms.forEach((m) => pos.set(m.code, { col: rounds.indexOf(m.round) + 1, row: Math.round(c.get(m.code)!) + 1 }));
+  const heads = rounds.map((r, i) => ({ col: i + 1, row: 1, label: label(ms.find((m) => m.round === r)!) }));
+  return { ms, pos, heads, cols: rounds.length, rows: Math.round(maxOf(c)) + 2 };
+}
+
+// Double elimination одним полотном, как на FastCup: верхняя сетка сверху, нижняя под ней, гранд-финал справа.
+// Раунды верхней сетки стоят в тех же колонках, что и раунды нижней, в которые падают их проигравшие.
+function doubleLayout(
+  w: MatchDto[], l: MatchDto[], g: MatchDto[], wLabel: (n: number) => string, lLabel: (n: number) => string, gLabel: (m: MatchDto) => string,
+): Layout {
+  const k = Math.max(0, ...w.map((m) => m.round));
+  const wCol = (r: number) => (r <= 2 ? r : 2 * (r - 1));
+  const cW = centersOf(w);
+  const rowsW = Math.round(maxOf(cW)) + 1;
+  const pos = new Map<string, Pos>();
+  const heads: Head[] = [];
+
+  w.forEach((m) => pos.set(m.code, { col: wCol(m.round), row: Math.round(cW.get(m.code)!) + 1 }));
+  roundsOf(w).forEach((r) => heads.push({ col: wCol(r), row: 1, label: wLabel(r) }));
+
+  let lastRow = rowsW + 1;
+  let wFinalRow = Math.round(cW.get(`W${k}-1`) ?? 1) + 1;
+  let lFinalRow = wFinalRow;
+  if (l.length > 0) {
+    const lTop = rowsW + 3; // между сетками остаётся пустая строка, дальше строка заголовков
+    const cL = centersOf(l);
+    l.forEach((m) => pos.set(m.code, { col: m.round, row: Math.round(cL.get(m.code)!) + lTop }));
+    roundsOf(l).forEach((r) => heads.push({ col: r, row: lTop, label: lLabel(r) }));
+    lastRow = Math.round(maxOf(cL)) + lTop + 1;
+    const lastL = Math.max(...l.map((m) => m.round));
+    lFinalRow = Math.round(cL.get(`L${lastL}-1`) ?? 1) + lTop;
+  }
+
+  const gfBase = k <= 1 ? 1 : 2 * (k - 1);
+  const gfRow = Math.round((wFinalRow + lFinalRow) / 2);
+  roundsOf(g).forEach((r) => heads.push({ col: gfBase + r, row: 1, label: gLabel(g.find((m) => m.round === r)!) }));
+  g.forEach((m) => pos.set(m.code, { col: gfBase + m.round, row: gfRow }));
+
+  const cols = Math.max(...[...pos.values()].map((p) => p.col));
+  return { ms: [...w, ...l, ...g], pos, heads, cols, rows: lastRow + 1 };
+}
+
+// Группа GSL: два стартовых матча, матч победителей, матч проигравших и решающий матч
+export function gslLayout(ms: MatchDto[], label: (round: number) => string): Layout {
+  const spots: Record<string, Pos> = {};
+  const g = ms[0]?.groupNo ?? 1;
+  spots[`G${g}-1-1`] = { col: 1, row: 2 };
+  spots[`G${g}-1-2`] = { col: 1, row: 4 };
+  spots[`G${g}-2-1`] = { col: 2, row: 3 };
+  spots[`G${g}-2-2`] = { col: 2, row: 7 };
+  spots[`G${g}-3-1`] = { col: 3, row: 5 };
+  const pos = new Map(ms.map((m) => [m.code, spots[m.code] ?? { col: m.round, row: 2 * m.position }]));
+  return {
+    ms, pos, cols: 3, rows: 9, loserLinks: true,
+    heads: [1, 2, 3].map((r) => ({ col: r, row: 1, label: label(r) })),
+  };
+}
+
+function Canvas({ layout, actions }: { layout: Layout; actions?: MatchActions }) {
   const wrap = useRef<HTMLDivElement>(null);
   const cards = useRef(new Map<string, HTMLDivElement>());
-  const [paths, setPaths] = useState<string[]>([]);
+  const [paths, setPaths] = useState<{ d: string; dashed: boolean }[]>([]);
 
   // Линии строятся по реальным размерам карточек, поэтому не ломаются, когда карточка растёт
   const draw = () => {
     const box = wrap.current?.getBoundingClientRect();
     if (!box) return;
-    const out: string[] = [];
-    for (const m of ms) {
+    const out: { d: string; dashed: boolean }[] = [];
+    for (const m of layout.ms) {
       const to = cards.current.get(m.code)?.getBoundingClientRect();
       if (!to) continue;
       for (const f of m.from) {
-        if (!f || f.kind !== 'winner') continue;
-        const fromEl = cards.current.get(f.code)?.getBoundingClientRect();
-        if (!fromEl) continue;
-        const x1 = fromEl.right - box.left;
-        const y1 = fromEl.top + fromEl.height / 2 - box.top;
+        // Проигравшие рисуются только в гранд-финал (двух команд): в остальных случаях это лишний шум
+        if (!f || !(f.kind === 'winner' || (f.kind === 'loser' && (m.bracket === 'GF' || layout.loserLinks)))) continue;
+        const src = cards.current.get(f.code)?.getBoundingClientRect();
+        if (!src) continue;
+        const x1 = src.right - box.left;
+        const y1 = src.top + src.height / 2 - box.top;
         const x2 = to.left - box.left;
         const y2 = to.top + to.height / 2 - box.top;
         const mid = (x1 + x2) / 2;
-        out.push(`M${x1} ${y1} H${mid} V${y2} H${x2}`);
+        out.push({ d: `M${x1} ${y1} H${mid} V${y2} H${x2}`, dashed: f.kind === 'loser' });
       }
     }
     // Тот же набор линий не должен вызывать повторную отрисовку
-    setPaths((prev) => (prev.join('|') === out.join('|') ? prev : out));
+    const key = (p: { d: string; dashed: boolean }[]) => p.map((x) => x.d + x.dashed).join('|');
+    setPaths((prev) => (key(prev) === key(out) ? prev : out));
   };
 
   useLayoutEffect(draw);
@@ -79,53 +139,58 @@ function Section({ title, ms, format, bracket, actions }: {
     return () => ro.disconnect();
   });
 
-  const colTemplate = `repeat(${rounds.length}, 230px)`;
   return (
-    <div className="card">
-      <h2>{title}</h2>
-      <div className="treescroll">
-        <div className="treehead" style={{ gridTemplateColumns: colTemplate }}>
-          {rounds.map((r) => {
-            const sample = ms.find((m) => m.round === r)!;
-            return <div className="roundname" key={r}>{roundLabel(t, bracket, sample.roundFromEnd, format)}</div>;
-          })}
-        </div>
-        <div className="tree" ref={wrap} style={{ gridTemplateColumns: colTemplate, gridTemplateRows: `repeat(${rows}, minmax(38px, auto))` }}>
-          <svg className="links" aria-hidden>
-            {paths.map((d, i) => <path key={i} d={d} />)}
-          </svg>
-          {ms.map((m) => {
-            const p = pos.get(m.code)!;
-            return (
-              <div
-                key={m.code}
-                className="treecell"
-                style={{ gridColumn: p.col + 1, gridRow: `${p.row} / span 2` }}
-              >
-                <div ref={(el) => { if (el) cards.current.set(m.code, el); else cards.current.delete(m.code); }} className="cardwrap">
-                  <MatchCard m={m} actions={actions} />
-                </div>
+    <div className="treescroll">
+      <div
+        className="tree"
+        ref={wrap}
+        style={{ gridTemplateColumns: `repeat(${layout.cols}, 230px)`, gridTemplateRows: `repeat(${layout.rows}, minmax(24px, auto))` }}
+      >
+        <svg className="links" aria-hidden>
+          {paths.map((p, i) => <path key={i} d={p.d} className={p.dashed ? 'dashed' : undefined} />)}
+        </svg>
+        {layout.heads.map((h, i) => (
+          <div key={i} className="roundname treehead" style={{ gridColumn: h.col, gridRow: h.row }}>{h.label}</div>
+        ))}
+        {layout.ms.map((m) => {
+          const p = layout.pos.get(m.code)!;
+          return (
+            <div key={m.code} className="treecell" style={{ gridColumn: p.col, gridRow: `${p.row} / span 2` }}>
+              <div ref={(el) => { if (el) cards.current.set(m.code, el); else cards.current.delete(m.code); }} className="cardwrap">
+                <MatchCard m={m} actions={actions} />
               </div>
-            );
-          })}
-        </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
 }
 
-// Сетка как дерево: колонки по раундам, линии от питающих матчей, у команд видны сиды
+// Сетка плей-офф деревом: линии от питающих матчей, у команд видны сиды.
+// Single elimination: колонки по раундам. Double elimination: верхняя и нижняя сетки на одном полотне.
 export function BracketTree({ matches, format, actions }: Props): ReactNode {
   const { t } = useI18n();
-  const visible = matches.filter((m) => m.status !== 'skipped');
-  const title = (br: 'W' | 'L' | 'GF') =>
-    format === 'single' && br === 'W' ? t('bracket.single') : br === 'W' ? t('bracket.upper') : br === 'L' ? t('bracket.lower') : t('bracket.gf');
+  const visible = matches.filter((m) => m.status !== 'skipped' && m.bracket !== 'G');
+  const layout = useMemo(() => {
+    const w = visible.filter((m) => m.bracket === 'W');
+    if (format === 'single') {
+      return singleLayout(w, (m) => roundLabel(t, 'W', m.roundFromEnd, 'single'));
+    }
+    const gfLabel = (m: MatchDto) => (m.code === 'GF-2' ? t('round.gfReset') : t('round.gf'));
+    return doubleLayout(
+      w, visible.filter((m) => m.bracket === 'L'), visible.filter((m) => m.bracket === 'GF'),
+      (n) => t('round.wb', { n }), (n) => t('round.lb', { n }), gfLabel,
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [matches, format, t]);
+
+  if (layout.ms.length === 0) return null;
   return (
-    <>
-      {(['W', 'L', 'GF'] as const).map((br) => {
-        const ms = visible.filter((m) => m.bracket === br);
-        return ms.length === 0 ? null : <Section key={br} title={title(br)} ms={ms} format={format} bracket={br} actions={actions} />;
-      })}
-    </>
+    <div className="card">
+      <Canvas layout={layout} actions={actions} />
+    </div>
   );
 }
+
+export { Canvas, type Layout, type Pos };

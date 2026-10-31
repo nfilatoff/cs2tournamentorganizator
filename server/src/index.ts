@@ -18,6 +18,7 @@ import { arenaproRoutes } from './routes/arenapro.js';
 import { adminTeamRoutes } from './routes/adminTeams.js';
 import { vetoRoutes } from './routes/veto.js';
 import { homeRoutes } from './routes/home.js';
+import { seedDefaultMapsIfEmpty } from './defaultMaps.js';
 import { dispatchAll, startDispatchTimer } from './dispatcher.js';
 
 async function ensureAdmin(): Promise<void> {
@@ -57,6 +58,7 @@ if (existsSync(webDist)) {
 }
 
 await ensureAdmin();
+seedDefaultMapsIfEmpty();
 await app.listen({ port: config.port, host: config.host });
 startDispatchTimer();
 void dispatchAll();

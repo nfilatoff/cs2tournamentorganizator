@@ -17,7 +17,7 @@ export function TournamentForm() {
   const [maxTeams, setMaxTeams] = useState(12);
   const [defaultBo, setDefaultBo] = useState(1);
   const [boConfig, setBoConfig] = useState<Record<string, number>>({});
-  const [reset, setReset] = useState(true);
+  const [reset, setReset] = useState(false);
   const [autoDispatch, setAutoDispatch] = useState(true);
   const [vetoEnabled, setVetoEnabled] = useState(true);
   const [maps, setMaps] = useState<MapItem[]>([]);
