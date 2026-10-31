@@ -61,7 +61,7 @@ const win = (code: string): Source => ({ t: 'winner', code });
 const lose = (code: string): Source => ({ t: 'loser', code });
 
 export function minTeams(format: Format): number {
-  return format === 'double' ? 3 : 2;
+  return 2;
 }
 
 // teamIds: команды в порядке посева (первая = сид 1).
@@ -114,7 +114,8 @@ export function buildBracket(
       }
     }
     const lastL = 2 * k - 2;
-    matches.push(mk('GF', 1, 1, win(`W${k}-1`), win(`L${lastL}-1`)));
+    // На 2 командах нижней сетки нет: проигравший единственного матча сразу идёт в гранд-финал
+    matches.push(mk('GF', 1, 1, win(`W${k}-1`), k === 1 ? lose('W1-1') : win(`L${lastL}-1`)));
     if (opts.grandFinalReset ?? true) {
       matches.push(mk('GF', 2, 1, { t: 'slot', code: 'GF-1', side: 'a' }, { t: 'slot', code: 'GF-1', side: 'b' }));
     }

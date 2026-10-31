@@ -43,7 +43,7 @@ test('single elimination: n-1 матчей и чемпион для любого
 });
 
 test('double elimination: каждый вылетает после двух поражений', () => {
-  for (let n = 3; n <= 33; n++) {
+  for (let n = 2; n <= 33; n++) {
     for (const reset of [true, false]) {
       for (const mode of ['a', 'b', 'rnd'] as const) {
         let seed = n * 7 + 1;
