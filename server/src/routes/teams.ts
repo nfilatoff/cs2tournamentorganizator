@@ -8,7 +8,7 @@ import { getSession, requirePlayer } from '../auth.js';
 export const MAX_MEMBERS = 10;
 
 export interface TeamRow { id: number; name: string; join_code: string; captain_id: number }
-interface MemberRow { player_id: number; name: string; steam_id: string; avatar_url: string | null }
+interface MemberRow { player_id: number; name: string; steam_id: string; avatar_url: string | null; steam_name: string | null; custom_name: string | null; admin_name: string | null }
 
 function playerId(req: Parameters<typeof getSession>[0]): number {
   return getSession(req)!.userId;
@@ -16,7 +16,7 @@ function playerId(req: Parameters<typeof getSession>[0]): number {
 
 export function members(teamId: number): MemberRow[] {
   return db.prepare(`
-    SELECT tm.player_id, p.name, p.steam_id, p.avatar_url
+    SELECT tm.player_id, p.name, p.steam_id, p.avatar_url, p.steam_name, p.custom_name, p.admin_name
     FROM team_members tm JOIN players p ON p.id = tm.player_id
     WHERE tm.team_id = ? ORDER BY tm.joined_at, tm.player_id
   `).all(teamId) as unknown as MemberRow[];
@@ -30,6 +30,7 @@ export function teamDto(t: TeamRow) {
     captainId: t.captain_id,
     members: members(t.id).map((m) => ({
       id: m.player_id, name: m.name, steamId: m.steam_id, avatarUrl: m.avatar_url,
+      steamName: m.steam_name, customName: m.custom_name, adminName: m.admin_name,
     })),
   };
 }

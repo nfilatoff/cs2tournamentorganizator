@@ -18,6 +18,7 @@ import { arenaproRoutes } from './routes/arenapro.js';
 import { adminTeamRoutes } from './routes/adminTeams.js';
 import { vetoRoutes } from './routes/veto.js';
 import { homeRoutes } from './routes/home.js';
+import { profileRoutes } from './routes/profile.js';
 import { seedDefaultMapsIfEmpty } from './defaultMaps.js';
 import { dispatchAll, startDispatchTimer } from './dispatcher.js';
 
@@ -44,6 +45,7 @@ await app.register(tournamentRoutes);
 await app.register(arenaproRoutes);
 await app.register(vetoRoutes);
 await app.register(homeRoutes);
+await app.register(profileRoutes);
 
 app.get('/api/health', async () => ({ ok: true }));
 

@@ -7,6 +7,7 @@ import {
   boFn, clearRuntime, getMatchRowByCode, getTournament, insertMatches, loadMatches, saveMatches,
   type MatchRow, type TournamentRow,
 } from '../tournamentStore.js';
+import { createTeamWithPlayers, teamBody } from './adminTeams.js';
 import { dispatchAll, dispatchOne, endMatchOnServer, getServer, release, withRcon } from '../dispatcher.js';
 import { details, playoffPreviewDto, previewDto, renumberSeeds } from '../tournamentDto.js';
 import {
@@ -443,6 +444,40 @@ export async function tournamentRoutes(app: FastifyInstance): Promise<void> {
       return reply.code(409).send(errBody(e));
     }
     return details(getTournament(t.id)!);
+  });
+
+  // Админ создаёт команду прямо в турнире и сразу регистрирует её (в состав идут первые team_size игроков списка)
+  app.post<{ Params: { id: string } }>('/api/tournaments/:id/teams/new', ctrl, async (req, reply) => {
+    const t = await requireTournament(req, reply);
+    if (!t) return;
+    if (t.status !== 'registration') return reply.code(409).send(E('registrationClosed'));
+    const body = teamBody.safeParse(req.body);
+    if (!body.success) return reply.code(400).send(E('badTeam'));
+    const players = body.data.players;
+    if (new Set(players.map((p) => p.steamId)).size !== players.length) return reply.code(400).send(E('duplicatePlayer'));
+    if (players.length < t.team_size) return reply.code(400).send(E('rosterSize', { n: t.team_size }));
+    const count = (db.prepare('SELECT COUNT(*) AS n FROM tournament_teams WHERE tournament_id = ?').get(t.id) as { n: number }).n;
+    if (count >= t.max_teams) return reply.code(409).send(E('noSlots'));
+
+    const rosterSteam = players.slice(0, t.team_size).map((p) => p.steamId);
+    const others = db.prepare('SELECT roster FROM tournament_teams WHERE tournament_id = ?').all(t.id) as unknown as { roster: string }[];
+    const takenIds = others.flatMap((o) => JSON.parse(o.roster) as number[]);
+    if (takenIds.length > 0) {
+      const taken = new Set((db.prepare(`SELECT steam_id FROM players WHERE id IN (${takenIds.map(() => '?').join(',')})`)
+        .all(...takenIds) as unknown as { steam_id: string }[]).map((r) => r.steam_id));
+      if (rosterSteam.some((s) => taken.has(s))) return reply.code(409).send(E('playerTaken'));
+    }
+    let team;
+    try {
+      team = createTeamWithPlayers(body.data.name, players);
+    } catch {
+      return reply.code(409).send(E('teamNameTaken'));
+    }
+    const rosterIds = rosterSteam.map((s) => (db.prepare('SELECT id FROM players WHERE steam_id = ?').get(s) as { id: number }).id);
+    db.prepare(`INSERT INTO tournament_teams (tournament_id, team_id, roster, seed)
+      VALUES (?, ?, ?, (SELECT COALESCE(MAX(seed), 0) + 1 FROM tournament_teams WHERE tournament_id = ?))`)
+      .run(t.id, team.id, JSON.stringify(rosterIds), t.id);
+    return reply.code(201).send(details(getTournament(t.id)!));
   });
 
   // --- Регистрация команд: капитан или админ ---

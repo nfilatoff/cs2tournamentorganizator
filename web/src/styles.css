@@ -89,3 +89,6 @@ ul.attention li { padding: 8px 0; border-bottom: 1px solid var(--line); }
 ul.attention li:last-child { border-bottom: 0; }
 .treehead { align-self: end; padding-bottom: 4px; }
 .links path.dashed { stroke-dasharray: 5 4; opacity: .6; }
+details.teamrow { border-bottom: 1px solid var(--line); padding: 8px 0; }
+details.teamrow:last-child { border-bottom: 0; }
+details summary { cursor: pointer; }

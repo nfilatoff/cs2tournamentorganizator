@@ -200,3 +200,10 @@ addColumn('matches', 'veto_json', 'TEXT');
 addColumn('tournaments', 'veto_enabled', 'INTEGER NOT NULL DEFAULT 1');
 
 db.exec("UPDATE maps SET name = trim(replace(replace(name, char(10), ' '), char(13), ' '))");
+
+// Ники игрока: из Steam, собственный и назначенный админом (players.name хранит итоговый)
+addColumn('players', 'steam_name', 'TEXT');
+addColumn('players', 'custom_name', 'TEXT');
+addColumn('players', 'admin_name', 'TEXT');
+addColumn('players', 'source', "TEXT NOT NULL DEFAULT 'steam'");
+db.exec("UPDATE players SET steam_name = name WHERE steam_name IS NULL AND source = 'steam'");

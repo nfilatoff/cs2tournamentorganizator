@@ -12,7 +12,7 @@ const playerBody = z.object({
   steamId: z.string().regex(/^\d{17}$/),
   name: z.string().trim().min(1).max(40),
 });
-const teamBody = z.object({
+export const teamBody = z.object({
   name: z.string().trim().min(2).max(30),
   players: z.array(playerBody).min(1).max(MAX_MEMBERS),
 });
@@ -21,12 +21,25 @@ const teamBody = z.object({
 function ensurePlayer(p: z.infer<typeof playerBody>): number {
   const existing = db.prepare('SELECT id FROM players WHERE steam_id = ?').get(p.steamId) as { id: number } | undefined;
   if (existing) return existing.id;
-  const res = db.prepare('INSERT INTO players (steam_id, name) VALUES (?, ?)').run(p.steamId, p.name);
+  const res = db.prepare("INSERT INTO players (steam_id, name, admin_name, source) VALUES (?, ?, ?, 'admin')").run(p.steamId, p.name, p.name);
   return Number(res.lastInsertRowid);
 }
 
 const getTeam = (id: number) =>
   db.prepare('SELECT * FROM teams WHERE id = ?').get(id) as unknown as TeamRow | undefined;
+
+// Создаёт команду и игроков (если их ещё нет). Капитан — первый игрок списка. Бросает ошибку SQLite при занятом названии.
+export function createTeamWithPlayers(name: string, players: z.infer<typeof playerBody>[]): TeamRow {
+  return tx(() => {
+    const ids = players.map(ensurePlayer);
+    const res = db.prepare('INSERT INTO teams (name, join_code, captain_id) VALUES (?, ?, ?)')
+      .run(name, randomBytes(5).toString('hex').toUpperCase(), ids[0]!);
+    const teamId = Number(res.lastInsertRowid);
+    const ins = db.prepare('INSERT INTO team_members (team_id, player_id) VALUES (?, ?)');
+    for (const id of ids) ins.run(teamId, id);
+    return getTeam(teamId)!;
+  });
+}
 
 export async function adminTeamRoutes(app: FastifyInstance): Promise<void> {
   app.addHook('preHandler', requireAdmin);
@@ -43,15 +56,7 @@ export async function adminTeamRoutes(app: FastifyInstance): Promise<void> {
     const unique = new Set(body.data.players.map((p) => p.steamId));
     if (unique.size !== body.data.players.length) return reply.code(400).send(E('duplicatePlayer'));
     try {
-      const team = tx(() => {
-        const ids = body.data.players.map(ensurePlayer);
-        const res = db.prepare('INSERT INTO teams (name, join_code, captain_id) VALUES (?, ?, ?)')
-          .run(body.data.name, randomBytes(5).toString('hex').toUpperCase(), ids[0]!);
-        const teamId = Number(res.lastInsertRowid);
-        const ins = db.prepare('INSERT INTO team_members (team_id, player_id) VALUES (?, ?)');
-        for (const id of ids) ins.run(teamId, id);
-        return getTeam(teamId)!;
-      });
+      const team = createTeamWithPlayers(body.data.name, body.data.players);
       return reply.code(201).send(teamDto(team));
     } catch {
       return reply.code(409).send(E('teamNameTaken'));

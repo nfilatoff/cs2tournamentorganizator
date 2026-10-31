@@ -5,6 +5,7 @@ import { db } from '../db.js';
 import { config } from '../config.js';
 import { createSession, destroySession, getSession, hashPassword, requireAdmin, verifyPassword } from '../auth.js';
 import { fetchSteamProfile, steamLoginUrl, verifySteamCallback } from '../steam.js';
+import { refreshName } from '../players.js';
 
 const loginBody = z.object({ username: z.string().min(1), password: z.string().min(1) });
 
@@ -54,12 +55,17 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
 
     const existing = db.prepare('SELECT id FROM players WHERE steam_id = ?').get(steamId) as { id: number } | undefined;
     let playerId: number;
+    const profile = await fetchSteamProfile(steamId);
     if (existing) {
       playerId = existing.id;
+      // Ник из Steam обновляется при каждом входе; итоговый ник зависит от приоритета (админ, игрок, Steam)
+      if (profile.ok) {
+        db.prepare('UPDATE players SET steam_name = ?, avatar_url = ? WHERE id = ?').run(profile.name, profile.avatar, playerId);
+        refreshName(playerId);
+      }
     } else {
-      const profile = await fetchSteamProfile(steamId);
-      const res = db.prepare('INSERT INTO players (steam_id, name, avatar_url) VALUES (?, ?, ?)')
-        .run(steamId, profile.name, profile.avatar);
+      const res = db.prepare("INSERT INTO players (steam_id, name, steam_name, avatar_url, source) VALUES (?, ?, ?, ?, 'steam')")
+        .run(steamId, profile.name, profile.name, profile.avatar);
       playerId = Number(res.lastInsertRowid);
     }
     createSession(reply, 'player', playerId);
@@ -73,10 +79,10 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
       const a = db.prepare('SELECT username FROM admins WHERE id = ?').get(s.userId) as { username: string } | undefined;
       return a ? { kind: 'admin', username: a.username } : { kind: null };
     }
-    const p = db.prepare('SELECT id, steam_id, name, avatar_url FROM players WHERE id = ?')
-      .get(s.userId) as { id: number; steam_id: string; name: string; avatar_url: string | null } | undefined;
+    const p = db.prepare('SELECT id, steam_id, name, steam_name, custom_name, admin_name, avatar_url FROM players WHERE id = ?')
+      .get(s.userId) as { id: number; steam_id: string; name: string; steam_name: string | null; custom_name: string | null; admin_name: string | null; avatar_url: string | null } | undefined;
     return p
-      ? { kind: 'player', id: p.id, steamId: p.steam_id, name: p.name, avatarUrl: p.avatar_url }
+      ? { kind: 'player', id: p.id, steamId: p.steam_id, name: p.name, steamName: p.steam_name, customName: p.custom_name, adminName: p.admin_name, avatarUrl: p.avatar_url }
       : { kind: null };
   });
 

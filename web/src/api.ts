@@ -18,7 +18,10 @@ export async function api<T>(path: string, init?: { method?: string; body?: unkn
 export type Me =
   | { kind: null }
   | { kind: 'admin'; username: string }
-  | { kind: 'player'; id: number; steamId: string; name: string; avatarUrl: string | null };
+  | {
+    kind: 'player'; id: number; steamId: string; name: string; avatarUrl: string | null;
+    steamName: string | null; customName: string | null; adminName: string | null;
+  };
 
 export interface GameServer { id: number; name: string; host: string; port: number }
 export interface MapItem {
@@ -29,7 +32,10 @@ export interface MapItem {
   imageUrl: string | null;
 }
 
-export interface Member { id: number; name: string; steamId: string; avatarUrl: string | null }
+export interface Member {
+  id: number; name: string; steamId: string; avatarUrl: string | null;
+  steamName: string | null; customName: string | null; adminName: string | null;
+}
 export interface Team { id: number; name: string; joinCode: string; captainId: number; members: Member[] }
 
 export interface TournamentSummary {

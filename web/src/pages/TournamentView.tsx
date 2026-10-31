@@ -5,6 +5,7 @@ import { useI18n } from '../i18n';
 import { BracketTree } from '../components/BracketTree';
 import type { MatchActions } from '../components/MatchCard';
 import { GroupAssignment, GroupsView, PlayoffPanel } from '../components/GroupsView';
+import { NewTeamForm } from '../components/NewTeamForm';
 
 export function TournamentView({ me }: { me: Me }) {
   const { t, err } = useI18n();
@@ -123,6 +124,7 @@ export function TournamentView({ me }: { me: Me }) {
               {tr.teams.length === 0 && <tr><td className="muted">{t('view.noTeams')}</td></tr>}
             </tbody>
           </table>
+          {admin && tr.status === 'registration' && tr.teams.length < tr.maxTeams && <NewTeamForm tr={tr} onDone={setTr} />}
           {admin && tr.status === 'registration' && tr.teams.length > 1 && (
             <p>
               <button className="ghost" onClick={() => act(() => api(`/api/tournaments/${tr.id}/seeding/shuffle`, { method: 'POST', body: {} }))}>🎲 {t('seeding.shuffle')}</button>
