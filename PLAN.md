@@ -1,7 +1,7 @@
 # CS2 Tournament Organizator — план
 
 ## Цель
-Веб-панель для турниров CS2 в LAN клуба. Серверы CS2 с плагином MatchZy, управление через сайт. Всё (сайт, бэкенд, БД, серверы) на одном выделенном ПК с Windows 11, без Docker.
+Веб-панель для турниров CS2 в LAN клуба. Серверы CS2 с плагином ArenaPro, управление через сайт. Всё (сайт, бэкенд, БД, серверы) на одном выделенном ПК с Windows 11, без Docker.
 
 ## Среда
 - 25 игровых ПК, один выделен под серверы и панель (Ryzen 7 7800X3D, 32 ГБ).
@@ -13,11 +13,11 @@
 - Фронтенд: React + Vite, интерфейс на русском.
 - Сетки: библиотека `tournament-organizer` (single/double elimination, round robin, Swiss); групповой этап плюс плей-офф собираем сами поверх неё.
 - Вход игроков: Steam OpenID. Админы: отдельные аккаунты с ролями.
-- Серверы: CS2 dedicated + Metamod + CounterStrikeSharp + MatchZy, запуск скриптом PowerShell, по несколько экземпляров с разными портами.
+- Серверы: CS2 dedicated + Metamod + CounterStrikeSharp + ArenaPro, запуск скриптом PowerShell, по несколько экземпляров с разными портами.
 
 ## Как сайт говорит с серверами
-1. Панель создаёт матч и отдаёт серверу JSON-конфиг по URL (MatchZy `matchzy_loadmatch_url`) через RCON.
-2. MatchZy шлёт события (раунд, счёт, конец карты, конец серии) на HTTP-эндпоинт панели.
+1. Панель создаёт матч и отдаёт серверу JSON-конфиг по URL (ArenaPro `arenapro_loadmatch_url`) через RCON.
+2. ArenaPro шлёт события (раунд, счёт, конец карты, конец серии) на HTTP-эндпоинт панели.
 3. По результату панель продвигает сетку и запускает следующий матч на свободном сервере.
 4. Админ с сайта: паузы, `.restore <round>`, рестарт, смена карты, отмена матча.
 
@@ -45,23 +45,29 @@
 ## Этапы
 1. Каркас: монорепо, БД, авторизация (Steam + админ), список серверов и пул карт.
 2. Команды игроков и турниры: создание, посев, сетки (single/double elimination).
-3. Связь с MatchZy: конфиг матча, события, продвижение по сетке, смоук-тест 2v2 на живом сервере.
+3. Связь с ArenaPro: конфиг матча, события, продвижение по сетке, смоук-тест 2v2 на живом сервере.
 4. Вето на сайте для капитанов, BO1/BO3/BO5, Workshop-карты.
 5. Управление матчем: паузы, бэкапы раундов, рестарт.
 6. Групповой этап (round robin, Swiss) + плей-офф.
 7. Скрипты установки серверов под Windows, документация для клуба.
 
 ## Риски, проверяем первыми
-- MatchZy и 2v2/Wingman (`players_per_team`, режим Wingman): нужен смоук-тест.
+- ArenaPro и 2v2/Wingman (`players_per_team`, режим Wingman): нужен смоук-тест.
 - Загрузка Workshop-карт на сервере (нужен Steam Web API key) и на клиентах.
-- Совместимость MatchZy с текущим обновлением CS2.
+- Совместимость ArenaPro с текущим обновлением CS2.
 
 ## Результаты смоук-теста сервера (2026-10-31)
 - Отдельная загрузка dedicated server не нужна: CS2 (app 730) запускается как сервер флагом `-dedicated`. Серверная копия лежит вне Steam (`D:\cs2-server\cs2`), обновляется через SteamCMD (`app_update 730 validate`).
-- Сервер Windows, версия 1.41.9.4, Metamod 2.0 (build 1483), CounterStrikeSharp (встроен в сборку MatchZy), MatchZy 0.9.2 загружаются без ошибок.
+- Сервер Windows, версия 1.41.9.4, Metamod 2.0 (build 1483), CounterStrikeSharp (встроен в сборку ArenaPro), ArenaPro 0.9.2 загружаются без ошибок.
 - Ключи запуска: `-dedicated -console -condebug -usercon -insecure -ip 0.0.0.0 -port <порт> +sv_lan 1 +rcon_password <пароль> +game_type 0 +game_mode 2 +map <карта>`. Без `-usercon` RCON по TCP не слушает; без `-ip` сервер привязывается к первому адаптеру (на этом ПК это VPN).
 - **FACEIT Anti-Cheat блокирует запуск cs2.exe вне Steam-установки** («Отказано в доступе»). Перед запуском сервера клиент FACEIT нужно закрыть.
 - RCON: CS2 не поддерживает маркерный пакет, ответ читается «до паузы в данных» ([rcon.ts](server/src/rcon.ts)).
-- MatchZy принимает матч 2v2 (`players_per_team: 2`, `wingman: true`, `min_players_to_ready: 4`). `matchid` должен быть числом. Статус матча: `get5_status` (JSON).
+- ArenaPro принимает матч 2v2 (`players_per_team: 2`, `wingman: true`, `min_players_to_ready: 4`). `matchid` должен быть числом. Статус матча: `get5_status` (JSON).
 - Не проверено: переход в live с реальными игроками, `live_wingman.cfg`, Workshop-карты (нужен Steam Web API key для `-authkey`), события на HTTP-эндпоинт панели.
-- **Крах сервера при подключении игрока:** `counterstrikesharp.dll` 1.0.376 (из сборки MatchZy 0.9.2) падает с access violation на CS2 1.41.9.4. Помогло обновление CounterStrikeSharp до 1.0.379 (поверх `addons/counterstrikesharp`). После обновлений CS2 плагины нужно проверять до турнира.
+- **Крах сервера при подключении игрока:** `counterstrikesharp.dll` 1.0.376 (из сборки ArenaPro 0.9.2) падает с access violation на CS2 1.41.9.4. Помогло обновление CounterStrikeSharp до 1.0.379 (поверх `addons/counterstrikesharp`). После обновлений CS2 плагины нужно проверять до турнира.
+
+## Плагин ArenaPro (наш форк MatchZy)
+- Исходники: `D:\arenapro-plugin\src` (ветка `arenapro`, удалённый репозиторий оригинала: `upstream`). Основан на MatchZy 0.9.2 (MIT, авторство сохранено в `LICENSE` и `NOTICE.md`).
+- Переименование выполнено автоматически (`D:\arenapro-plugin\tools\rename.mjs`): команды `arenapro_*`, папка `cfg/ArenaPro`, сборка `ArenaPro.dll`, префикс в игровом чате `[ArenaPro]`.
+- Обновление с оригинала: см. `D:\arenapro-plugin\tools\UPDATING.md`.
+- Проверено: 320 тестов плагина, загрузка на тестовом сервере, `arenapro_loadmatch` принимает матч 2v2. CounterStrikeSharp.API обновлён до 1.0.379.
