@@ -11,7 +11,13 @@ export function VetoPage() {
 
   const base = `/api/tournaments/${id}/matches/${code}/veto`;
   const load = useCallback(() => {
-    api<VetoDto>(base).then((d) => { setV(d); setError(''); }).catch((e) => setError(err(e)));
+    api<VetoDto>(base)
+      .then((d) => {
+        // Состояние меняется только при реальных ходах: без этого страница перерисовывается на каждый опрос
+        setV((prev) => (prev && JSON.stringify(prev) === JSON.stringify(d) ? prev : d));
+        setError('');
+      })
+      .catch((e) => setError(err(e)));
   }, [base, err]);
   useEffect(load, [load]);
   // Капитаны ходят по очереди, поэтому состояние обновляется часто
