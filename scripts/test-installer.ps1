@@ -67,6 +67,14 @@ try {
     foreach ($name in @('start-panel.ps1', 'start-server.ps1', 'start-all.ps1')) { Parse-Script (Join-Path $launchRoot $name) }
     $settings = Get-Content -LiteralPath (Join-Path $launchRoot 'installation.json') -Raw | ConvertFrom-Json
     Assert ($settings.ServerPort -eq 27015 -and $settings.PublicUrl -eq 'http://192.168.1.10:3000') 'Settings round-trip failed.'
+    $autoRoot = Join-Path $fixture 'launch auto'
+    New-Item -ItemType Directory -Path $autoRoot | Out-Null
+    Write-Launchers $autoRoot ([ordered]@{ ServerAddress = 'auto'; ServerPort = 27015; PanelPort = 3000; TvPort = 27020; PublicUrl = '' })
+    foreach ($name in @('start-panel.ps1', 'start-server.ps1')) { Parse-Script (Join-Path $autoRoot $name) }
+    $autoServer = Get-Content -LiteralPath (Join-Path $autoRoot 'start-server.ps1') -Raw
+    $autoPanel = Get-Content -LiteralPath (Join-Path $autoRoot 'start-panel.ps1') -Raw
+    Assert ($autoServer -match "-ne 'auto'" -and $autoPanel -match 'if \(\$settings\.PublicUrl\)') 'Auto-address launchers must skip -ip and PUBLIC_URL.'
+    Write-Host 'PASS: auto-address launchers pass no fixed IP or panel URL.'
     $launcher = Join-Path $launchRoot 'start-server.ps1'
     Add-Content -LiteralPath $launcher -Value '# keep local launcher changes'
     $launcherHash = (Get-FileHash -LiteralPath $launcher).Hash

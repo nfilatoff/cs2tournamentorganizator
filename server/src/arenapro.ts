@@ -1,7 +1,6 @@
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { AppError } from './errors.js';
 import { db, getSetting, setSetting } from './db.js';
-import { config } from './config.js';
 
 // Общий секрет между панелью и игровыми серверами: им подписаны и загрузка конфига, и события.
 export function eventToken(): string {
@@ -85,6 +84,8 @@ export interface MatchConfigInput {
   teamB: { id: number; name: string; players: RosterPlayer[]; captain?: string };
   maps: MapRef[];
   pauses: { tactical: number; tacticalTime: number; technical: number };
+  // Адрес панели, по которому этот сервер шлёт события (см. panelUrlFor)
+  panelUrl: string;
 }
 
 // Лимиты пауз турнира. Значения из конфига матча перекрывают live.cfg на время серии.
@@ -125,7 +126,7 @@ export function buildMatchConfig(i: MatchConfigInput) {
       arenapro_ready_mode: '2',
       arenapro_join_start_delay: String(START_DELAY_S),
       arenapro_time_to_start: String(JOIN_TIME_S),
-      arenapro_remote_log_url: `${config.publicUrl}/api/arenapro/events`,
+      arenapro_remote_log_url: `${i.panelUrl}/api/arenapro/events`,
       arenapro_remote_log_header_key: 'Authorization',
       arenapro_remote_log_header_value: `Bearer ${eventToken()}`,
     },

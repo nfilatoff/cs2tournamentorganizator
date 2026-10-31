@@ -2,9 +2,8 @@ import type { FastifyInstance } from 'fastify';
 import { E } from '../errors.js';
 import { z } from 'zod';
 import { db } from '../db.js';
-import { config } from '../config.js';
 import { createSession, destroySession, getSession, hashPassword, requireAdmin, verifyPassword } from '../auth.js';
-import { fetchSteamProfile, steamLoginUrl, verifySteamCallback } from '../steam.js';
+import { fetchSteamProfile, siteOrigin, steamLoginUrl, verifySteamCallback } from '../steam.js';
 import { refreshName } from '../players.js';
 
 const loginBody = z.object({ username: z.string().min(1), password: z.string().min(1) });
@@ -46,11 +45,11 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     return { username: body.data.newUsername ?? admin.username };
   });
 
-  app.get('/api/auth/steam', async (_req, reply) => reply.redirect(steamLoginUrl()));
+  app.get('/api/auth/steam', async (req, reply) => reply.redirect(steamLoginUrl(siteOrigin(req))));
 
   app.get('/api/auth/steam/callback', async (req, reply) => {
     const query = req.query as Record<string, string>;
-    const steamId = await verifySteamCallback(query);
+    const steamId = await verifySteamCallback(query, siteOrigin(req));
     if (!steamId) return reply.code(401).send(E('steamRejected'));
 
     const existing = db.prepare('SELECT id FROM players WHERE steam_id = ?').get(steamId) as { id: number } | undefined;
@@ -69,7 +68,7 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
       playerId = Number(res.lastInsertRowid);
     }
     createSession(reply, 'player', playerId);
-    return reply.redirect(`${config.publicUrl}/`);
+    return reply.redirect('/');
   });
 
   app.get('/api/auth/me', async (req) => {

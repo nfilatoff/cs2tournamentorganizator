@@ -29,7 +29,7 @@ export interface ServerSettings {
   lan: boolean; gslt: string; tvEnable: boolean; tvPort: number | null; autostart: boolean; extraCfg: string;
 }
 export interface GameServer {
-  id: number; name: string; host: string; port: number; managed: boolean; settings: ServerSettings; tvPort: number;
+  id: number; name: string; host: string; address: string; auto: boolean; port: number; managed: boolean; settings: ServerSettings; tvPort: number;
   process: { running: boolean; pid: number | null; startedAt: number | null; lastExit: { code: number | null; at: number } | null };
 }
 export interface LauncherInfo { cs2Path: string; detected: string | null; exe: string | null; defaultHost: string; nextPort: number }

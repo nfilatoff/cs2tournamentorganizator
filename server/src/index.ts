@@ -25,6 +25,7 @@ import { seedDefaultMapsIfEmpty } from './defaultMaps.js';
 import { dispatchAll, startDispatchTimer } from './dispatcher.js';
 import { autostartServers } from './serverProcess.js';
 import { startLobbyTimer } from './lobby.js';
+import { startNetworkWatch } from './network.js';
 
 async function ensureAdmin(): Promise<void> {
   const { n } = db.prepare('SELECT COUNT(*) AS n FROM admins').get() as { n: number };
@@ -65,9 +66,12 @@ if (existsSync(webDist)) {
   });
 }
 
+// LAN-адрес нужен до первого запроса: им подписаны ссылки для игровых серверов
+await startNetworkWatch((ip) => app.log.info(`LAN address changed: ${ip}`));
 await ensureAdmin();
 seedDefaultMapsIfEmpty();
 await app.listen({ port: config.port, host: config.host });
+app.log.info(`Panel URL: ${config.publicUrl}`);
 startDispatchTimer();
 startLobbyTimer();
 void autostartServers((msg) => app.log.info(msg)).then(() => dispatchAll());

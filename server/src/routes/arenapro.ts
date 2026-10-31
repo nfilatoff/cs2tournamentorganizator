@@ -1,5 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { E, encode, errBody } from '../errors.js';
+import { config, panelUrlFor } from '../config.js';
+import { getServer } from '../dispatcher.js';
 import { db, tx } from '../db.js';
 import { buildMatchConfig, captainSteamId, rosterOf, tokenMatches, type MapRef } from '../arenapro.js';
 import { forceWinner, reportResult } from '../bracket.js';
@@ -104,6 +106,10 @@ export async function arenaproRoutes(app: FastifyInstance): Promise<void> {
       teamB: { id: b.id!, name: teamName(b.id!), players: rosterOf(t.id, b.id!), captain: captainSteamId(t.id, b.id!) },
       maps: JSON.parse(row.maps_json) as MapRef[],
       pauses: { tactical: t.tactical_pauses, tacticalTime: t.tactical_pause_time, technical: t.tech_pauses },
+      panelUrl: (() => {
+        const server = row.server_id ? getServer(row.server_id) : undefined;
+        return server ? panelUrlFor(server.host) : config.publicUrl;
+      })(),
     });
   });
 

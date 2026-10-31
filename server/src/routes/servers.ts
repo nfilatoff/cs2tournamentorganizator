@@ -5,6 +5,7 @@ import { E, decode, errBody } from '../errors.js';
 import { z } from 'zod';
 import { db, getSetting, setSetting } from '../db.js';
 import { requireAdmin } from '../auth.js';
+import { isAutoHost, publicHost } from '../network.js';
 import { getServer, parseStatus, withRcon } from '../dispatcher.js';
 import {
   GAME_MODES, applyCfg, changeMap, cs2Root, defaultHost, exeIn, getManaged, nextPort, processInfo, startServer, stopServer,
@@ -44,6 +45,8 @@ const serverBody = z.object({
 // RCON-пароль наружу не отдаём.
 const toDto = (r: ManagedRow) => ({
   id: r.id, name: r.name, host: r.host, port: r.port,
+  // Адрес для игроков: у сервера auto это текущий LAN-адрес этого компьютера
+  address: publicHost(r.host), auto: isAutoHost(r.host),
   managed: !!r.managed,
   settings: {
     managed: !!r.managed, startMap: r.start_map, gameMode: r.game_mode, maxPlayers: r.max_players, hostname: r.hostname ?? '',

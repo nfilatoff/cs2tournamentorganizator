@@ -1,6 +1,7 @@
 import { db, tx } from './db.js';
 import { AppError, E, encode, errBody } from './errors.js';
-import { config } from './config.js';
+import { panelUrlFor } from './config.js';
+import { rconHost } from './network.js';
 import { Rcon } from './rcon.js';
 import { eventToken } from './arenapro.js';
 import { matchMaps, vetoComplete } from './vetoStore.js';
@@ -21,7 +22,7 @@ export function getServer(id: number): ServerRow | undefined {
 }
 
 export async function withRcon<T>(server: ServerRow, fn: (r: Rcon) => Promise<T>): Promise<T> {
-  const rcon = await Rcon.connect(server.host, server.port, server.rcon_password, 4000);
+  const rcon = await Rcon.connect(rconHost(server.host), server.port, server.rcon_password, 4000);
   try {
     return await fn(rcon);
   } finally {
@@ -89,7 +90,7 @@ async function startOnServer(tid: number, row: MatchRow, server: ServerRow): Pro
   if (!reserve(tid, row, server.id, JSON.stringify(maps))) throw new AppError('matchTaken');
 
   try {
-    const url = `${config.publicUrl}/api/arenapro/config/${row.id}`;
+    const url = `${panelUrlFor(server.host)}/api/arenapro/config/${row.id}`;
     await withRcon(server, async (r) => {
       await r.exec('get5_endmatch'); // сбросить то, что осталось на сервере от прошлого матча
       await r.exec(`arenapro_loadmatch_url "${url}" Authorization "Bearer ${eventToken()}"`, { firstWaitMs: 2500 });

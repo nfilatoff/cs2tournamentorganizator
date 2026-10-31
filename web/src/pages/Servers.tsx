@@ -235,6 +235,7 @@ export function Servers() {
         </div>
         <label className="check"><input type="checkbox" checked={managed} onChange={(e) => setManaged(e.target.checked)} />{t('srv.managed')}</label>
         <p className="muted">{managed ? t('srv.managedHint') : t('srv.externalHint')}</p>
+        <p className="muted small">{t('srv.autoHostHint')}</p>
       </form>
 
       {error && <p className="error">{error}</p>}
@@ -255,7 +256,10 @@ export function Servers() {
                         : t('srv.externalShort')}
                     </div>
                   </td>
-                  <td>{s.host}:{s.port}</td>
+                  <td>
+                    {s.address}:{s.port}
+                    {s.auto && <div className="muted small">{t('srv.autoHost')}</div>}
+                  </td>
                   <td>
                     {s.managed && (s.process.running
                       ? <div>{t('srv.processRunning', { pid: s.process.pid ?? '' })}</div>

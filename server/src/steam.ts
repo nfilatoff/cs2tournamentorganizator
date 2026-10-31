@@ -2,14 +2,21 @@ import { config } from './config.js';
 
 const OPENID_ENDPOINT = 'https://steamcommunity.com/openid/login';
 const OPENID_NS = 'http://specs.openid.net/auth/2.0';
-const RETURN_TO = () => `${config.publicUrl}/api/auth/steam/callback`;
+const RETURN_TO = (origin: string) => `${origin}/api/auth/steam/callback`;
 
-export function steamLoginUrl(): string {
+// Адрес сайта, по которому игрок его открыл: Steam вернёт его туда же. Закреплённый PUBLIC_URL важнее.
+export function siteOrigin(req: { protocol: string; headers: { host?: string } }): string {
+  if (config.fixedUrl) return config.fixedUrl;
+  const host = req.headers.host ?? '';
+  return /^[a-z0-9.-]+(:\d{1,5})?$/i.test(host) ? `${req.protocol}://${host}` : config.publicUrl;
+}
+
+export function steamLoginUrl(origin: string): string {
   const params = new URLSearchParams({
     'openid.ns': OPENID_NS,
     'openid.mode': 'checkid_setup',
-    'openid.return_to': RETURN_TO(),
-    'openid.realm': config.publicUrl,
+    'openid.return_to': RETURN_TO(origin),
+    'openid.realm': origin,
     'openid.identity': `${OPENID_NS}/identifier_select`,
     'openid.claimed_id': `${OPENID_NS}/identifier_select`,
   });
@@ -17,11 +24,11 @@ export function steamLoginUrl(): string {
 }
 
 // Проверяет ответ Steam и возвращает SteamID64 или null.
-export async function verifySteamCallback(query: Record<string, string>): Promise<string | null> {
+export async function verifySteamCallback(query: Record<string, string>, origin: string): Promise<string | null> {
   const claimed = query['openid.claimed_id'] ?? '';
   const match = /^https:\/\/steamcommunity\.com\/openid\/id\/(\d{17})$/.exec(claimed);
   if (!match) return null;
-  if (query['openid.return_to'] !== RETURN_TO()) return null;
+  if (query['openid.return_to'] !== RETURN_TO(origin)) return null;
 
   const body = new URLSearchParams();
   for (const [k, v] of Object.entries(query)) if (k.startsWith('openid.')) body.set(k, v);

@@ -8,6 +8,7 @@ import {
 import { loadVeto, vetoApplies } from '../vetoStore.js';
 import { isDone, nextAction } from '../veto.js';
 import { tournamentMapPool } from '../arenapro.js';
+import { publicHost } from '../network.js';
 
 const teamIdOf = (json: string): number | null => {
   const e = JSON.parse(json) as { k: string; id?: number };
@@ -43,7 +44,7 @@ function playerBlock(pid: number) {
   const registered: { tournamentId: number; tournamentName: string; teamName: string }[] = [];
   const matches: unknown[] = [];
   const servers = new Map((db.prepare('SELECT id, name, host, port FROM game_servers').all() as unknown as
-    { id: number; name: string; host: string; port: number }[]).map((s) => [s.id, s]));
+    { id: number; name: string; host: string; port: number }[]).map((s) => [s.id, { ...s, host: publicHost(s.host) }]));
 
   for (const r of active) {
     if (!(JSON.parse(r.roster) as number[]).includes(pid)) continue;
@@ -111,7 +112,7 @@ function adminBlock() {
   const serverList = servers.map((s) => {
     const busy = busyBy.get(s.id);
     return {
-      id: s.id, name: s.name, address: `${s.host}:${s.port}`,
+      id: s.id, name: s.name, address: `${publicHost(s.host)}:${s.port}`,
       state: busy ? 'busy' as const : s.cooldown_until > now ? 'problem' as const : 'free' as const,
       match: busy ? `${busy.tname} · ${busy.code}` : null,
       lastError: s.cooldown_until > now ? decode(s.last_error) : null,

@@ -9,6 +9,7 @@ import { tournamentMapPool } from './arenapro.js';
 import { vetoSummary } from './vetoStore.js';
 import { groupsOf, seedsOf, suggestedPlayoff, swissTotal, tableOf } from './groupStage.js';
 import { mapImageUrl } from './mapImages.js';
+import { publicHost } from './network.js';
 
 type Seeds = Map<number, number>;
 type ServerInfo = { id: number; name: string; host: string; port: number };
@@ -100,7 +101,7 @@ export function details(t: TournamentRow) {
   const ms = loadMatches(t.id);
   const rows = new Map(loadMatchRows(t.id).map((r) => [r.code, r]));
   const servers = new Map((db.prepare('SELECT id, name, host, port FROM game_servers').all() as unknown as ServerInfo[])
-    .map((s) => [s.id, s]));
+    .map((s) => [s.id, { ...s, host: publicHost(s.host) }]));
   return {
     id: t.id, name: t.name, format: t.format, teamSize: t.team_size, maxTeams: t.max_teams,
     defaultBestOf: t.default_best_of, boConfig: JSON.parse(t.bo_config) as Record<string, number>,

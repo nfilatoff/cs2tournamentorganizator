@@ -521,4 +521,6 @@ export const es: Dict = {
   'mp.back': 'Volver al torneo',
   'mp.open': 'Página del partido',
   'home.openMatch': 'Página del partido',
+  'srv.autoHost': 'este equipo, dirección detectada automáticamente',
+  'srv.autoHostHint': 'La dirección auto es este equipo: los jugadores ven su IP actual en la red y el panel se conecta al servidor por 127.0.0.1. Para un servidor en otro equipo, escribe su IP.',
 };

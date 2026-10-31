@@ -5,6 +5,7 @@ import { decode, E } from '../errors.js';
 import { JOIN_TIME_S, START_DELAY_S, tournamentMapPool, type MapRef } from '../arenapro.js';
 import { roundFromEnd } from '../bracket.js';
 import { getLobby } from '../lobby.js';
+import { publicHost } from '../network.js';
 import { mapImageUrl } from '../mapImages.js';
 import { isDone, vetoResult } from '../veto.js';
 import { loadVeto, vetoApplies, vetoSummary } from '../vetoStore.js';
@@ -117,7 +118,7 @@ export function matchDetails(t: TournamentRow, row: MatchRow, s: Session | null)
     teams: { a: teamDto(t, ids.a, lobby ? lobby.players.a : null), b: teamDto(t, ids.b, lobby ? lobby.players.b : null) },
     maps: mapsDto(t, row),
     veto: vetoSummary(t, row, tournamentMapPool(t.id).length),
-    server: server && (phase === 'warmup' || phase === 'live') ? server : null,
+    server: server && (phase === 'warmup' || phase === 'live') ? { ...server, host: publicHost(server.host) } : null,
     lobby: phase === 'warmup' ? {
       // Пока сервер не ответил, считаем от момента отправки матча
       deadline: lobby?.deadline ?? (row.dispatched_at ? row.dispatched_at + JOIN_TIME_S * 1000 : null),

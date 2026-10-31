@@ -17,6 +17,8 @@ param(
     [string]$InstallRoot = '',
     [string]$RepositoryUrl = 'https://github.com/nfilatoff/cs2tournamentorganizator.git',
     [string]$RepositoryBranch = '',
+    # LAN IPv4 of this computer. Empty = 'auto': the panel detects the current address itself, so the computer needs no
+    # fixed IP, and the local CS2 server is reached through 127.0.0.1.
     [string]$ServerAddress = '',
     [ValidateRange(1, 65535)][int]$ServerPort = 27015,
     [ValidateRange(1, 65535)][int]$PanelPort = 3000,
@@ -24,6 +26,8 @@ param(
     [ValidateRange(120, 4096)][int]$RequiredFreeGB = 120,
     [switch]$SkipFirewall,
     [switch]$UpdateGame,
+    # Download the whole server with SteamCMD instead of starting from a copy of the Steam client's CS2.
+    [switch]$NoClientCopy,
     [switch]$CheckOnly
 )
 
@@ -126,10 +130,20 @@ function Test-ProjectComplete([string]$Directory) {
     try { Assert-Project $Directory; return $true } catch { return $false }
 }
 
-function Get-LanAddress {
-    $addresses = @(Get-LocalIPv4 -WithGateway | Select-Object -Unique)
-    if ($addresses.Count -ne 1) { throw 'Cannot select a LAN IPv4 address unambiguously. Specify -ServerAddress, for example 192.168.1.20.' }
-    return $addresses[0]
+# Best guess of the current LAN address, for messages only (the panel detects it again at every start).
+function Get-DisplayAddress {
+    # Same choice as the panel: the source address of the default route (a UDP connect sends nothing).
+    $socket = New-Object Net.Sockets.Socket([Net.Sockets.AddressFamily]::InterNetwork, [Net.Sockets.SocketType]::Dgram, [Net.Sockets.ProtocolType]::Udp)
+    try {
+        $socket.Connect('1.1.1.1', 53)
+        $routed = $socket.LocalEndPoint.Address.ToString()
+        if ($routed -notmatch '^(0\.|127\.|169\.254\.)') { return $routed }
+    } catch {
+        # No default route: fall back to the adapter list.
+    } finally { $socket.Dispose() }
+    $addresses = @(@(Get-LocalIPv4 -WithGateway) + @(Get-LocalIPv4) | Select-Object -Unique)
+    if ($addresses.Count) { return $addresses[0] }
+    return 'localhost'
 }
 
 function Get-LocalIPv4([switch]$WithGateway) {
@@ -261,14 +275,20 @@ $settings = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'installation.json
 
 $exe = Join-Path $PSScriptRoot 'cs2\game\bin\win64\cs2.exe'
 Set-Location (Join-Path $PSScriptRoot 'cs2')
-& $exe -dedicated -console -condebug -usercon -insecure -ip $settings.ServerAddress -port $settings.ServerPort +sv_lan 1 +tv_port $settings.TvPort +game_type 0 +game_mode 2 +exec arenapro-server.cfg +map de_inferno
+# Without a fixed address (auto) the server listens on every adapter, including 127.0.0.1 for the panel.
+$extra = if ($settings.ServerAddress -and $settings.ServerAddress -ne 'auto') { @('-ip', $settings.ServerAddress) } else { @() }
+# Optional Steam Web API key for Workshop maps: put it into authkey.txt next to this script.
+$keyFile = Join-Path $PSScriptRoot 'authkey.txt'
+if ((Test-Path -LiteralPath $keyFile) -and [IO.File]::ReadAllText($keyFile).Trim()) { $extra += @('-authkey', [IO.File]::ReadAllText($keyFile).Trim()) }
+& $exe -dedicated -console -condebug -usercon -insecure @extra -port $settings.ServerPort +sv_lan 1 +tv_port $settings.TvPort +game_type 0 +game_mode 2 +exec arenapro-server.cfg +map de_inferno
 if ($LASTEXITCODE -ne 0) { throw "CS2 exited with code $LASTEXITCODE" }
 '@
     $panel = $common + @'
 
 $env:PORT = [string]$settings.PanelPort
 $env:HOST = '0.0.0.0'
-$env:PUBLIC_URL = $settings.PublicUrl
+# Empty PublicUrl: the panel detects its LAN address itself.
+if ($settings.PublicUrl) { $env:PUBLIC_URL = $settings.PublicUrl }
 $env:DATA_DIR = Join-Path $PSScriptRoot 'data'
 Set-Location (Join-Path $PSScriptRoot 'panel')
 & (Join-Path $PSScriptRoot 'tools\node\node.exe') 'server\dist\index.js'
@@ -546,7 +566,7 @@ try {
             if ([int]$saved.$name -lt 1 -or [int]$saved.$name -gt 65535) { throw "Invalid $name in installation.json." }
         }
         $savedUrl = $null
-        if (-not [uri]::TryCreate([string]$saved.PublicUrl, [UriKind]::Absolute, [ref]$savedUrl) -or $savedUrl.Scheme -notin @('http', 'https')) { throw 'Invalid PublicUrl in installation.json.' }
+        if ([string]$saved.PublicUrl -and (-not [uri]::TryCreate([string]$saved.PublicUrl, [UriKind]::Absolute, [ref]$savedUrl) -or $savedUrl.Scheme -notin @('http', 'https'))) { throw 'Invalid PublicUrl in installation.json.' }
         $requested = @{ ServerAddress = $ServerAddress; ServerPort = $ServerPort; PanelPort = $PanelPort; TvPort = $TvPort }
         foreach ($name in @($requested.Keys)) {
             if ($PSBoundParameters.ContainsKey($name) -and [string]$requested[$name] -ne [string]$saved.$name) {
@@ -581,13 +601,16 @@ try {
     $windowsDrive = [IO.Path]::GetPathRoot($env:SystemRoot)
     if (-not $state['VC++ runtime'] -and $windowsDrive -ine $driveRoot) { Assert-FreeSpace $windowsDrive (2GB) }
     if (@($ServerPort, $PanelPort, $TvPort | Select-Object -Unique).Count -ne 3) { throw 'ServerPort, PanelPort and TvPort must be different.' }
-    if (-not $ServerAddress) { $ServerAddress = Get-LanAddress }
-    $parsedIp = $null
-    if (-not [Net.IPAddress]::TryParse($ServerAddress, [ref]$parsedIp) -or $parsedIp.AddressFamily -ne [Net.Sockets.AddressFamily]::InterNetwork -or $ServerAddress -match '^(0\.|127\.|169\.254\.)') {
-        throw 'ServerAddress must be a reachable LAN IPv4 address of this computer.'
+    if (-not $ServerAddress) { $ServerAddress = 'auto' }
+    if ($ServerAddress -ne 'auto') {
+        $parsedIp = $null
+        if (-not [Net.IPAddress]::TryParse($ServerAddress, [ref]$parsedIp) -or $parsedIp.AddressFamily -ne [Net.Sockets.AddressFamily]::InterNetwork -or $ServerAddress -match '^(0\.|127\.|169\.254\.)') {
+            throw 'ServerAddress must be a reachable LAN IPv4 address of this computer, or omitted for automatic detection.'
+        }
+        $localAddresses = @(Get-LocalIPv4)
+        if ($ServerAddress -notin $localAddresses) { throw "ServerAddress is not assigned to this computer: $ServerAddress" }
     }
-    $localAddresses = @(Get-LocalIPv4)
-    if ($ServerAddress -notin $localAddresses) { throw "ServerAddress is not assigned to this computer: $ServerAddress" }
+    $displayUrl = if ($ServerAddress -eq 'auto') { "http://$(Get-DisplayAddress):$PanelPort" } else { "http://${ServerAddress}:$PanelPort" }
     $state['Panel database'] = Test-PanelDatabase $nodeExe $dbPath $ServerAddress $ServerPort $serverCfg
     if ($RepositoryUrl -notmatch '^https://github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+(?:\.git)?/?$') {
         throw 'RepositoryUrl must be a public https://github.com/owner/repository URL without credentials.'
@@ -610,8 +633,12 @@ try {
     }
     Write-Host "Steam CS2: $Cs2Path"
     Write-Host "Separate server and panel: $InstallRoot"
+    if (-not $state['CS2 server']) {
+        Write-Host ('CS2 server files: ' + $(if ($NoClientCopy) { 'full SteamCMD download' } else { 'copy of the Steam client, then SteamCMD validates and downloads only the differences' }))
+    }
     Write-Host "Repository: $RepositoryUrl"
-    Write-Host "Panel URL: http://${ServerAddress}:$PanelPort"
+    if ($ServerAddress -eq 'auto') { Write-Host "Panel URL: $displayUrl (now; the panel detects its LAN address at every start)" }
+    else { Write-Host "Panel URL: $displayUrl" }
     if ($CheckOnly) {
         if ($existing) { Write-Host 'Preflight OK. Nothing was changed; components marked MISSING above would be installed on a normal run.' }
         else { Write-Host 'Preflight OK. Nothing was downloaded, installed or created.' }
@@ -714,6 +741,22 @@ try {
         Remove-InsideRoot $InstallRoot $steamRoot
         Expand-Archive -LiteralPath $steamZip -DestinationPath $steamRoot
     } else { Write-Host '  SteamCMD is already installed.' }
+    if (-not $state['CS2 server'] -and -not $NoClientCopy) {
+        # Seeding the server from the client's files: app_update ... validate below checks them and downloads only what
+        # differs (dedicated-server files, newer build) instead of the whole game. A rerun copies only changed files.
+        foreach ($process in @(Get-Process cs2 -ErrorAction SilentlyContinue)) {
+            if ($process.Path -and $process.Path.StartsWith($Cs2Path + '\', [StringComparison]::OrdinalIgnoreCase)) {
+                throw 'Close the CS2 game client: its files are copied to the server. Or use -NoClientCopy.'
+            }
+        }
+        Write-Host "  Copying CS2 from the Steam client ($Cs2Path)..."
+        $copyLog = Join-Path $InstallRoot 'logs\cs2-copy.log'
+        $null = & robocopy.exe $Cs2Path $serverRoot /E /DCOPY:DA /COPY:DAT /MT:8 /R:1 /W:1 /NP /NFL /NDL `
+            /XD (Join-Path $Cs2Path 'content') /XF console.log '*.dem' '*.mdmp' "/LOG:$copyLog"
+        # Robocopy exit codes 0-7 mean success (files copied, skipped or extra); 8 and above are failures.
+        if ($LASTEXITCODE -ge 8) { throw "Copying CS2 from the Steam client failed (robocopy exit code $LASTEXITCODE). See logs\cs2-copy.log, or rerun with -NoClientCopy." }
+        Assert-FreeSpace $driveRoot (8GB)
+    }
     if (-not $state['CS2 server'] -or $UpdateGame) {
         # A SteamCMD runscript preserves spaces in the installation path. Rerunning resumes/validates files.
         $steamScript = Join-Path $downloads 'install-steam.txt'
@@ -770,7 +813,8 @@ try {
     } finally { Pop-Location }
 
     Write-Host '[8/8] LAN configuration, panel database, launchers and firewall...'
-    $publicUrl = if ($saved) { [string]$saved.PublicUrl } else { "http://${ServerAddress}:$PanelPort" }
+    # 'auto': no fixed URL, the panel detects its address at start (empty PublicUrl).
+    $publicUrl = if ($saved) { [string]$saved.PublicUrl } elseif ($ServerAddress -eq 'auto') { '' } else { "http://${ServerAddress}:$PanelPort" }
     $settings = [ordered]@{ ServerAddress = $ServerAddress; ServerPort = $ServerPort; PanelPort = $PanelPort; TvPort = $TvPort; PublicUrl = $publicUrl }
     if (-not $state['Launchers']) { Write-Launchers $InstallRoot $settings -MissingOnly:$existing }
     else { Write-Host '  Launchers already exist.' }
@@ -793,13 +837,13 @@ try {
                 if (-not $match.Success) { throw 'Cannot safely read rcon_password from the existing server config. Restore its quoted value before repairing.' }
                 $rconPassword = $match.Groups[1].Value
             }
-            @{ AdminPassword = $adminPassword; RconPassword = $rconPassword; ServerAddress = $ServerAddress; ServerPort = $ServerPort; PublicUrl = $settings.PublicUrl; ServerConfigPath = $serverCfg; CredentialsPath = $credentialsPath } |
+            @{ AdminPassword = $adminPassword; RconPassword = $rconPassword; ServerAddress = $ServerAddress; ServerPort = $ServerPort; PublicUrl = $(if ($settings.PublicUrl) { $settings.PublicUrl } else { $displayUrl }); ServerConfigPath = $serverCfg; CredentialsPath = $credentialsPath } |
                 ConvertTo-Json | Set-Content -LiteralPath $bootstrapInput -Encoding UTF8
         }
         $pending = Get-Content -LiteralPath $bootstrapInput -Raw | ConvertFrom-Json
         if ($pending.ServerAddress -ne $ServerAddress -or $pending.ServerPort -ne $ServerPort) { throw 'Pending database initialization uses different server settings. Restore installation.json before retrying.' }
         # Upgrade pending input left by older installer versions, preserving its secrets.
-        foreach ($entry in @{ PublicUrl = $settings.PublicUrl; ServerConfigPath = $serverCfg; CredentialsPath = $credentialsPath }.GetEnumerator()) {
+        foreach ($entry in @{ PublicUrl = $(if ($settings.PublicUrl) { $settings.PublicUrl } else { $displayUrl }); ServerConfigPath = $serverCfg; CredentialsPath = $credentialsPath }.GetEnumerator()) {
             $pending | Add-Member -NotePropertyName $entry.Key -NotePropertyValue $entry.Value -Force
         }
         $pending | ConvertTo-Json | Set-Content -LiteralPath $bootstrapInput -Encoding UTF8
@@ -828,7 +872,7 @@ try {
     }
     if (input.CredentialsPath && !existsSync(input.CredentialsPath)) {
         const password = hasAdmin ? 'unavailable (existing account; use the panel password reset command)' : input.AdminPassword;
-        writeFileSync(input.CredentialsPath, `Panel: ${input.PublicUrl}\nLogin: ${existingAdmin?.username ?? 'admin'}\nInitial password: ${password}\nServer: ${input.ServerAddress}:${input.ServerPort}\nRCON password: ${rcon}\n`, { flag: 'wx' });
+        writeFileSync(input.CredentialsPath, `Panel: ${input.PublicUrl}\nLogin: ${existingAdmin?.username ?? 'admin'}\nInitial password: ${password}\nServer: ${input.ServerAddress === 'auto' ? 'this computer' : input.ServerAddress}:${input.ServerPort}\nRCON password: ${rcon}\n`, { flag: 'wx' });
     }
     db.exec('COMMIT');
 } catch (error) { db.exec('ROLLBACK'); throw error; }

@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { isIP } from 'node:net';
 import { join, resolve } from 'node:path';
 import { db, getSetting } from './db.js';
-import { config } from './config.js';
+import { AUTO_HOST } from './network.js';
 import { AppError } from './errors.js';
 import { getServer, withRcon, type ServerRow } from './dispatcher.js';
 
@@ -103,7 +103,7 @@ export function launcherText(root: string, title: string, args: string[]): strin
 function launchArgs(s: ManagedRow, cfg: string): string[] {
   const gm = GAME_MODES[s.game_mode] ?? GAME_MODES.competitive;
   const args = ['-dedicated', '-console', '-condebug', '-usercon', '-insecure', '-port', String(s.port), '-maxplayers', String(s.max_players)];
-  // На loopback-адресе сервер не виден в сети, поэтому -ip передаём только для адреса в LAN
+  // Сервер с адресом auto слушает все адаптеры (и 127.0.0.1 для панели); -ip передаём только для явного адреса в LAN
   if (isIP(s.host) === 4 && !s.host.startsWith('127.')) args.push('-ip', s.host);
   if (s.tv_enable) args.push('+tv_port', String(tvPortOf(s)));
   if (s.gslt) args.push('+sv_setsteamaccount', s.gslt);
@@ -231,14 +231,9 @@ export async function changeMap(id: number, map: string): Promise<void> {
   await withRcon(s, (r) => r.exec(`${cmd!.slice(1)} ${arg}`));
 }
 
-// Адрес по умолчанию для нового сервера: IP из PUBLIC_URL, если это не localhost
+// Адрес по умолчанию для нового сервера: этот компьютер (LAN-адрес определяется сам, см. network.ts)
 export function defaultHost(): string {
-  try {
-    const h = new URL(config.publicUrl).hostname;
-    return isIP(h) === 4 ? h : '127.0.0.1';
-  } catch {
-    return '127.0.0.1';
-  }
+  return AUTO_HOST;
 }
 
 export function nextPort(): number {

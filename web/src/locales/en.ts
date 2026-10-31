@@ -521,4 +521,6 @@ export const en: Dict = {
   'mp.back': 'Back to tournament',
   'mp.open': 'Match page',
   'home.openMatch': 'Match page',
+  'srv.autoHost': 'this computer, address detected automatically',
+  'srv.autoHostHint': 'Address auto means this computer: players see its current network IP, and the panel reaches the server through 127.0.0.1. For a server on another computer, enter its IP.',
 };
