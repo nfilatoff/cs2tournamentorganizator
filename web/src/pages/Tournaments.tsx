@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api, type Me, type TournamentSummary } from '../api';
-
-export const STATUS_LABEL = { registration: 'Регистрация', running: 'Идёт', finished: 'Завершён' } as const;
-export const FORMAT_LABEL = { single: 'Single elimination', double: 'Double elimination' } as const;
+import { useI18n } from '../i18n';
 
 export function Tournaments({ me }: { me: Me }) {
+  const { t } = useI18n();
   const [list, setList] = useState<TournamentSummary[]>([]);
   useEffect(() => {
     api<TournamentSummary[]>('/api/tournaments').then(setList).catch(() => setList([]));
@@ -14,22 +13,22 @@ export function Tournaments({ me }: { me: Me }) {
   return (
     <>
       <div className="between">
-        <h1>Турниры</h1>
-        {me.kind === 'admin' && <Link to="/tournaments/new"><button>Создать турнир</button></Link>}
+        <h1>{t('tournaments.title')}</h1>
+        {me.kind === 'admin' && <Link to="/tournaments/new"><button>{t('tournaments.create')}</button></Link>}
       </div>
       <div className="card">
         <table>
-          <thead><tr><th>Название</th><th>Формат</th><th>Команд</th><th>Статус</th></tr></thead>
+          <thead><tr><th>{t('common.name')}</th><th>{t('tournaments.format')}</th><th>{t('tournaments.teams')}</th><th>{t('tournaments.status')}</th></tr></thead>
           <tbody>
-            {list.map((t) => (
-              <tr key={t.id}>
-                <td><Link to={`/tournaments/${t.id}`}>{t.name}</Link></td>
-                <td>{FORMAT_LABEL[t.format]}, {t.teamSize}v{t.teamSize}</td>
-                <td>{t.teamCount}/{t.maxTeams}</td>
-                <td>{STATUS_LABEL[t.status]}</td>
+            {list.map((x) => (
+              <tr key={x.id}>
+                <td><Link to={`/tournaments/${x.id}`}>{x.name}</Link></td>
+                <td>{t(`format.${x.format}`)}, {x.teamSize}v{x.teamSize}</td>
+                <td>{x.teamCount}/{x.maxTeams}</td>
+                <td>{t(`status.${x.status}`)}</td>
               </tr>
             ))}
-            {list.length === 0 && <tr><td colSpan={4} className="muted">Турниров пока нет</td></tr>}
+            {list.length === 0 && <tr><td colSpan={4} className="muted">{t('tournaments.empty')}</td></tr>}
           </tbody>
         </table>
       </div>

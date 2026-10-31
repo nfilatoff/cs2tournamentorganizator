@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { api, type GameServer, type ServerStatus } from '../api';
+import { useI18n } from '../i18n';
 
 export function Servers() {
+  const { t, err } = useI18n();
   const [servers, setServers] = useState<GameServer[]>([]);
   const [name, setName] = useState('');
   const [host, setHost] = useState('127.0.0.1');
@@ -16,13 +18,13 @@ export function Servers() {
       const st = await api<ServerStatus>(`/api/servers/${id}/status`);
       setStatus((p) => ({ ...p, [id]: st }));
     } catch (e) {
-      setStatus((p) => ({ ...p, [id]: { online: false, error: (e as Error).message, panelMatch: null, lastError: null } }));
+      setStatus((p) => ({ ...p, [id]: { online: false, error: { error: 'internal', params: { message: err(e) } }, panelMatch: null, lastError: null } }));
     }
   };
 
   const load = useCallback(() => {
-    api<GameServer[]>('/api/servers').then(setServers).catch((e: Error) => setError(e.message));
-  }, []);
+    api<GameServer[]>('/api/servers').then(setServers).catch((e) => setError(err(e)));
+  }, [err]);
   useEffect(load, [load]);
 
   const add = async (e: FormEvent) => {
@@ -33,48 +35,58 @@ export function Servers() {
       setName('');
       setRcon('');
       load();
-    } catch (err) {
-      setError((err as Error).message);
+    } catch (e2) {
+      setError(err(e2));
     }
   };
 
   const remove = async (id: number) => {
-    await api(`/api/servers/${id}`, { method: 'DELETE' });
-    load();
+    setError('');
+    try {
+      await api(`/api/servers/${id}`, { method: 'DELETE' });
+      load();
+    } catch (e) {
+      setError(err(e));
+    }
   };
 
   return (
     <>
-      <h1>Серверы CS2</h1>
+      <h1>{t('servers.title')}</h1>
+      <p className="muted">{t('servers.hint')}</p>
       <form className="card row" onSubmit={add}>
-        <label>Название<input value={name} onChange={(e) => setName(e.target.value)} required /></label>
-        <label>Адрес<input value={host} onChange={(e) => setHost(e.target.value)} required /></label>
-        <label>Порт<input type="number" value={port} onChange={(e) => setPort(e.target.value)} required style={{ width: 90 }} /></label>
-        <label>RCON-пароль<input type="password" value={rcon} onChange={(e) => setRcon(e.target.value)} required /></label>
-        <button type="submit">Добавить</button>
+        <label>{t('servers.name')}<input value={name} onChange={(e) => setName(e.target.value)} required /></label>
+        <label>{t('servers.address')}<input value={host} onChange={(e) => setHost(e.target.value)} required /></label>
+        <label>{t('servers.port')}<input type="number" value={port} onChange={(e) => setPort(e.target.value)} required style={{ width: 90 }} /></label>
+        <label>{t('servers.rcon')}<input type="password" value={rcon} onChange={(e) => setRcon(e.target.value)} required /></label>
+        <button type="submit">{t('common.add')}</button>
       </form>
       {error && <p className="error">{error}</p>}
       <div className="card">
         <table>
-          <thead><tr><th>Название</th><th>Адрес</th><th>Состояние</th><th /></tr></thead>
+          <thead><tr><th>{t('servers.name')}</th><th>{t('servers.address')}</th><th>{t('servers.state')}</th><th /></tr></thead>
           <tbody>
-            {servers.map((s) => (
-              <tr key={s.id}>
-                <td>{s.name}</td>
-                <td>{s.host}:{s.port}</td>
-                <td>
-                  {status[s.id] === 'loading' && <span className="muted">проверка…</span>}
-                  {status[s.id] && status[s.id] !== 'loading' && (() => {
-                    const st = status[s.id] as ServerStatus;
-                    return st.online
-                      ? <span>онлайн · {st.gamestate}{st.panelMatch ? ` · матч ${st.panelMatch.code}` : ' · свободен'}</span>
-                      : <span className="error">недоступен: {st.error}</span>;
-                  })()}
-                </td>
-                <td style={{ textAlign: 'right' }}><button className="ghost" onClick={() => check(s.id)}>Проверить</button>{' '}<button className="danger" onClick={() => remove(s.id)}>Удалить</button></td>
-              </tr>
-            ))}
-            {servers.length === 0 && <tr><td colSpan={4} className="muted">Серверов пока нет</td></tr>}
+            {servers.map((s) => {
+              const st = status[s.id];
+              return (
+                <tr key={s.id}>
+                  <td>{s.name}</td>
+                  <td>{s.host}:{s.port}</td>
+                  <td>
+                    {st === 'loading' && <span className="muted">{t('servers.checking')}</span>}
+                    {st && st !== 'loading' && (st.online
+                      ? <span>{t('servers.online', { state: st.gamestate ?? '' })}{st.panelMatch ? ` · ${t('servers.matchOn', { code: st.panelMatch.code })}` : ` · ${t('servers.free')}`}</span>
+                      : <span className="error">{t('servers.unreachable', { error: err(st.error) })}</span>)}
+                    {st && st !== 'loading' && st.lastError && <div className="muted">{t('servers.lastError', { error: err(st.lastError) })}</div>}
+                  </td>
+                  <td style={{ textAlign: 'right' }}>
+                    <button className="ghost" onClick={() => check(s.id)}>{t('servers.check')}</button>{' '}
+                    <button className="danger" onClick={() => remove(s.id)}>{t('common.delete')}</button>
+                  </td>
+                </tr>
+              );
+            })}
+            {servers.length === 0 && <tr><td colSpan={4} className="muted">{t('servers.empty')}</td></tr>}
           </tbody>
         </table>
       </div>

@@ -40,7 +40,7 @@ export interface TournamentSummary {
 export type EntryDto = { type: 'team'; id: number; name: string } | { type: 'tbd' } | { type: 'bye' };
 
 export interface MatchDto {
-  code: string; bracket: 'W' | 'L' | 'GF'; round: number; position: number; roundLabel: string;
+  code: string; bracket: 'W' | 'L' | 'GF'; round: number; position: number; roundFromEnd: number;
   a: EntryDto; b: EntryDto; status: 'pending' | 'ready' | 'live' | 'done' | 'bye' | 'skipped';
   winner: 'a' | 'b' | null; bestOf: number; scoreA: number; scoreB: number; forced: boolean;
   matchId?: number;
@@ -67,10 +67,10 @@ export interface TournamentDetails extends Omit<TournamentSummary, 'teamCount'> 
 
 export interface ServerStatus {
   online: boolean;
-  error?: string;
+  error?: { error: string; params?: Record<string, unknown> };
   gamestate?: string;
   paused?: boolean;
   serverMatchId?: number | null;
   panelMatch: { code: string; tournament_id: number } | null;
-  lastError: string | null;
+  lastError: { error: string; params?: Record<string, unknown> } | null;
 }

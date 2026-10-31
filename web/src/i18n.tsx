@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { ru } from './locales/ru';
 import { en } from './locales/en';
 import { es } from './locales/es';
@@ -24,8 +24,14 @@ function detect(): Lang {
   } catch {
     // localStorage недоступен: берём язык браузера
   }
-  const nav = (navigator.language || 'en').slice(0, 2).toLowerCase();
-  return nav === 'ru' || nav === 'es' ? nav : 'en';
+  // Язык системы доходит до страницы через список языков браузера (по умолчанию он совпадает с языком Windows).
+  // Берём первый из них, который мы поддерживаем; иначе английский.
+  const preferred = navigator.languages?.length ? navigator.languages : [navigator.language];
+  for (const l of preferred) {
+    const code = (l || '').slice(0, 2).toLowerCase();
+    if (code === 'ru' || code === 'es' || code === 'en') return code;
+  }
+  return 'en';
 }
 
 const fill = (s: string, p?: Params) => (p ? s.replace(/\{(\w+)\}/g, (_, k: string) => String(p[k] ?? '')) : s);
@@ -93,6 +99,12 @@ export function I18nProvider({ children }: { children: ReactNode }) {
 
     return { lang, setLang, t, err };
   }, [lang, setLang]);
+
+  // Название вкладки и язык документа следуют выбранному языку
+  useEffect(() => {
+    document.title = value.t('app.brand');
+    document.documentElement.lang = lang;
+  }, [value, lang]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

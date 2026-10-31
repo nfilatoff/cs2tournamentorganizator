@@ -1,11 +1,14 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, type MapItem, type TournamentDetails } from '../api';
+import { useI18n } from '../i18n';
+import { roundLabel } from '../rounds';
 
 const MAX_MAPS = 7;
-interface RoundDef { key: string; label: string }
+interface RoundDef { key: string; bracket: 'W' | 'L' | 'GF'; fromEnd: number }
 
 export function TournamentForm() {
+  const { t, err } = useI18n();
   const navigate = useNavigate();
   const [name, setName] = useState('');
   const [format, setFormat] = useState<'single' | 'double'>('double');
@@ -21,8 +24,8 @@ export function TournamentForm() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    api<MapItem[]>('/api/maps').then(setMaps).catch((e: Error) => setError(e.message));
-  }, []);
+    api<MapItem[]>('/api/maps').then(setMaps).catch((e) => setError(err(e)));
+  }, [err]);
 
   useEffect(() => {
     if (maxTeams < 2) return;
@@ -37,42 +40,42 @@ export function TournamentForm() {
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
-    // Оставляем только ключи раундов, которые есть в текущей сетке.
+    // Оставляем только ключи раундов, которые есть в текущей сетке
     const valid = new Set(rounds.map((r) => r.key));
     const cfg = Object.fromEntries(Object.entries(boConfig).filter(([k]) => valid.has(k)));
     try {
-      const t = await api<TournamentDetails>('/api/tournaments', {
+      const created = await api<TournamentDetails>('/api/tournaments', {
         method: 'POST',
         body: { name, format, teamSize, maxTeams, defaultBestOf: defaultBo, boConfig: cfg, grandFinalReset: reset, autoDispatch, mapIds: picked },
       });
-      navigate(`/tournaments/${t.id}`);
-    } catch (err) {
-      setError((err as Error).message);
+      navigate(`/tournaments/${created.id}`);
+    } catch (e2) {
+      setError(err(e2));
     }
   };
 
   return (
     <form onSubmit={submit}>
-      <h1>Новый турнир</h1>
+      <h1>{t('form.title')}</h1>
       <div className="card row">
-        <label style={{ flex: 1, minWidth: 220 }}>Название<input value={name} onChange={(e) => setName(e.target.value)} required /></label>
-        <label>Формат
+        <label style={{ flex: 1, minWidth: 220 }}>{t('common.name')}<input value={name} onChange={(e) => setName(e.target.value)} required /></label>
+        <label>{t('tournaments.format')}
           <select value={format} onChange={(e) => setFormat(e.target.value as 'single' | 'double')}>
-            <option value="single">Single elimination</option>
-            <option value="double">Double elimination</option>
+            <option value="single">{t('format.single')}</option>
+            <option value="double">{t('format.double')}</option>
           </select>
         </label>
-        <label>Игроков в команде
+        <label>{t('form.teamSize')}
           <select value={teamSize} onChange={(e) => setTeamSize(Number(e.target.value))}>
             {[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{n}v{n}</option>)}
           </select>
         </label>
-        <label>Команд<input type="number" min={format === 'double' ? 3 : 2} max={64} value={maxTeams} onChange={(e) => setMaxTeams(Number(e.target.value))} style={{ width: 90 }} /></label>
+        <label>{t('tournaments.teams')}<input type="number" min={2} max={64} value={maxTeams} onChange={(e) => setMaxTeams(Number(e.target.value))} style={{ width: 90 }} /></label>
       </div>
 
       <div className="card">
-        <h2>Серии (BO)</h2>
-        <label>По умолчанию
+        <h2>{t('form.series')}</h2>
+        <label>{t('form.defaultBo')}
           <select value={defaultBo} onChange={(e) => setDefaultBo(Number(e.target.value))}>
             {[1, 3, 5].map((n) => <option key={n} value={n}>BO{n}</option>)}
           </select>
@@ -81,7 +84,7 @@ export function TournamentForm() {
           <tbody>
             {rounds.map((r) => (
               <tr key={r.key}>
-                <td>{r.label}</td>
+                <td>{roundLabel(t, r.bracket, r.fromEnd, format)}</td>
                 <td style={{ textAlign: 'right' }}>
                   <select value={boConfig[r.key] ?? defaultBo} onChange={(e) => setBoConfig({ ...boConfig, [r.key]: Number(e.target.value) })}>
                     {[1, 3, 5].map((n) => <option key={n} value={n}>BO{n}</option>)}
@@ -94,22 +97,22 @@ export function TournamentForm() {
         {format === 'double' && (
           <label style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8 }}>
             <input type="checkbox" checked={reset} onChange={(e) => setReset(e.target.checked)} />
-            Переигровка гранд-финала, если побеждает чемпион нижней сетки
+            {t('form.reset')}
           </label>
         )}
-        <p className="muted">Раунды считаются с конца сетки, поэтому настройки сохранятся, даже если команд придёт меньше.</p>
+        <p className="muted">{t('form.roundsHint')}</p>
       </div>
 
       <div className="card">
         <label style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           <input type="checkbox" checked={autoDispatch} onChange={(e) => setAutoDispatch(e.target.checked)} />
-          Автоматически запускать готовые матчи на свободных серверах
+          {t('form.autoDispatch')}
         </label>
       </div>
 
       <div className="card">
-        <h2>Пул карт ({picked.length}/{MAX_MAPS})</h2>
-        {maps.length === 0 && <p className="muted">Сначала добавьте карты в разделе «Карты».</p>}
+        <h2>{t('form.mapPool', { n: picked.length, max: MAX_MAPS })}</h2>
+        {maps.length === 0 && <p className="muted">{t('form.addMapsFirst')}</p>}
         <div className="maps">
           {maps.map((m) => (
             <label key={m.id} className={`mapchip${picked.includes(m.id) ? ' on' : ''}`}>
@@ -122,7 +125,7 @@ export function TournamentForm() {
       </div>
 
       {error && <p className="error">{error}</p>}
-      <button type="submit">Создать турнир</button>
+      <button type="submit">{t('form.submit')}</button>
     </form>
   );
 }
