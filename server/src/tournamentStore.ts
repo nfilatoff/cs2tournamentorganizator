@@ -7,6 +7,9 @@ export interface TournamentRow {
   id: number; name: string; format: Format; team_size: number; max_teams: number;
   default_best_of: number; bo_config: string; grand_final_reset: number; auto_dispatch: number;
   status: 'registration' | 'running' | 'finished'; champion_team_id: number | null;
+  stage_mode: 'playoff' | 'groups'; group_format: 'round_robin' | 'swiss' | 'gsl' | null; groups_count: number;
+  advance: number; swiss_rounds: number | null; group_best_of: number; has_playoff: number;
+  phase: 'playoff' | 'groups' | 'groups_done';
 }
 
 export interface MatchRow {
@@ -16,6 +19,7 @@ export interface MatchRow {
   winner: 'a' | 'b' | null; status: Status; best_of: number; score_a: number; score_b: number; forced: number;
   server_id: number | null; maps_json: string | null; live: number; paused: number;
   cur_map_no: number; cur_score_a: number; cur_score_b: number; series_a: number; series_b: number; note: string | null;
+  stage: 'group' | 'playoff'; group_no: number | null;
 }
 
 export const getTournament = (id: number) =>
@@ -44,6 +48,22 @@ export function toBMatch(r: MatchRow): BMatch {
 
 export function loadMatches(tid: number): BMatch[] {
   return loadMatchRows(tid).map(toBMatch);
+}
+
+// Вставляет новые матчи турнира (стадия playoff или group)
+export function insertMatches(tid: number, ms: BMatch[], stage: 'group' | 'playoff', groupNo: number | null = null): void {
+  const ins = db.prepare(`INSERT INTO matches
+    (tournament_id, code, bracket, round, position, src_a, src_b, entry_a, entry_b, winner, status, best_of, score_a, score_b, stage, group_no)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+  for (const m of ms) {
+    ins.run(tid, m.code, m.bracket, m.round, m.position, JSON.stringify(m.srcA), JSON.stringify(m.srcB),
+      JSON.stringify(m.a), JSON.stringify(m.b), m.winner, m.status, m.bestOf, m.scoreA, m.scoreB, stage, groupNo);
+  }
+}
+
+export function deleteMatches(tid: number, codes: string[]): void {
+  const del = db.prepare('DELETE FROM matches WHERE tournament_id = ? AND code = ?');
+  for (const c of codes) del.run(tid, c);
 }
 
 export function saveMatches(tid: number, ms: BMatch[]): void {

@@ -4,8 +4,9 @@ import { db, tx } from '../db.js';
 import { buildMatchConfig, rosterOf, tokenMatches, type MapRef } from '../arenapro.js';
 import { reportResult } from '../bracket.js';
 import { dispatchAll } from '../dispatcher.js';
+import { applyChanges } from '../groupStage.js';
 import {
-  clearRuntime, commit, getMatchRow, getTournament, loadMatches, teamName,
+  clearRuntime, getMatchRow, getTournament, loadMatches, teamName,
 } from '../tournamentStore.js';
 
 interface TeamPart { id?: string; name?: string; score?: number; series_score?: number }
@@ -67,7 +68,7 @@ export function handleEvent(ev: ArenaEvent): void {
         return;
       }
       tx(() => {
-        commit(t, ms);
+        applyChanges(t, ms);
         clearRuntime(row.id);
         db.prepare('UPDATE matches SET note = NULL WHERE id = ?').run(row.id);
       });

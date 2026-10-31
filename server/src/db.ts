@@ -180,3 +180,17 @@ export function setSetting(key: string, value: string): void {
   db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value')
     .run(key, value);
 }
+
+// Групповой этап: настройки турнира, группа команды и стадия матча
+addColumn('tournaments', 'stage_mode', "TEXT NOT NULL DEFAULT 'playoff'");
+addColumn('tournaments', 'group_format', 'TEXT');
+addColumn('tournaments', 'groups_count', 'INTEGER NOT NULL DEFAULT 1');
+addColumn('tournaments', 'advance', 'INTEGER NOT NULL DEFAULT 2');
+addColumn('tournaments', 'swiss_rounds', 'INTEGER');
+addColumn('tournaments', 'group_best_of', 'INTEGER NOT NULL DEFAULT 1');
+addColumn('tournaments', 'has_playoff', 'INTEGER NOT NULL DEFAULT 1');
+addColumn('tournaments', 'phase', "TEXT NOT NULL DEFAULT 'playoff'");
+addColumn('tournament_teams', 'group_no', 'INTEGER');
+addColumn('tournament_teams', 'playoff_seed', 'INTEGER');
+addColumn('matches', 'stage', "TEXT NOT NULL DEFAULT 'playoff'");
+addColumn('matches', 'group_no', 'INTEGER');

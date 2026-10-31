@@ -1,14 +1,18 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
-import { E, encode, errBody } from '../errors.js';
+import { E, encode, errBody, type ErrorBody } from '../errors.js';
 import { z } from 'zod';
 import { db, tx } from '../db.js';
 import { getSession, requireAdmin } from '../auth.js';
 import {
-  boFn, clearRuntime, commit, getMatchRowByCode, getTournament, loadMatches, saveMatches,
+  boFn, clearRuntime, getMatchRowByCode, getTournament, insertMatches, loadMatches, saveMatches,
   type MatchRow, type TournamentRow,
 } from '../tournamentStore.js';
 import { dispatchAll, dispatchOne, endMatchOnServer, getServer, release, withRcon } from '../dispatcher.js';
-import { details, previewDto, renumberSeeds } from '../tournamentDto.js';
+import { details, playoffPreviewDto, previewDto, renumberSeeds } from '../tournamentDto.js';
+import {
+  advanceGroupStage, applyChanges, checkPlayoffOrder, createGroupMatches, generatePlayoff, prepareGroupUndo,
+  resetPlayoff, suggestedPlayoff, validateGroupStart,
+} from '../groupStage.js';
 import {
   buildBracket, forceWinner, minTeams, reportResult, roundFromEnd, undoResult,
   type BracketId, type Format,
@@ -27,7 +31,32 @@ const tournamentBody = z.object({
   grandFinalReset: z.boolean().default(true),
   autoDispatch: z.boolean().default(true),
   mapIds: z.array(z.number().int()).max(MAX_MAPS),
+  stageMode: z.enum(['playoff', 'groups']).default('playoff'),
+  groupFormat: z.enum(['round_robin', 'swiss', 'gsl']).optional(),
+  groupsCount: z.number().int().min(1).max(16).default(1),
+  advance: z.number().int().min(1).max(32).default(2),
+  swissRounds: z.number().int().min(1).max(15).optional(),
+  groupBestOf: BEST_OF.default(1),
+  hasPlayoff: z.boolean().default(true),
 });
+
+// Проверка настроек группового этапа при создании и изменении турнира
+function validateConfig(d: z.infer<typeof tournamentBody>): ErrorBody | null {
+  if (d.stageMode === 'playoff') return null;
+  if (!d.groupFormat) return E('badGroupConfig');
+  if (d.groupFormat === 'swiss' && d.groupsCount !== 1) return E('badGroupConfig');
+  if (d.groupFormat === 'gsl') {
+    if (d.maxTeams !== d.groupsCount * 4) return E('gslNeedsTeams', { n: d.groupsCount * 4 });
+    if (d.advance > 2) return E('badGroupConfig');
+  }
+  if (d.groupFormat === 'round_robin' && Math.floor(d.maxTeams / d.groupsCount) < Math.max(2, d.advance)) {
+    return E('groupTooSmall', { n: Math.max(2, d.advance) * d.groupsCount });
+  }
+  if (d.groupFormat === 'swiss' && d.advance > d.maxTeams) return E('badGroupConfig');
+  const size = d.groupFormat === 'swiss' ? d.advance : d.groupsCount * d.advance;
+  if (d.hasPlayoff ? size < 2 || size > 64 : d.groupsCount !== 1) return E('badGroupConfig');
+  return null;
+}
 
 // Раунды для формы создания: ключ BO и подпись для заданных формата и числа команд.
 function previewRounds(format: Format, maxTeams: number) {
@@ -103,10 +132,16 @@ export async function tournamentRoutes(app: FastifyInstance): Promise<void> {
     if (d.maxTeams < minTeams(d.format)) {
       return reply.code(400).send(E('minTeams', { n: minTeams(d.format) }));
     }
+    const cfgError = validateConfig(d);
+    if (cfgError) return reply.code(400).send(cfgError);
     const id = tx(() => {
       const res = db.prepare(`INSERT INTO tournaments
-        (name, format, team_size, max_teams, default_best_of, bo_config, grand_final_reset, auto_dispatch) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
-        .run(d.name, d.format, d.teamSize, d.maxTeams, d.defaultBestOf, JSON.stringify(d.boConfig), d.grandFinalReset ? 1 : 0, d.autoDispatch ? 1 : 0);
+        (name, format, team_size, max_teams, default_best_of, bo_config, grand_final_reset, auto_dispatch,
+        stage_mode, group_format, groups_count, advance, swiss_rounds, group_best_of, has_playoff, phase)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+        .run(d.name, d.format, d.teamSize, d.maxTeams, d.defaultBestOf, JSON.stringify(d.boConfig), d.grandFinalReset ? 1 : 0, d.autoDispatch ? 1 : 0,
+          d.stageMode, d.stageMode === 'groups' ? d.groupFormat ?? null : null, d.stageMode === 'groups' ? d.groupsCount : 1,
+          d.advance, d.swissRounds ?? null, d.groupBestOf, d.hasPlayoff ? 1 : 0, d.stageMode === 'groups' ? 'groups' : 'playoff');
       const tid = Number(res.lastInsertRowid);
       if (!setMaps(tid, d.mapIds)) throw new Error('map');
       return tid;
@@ -124,6 +159,8 @@ export async function tournamentRoutes(app: FastifyInstance): Promise<void> {
     if (d.maxTeams < minTeams(d.format)) {
       return reply.code(400).send(E('minTeams', { n: minTeams(d.format) }));
     }
+    const cfgError = validateConfig(d);
+    if (cfgError) return reply.code(400).send(cfgError);
     const registered = (db.prepare('SELECT COUNT(*) AS n FROM tournament_teams WHERE tournament_id = ?')
       .get(t.id) as { n: number }).n;
     if (registered > d.maxTeams) return reply.code(409).send(E('tooManyRegistered'));
@@ -132,8 +169,11 @@ export async function tournamentRoutes(app: FastifyInstance): Promise<void> {
     }
     tx(() => {
       db.prepare(`UPDATE tournaments SET name = ?, format = ?, team_size = ?, max_teams = ?, default_best_of = ?,
-        bo_config = ?, grand_final_reset = ?, auto_dispatch = ? WHERE id = ?`)
-        .run(d.name, d.format, d.teamSize, d.maxTeams, d.defaultBestOf, JSON.stringify(d.boConfig), d.grandFinalReset ? 1 : 0, d.autoDispatch ? 1 : 0, t.id);
+        bo_config = ?, grand_final_reset = ?, auto_dispatch = ?, stage_mode = ?, group_format = ?, groups_count = ?, advance = ?,
+        swiss_rounds = ?, group_best_of = ?, has_playoff = ?, phase = ? WHERE id = ?`)
+        .run(d.name, d.format, d.teamSize, d.maxTeams, d.defaultBestOf, JSON.stringify(d.boConfig), d.grandFinalReset ? 1 : 0, d.autoDispatch ? 1 : 0,
+          d.stageMode, d.stageMode === 'groups' ? d.groupFormat ?? null : null, d.stageMode === 'groups' ? d.groupsCount : 1,
+          d.advance, d.swissRounds ?? null, d.groupBestOf, d.hasPlayoff ? 1 : 0, d.stageMode === 'groups' ? 'groups' : 'playoff', t.id);
       if (!setMaps(t.id, d.mapIds)) throw new Error('map');
     });
     return details(getTournament(t.id)!);
@@ -155,7 +195,7 @@ export async function tournamentRoutes(app: FastifyInstance): Promise<void> {
 
     const teamIds = (db.prepare('SELECT team_id FROM tournament_teams WHERE tournament_id = ? ORDER BY COALESCE(seed, 9999), registered_at, rowid')
       .all(t.id) as unknown as { team_id: number }[]).map((r) => r.team_id);
-    if (teamIds.length < minTeams(t.format)) {
+    if (t.stage_mode !== 'groups' && teamIds.length < minTeams(t.format)) {
       return reply.code(409).send(E('needMinTeams', { n: minTeams(t.format) }));
     }
     const mapCount = (db.prepare('SELECT COUNT(*) AS n FROM tournament_maps WHERE tournament_id = ?').get(t.id) as { n: number }).n;
@@ -167,19 +207,26 @@ export async function tournamentRoutes(app: FastifyInstance): Promise<void> {
         [teamIds[i], teamIds[j]] = [teamIds[j]!, teamIds[i]!];
       }
     }
-    const ms = buildBracket(teamIds, t.format, { grandFinalReset: !!t.grand_final_reset, bestOf: boFn(t) });
+    if (t.stage_mode === 'groups') {
+      try {
+        validateGroupStart(t, teamIds.length);
+      } catch (e) {
+        return reply.code(409).send(errBody(e));
+      }
+    }
+    const ms = t.stage_mode === 'groups' ? [] : buildBracket(teamIds, t.format, { grandFinalReset: !!t.grand_final_reset, bestOf: boFn(t) });
     tx(() => {
       const seedUpd = db.prepare('UPDATE tournament_teams SET seed = ? WHERE tournament_id = ? AND team_id = ?');
       teamIds.forEach((id, i) => seedUpd.run(i + 1, t.id, id));
-      const ins = db.prepare(`INSERT INTO matches
-        (tournament_id, code, bracket, round, position, src_a, src_b, entry_a, entry_b, winner, status, best_of, score_a, score_b)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
-      for (const m of ms) {
-        ins.run(t.id, m.code, m.bracket, m.round, m.position, JSON.stringify(m.srcA), JSON.stringify(m.srcB),
-          JSON.stringify(m.a), JSON.stringify(m.b), m.winner, m.status, m.bestOf, m.scoreA, m.scoreB);
+      if (t.stage_mode === 'groups') {
+        createGroupMatches(t, teamIds);
+      } else {
+        insertMatches(t.id, ms, 'playoff');
+        db.prepare('UPDATE tournament_teams SET playoff_seed = seed WHERE tournament_id = ?').run(t.id);
       }
       db.prepare("UPDATE tournaments SET status = 'running' WHERE id = ?").run(t.id);
     });
+    advanceGroupStage(t.id);
     void dispatchAll();
     return details(getTournament(t.id)!);
   });
@@ -200,7 +247,7 @@ export async function tournamentRoutes(app: FastifyInstance): Promise<void> {
       } catch (e) {
         return reply.code(400).send(errBody(e));
       }
-      commit(t, ms);
+      applyChanges(t, ms);
       await freeServerOf(row);
       void dispatchAll();
       return details(getTournament(t.id)!);
@@ -224,7 +271,7 @@ export async function tournamentRoutes(app: FastifyInstance): Promise<void> {
       } catch (e) {
         return reply.code(400).send(errBody(e));
       }
-      commit(t, ms);
+      applyChanges(t, ms);
       await freeServerOf(row);
       void dispatchAll();
       return details(getTournament(t.id)!);
@@ -241,11 +288,12 @@ export async function tournamentRoutes(app: FastifyInstance): Promise<void> {
       if (t.status === 'registration') return reply.code(409).send(E('notStarted'));
       const ms = loadMatches(t.id);
       try {
+        prepareGroupUndo(t, ms, req.params.code);
         undoResult(ms, req.params.code);
       } catch (e) {
         return reply.code(400).send(errBody(e));
       }
-      commit(t, ms);
+      applyChanges(t, ms);
       void dispatchAll();
       return details(getTournament(t.id)!);
     },
@@ -354,6 +402,44 @@ export async function tournamentRoutes(app: FastifyInstance): Promise<void> {
     if (!body.success) return reply.code(400).send(E('badRequest'));
     db.prepare('UPDATE tournaments SET auto_dispatch = ? WHERE id = ?').run(body.data.enabled ? 1 : 0, t.id);
     if (body.data.enabled) void dispatchAll();
+    return details(getTournament(t.id)!);
+  });
+
+  // --- Плей-офф после группового этапа (админ) ---
+  app.post<{ Params: { id: string } }>('/api/tournaments/:id/playoff/preview', ctrl, async (req, reply) => {
+    const t = await requireTournament(req, reply);
+    if (!t) return;
+    if (t.phase !== 'groups_done') return reply.code(409).send(E('groupsNotFinished'));
+    const body = z.object({ order: z.array(z.number().int()).optional() }).safeParse(req.body ?? {});
+    try {
+      if (body.success && body.data.order) checkPlayoffOrder(t, body.data.order);
+      return playoffPreviewDto(t, body.success ? body.data.order : undefined);
+    } catch (e) {
+      return reply.code(400).send(errBody(e));
+    }
+  });
+
+  app.post<{ Params: { id: string } }>('/api/tournaments/:id/playoff', ctrl, async (req, reply) => {
+    const t = await requireTournament(req, reply);
+    if (!t) return;
+    const body = z.object({ order: z.array(z.number().int()).optional() }).safeParse(req.body ?? {});
+    try {
+      generatePlayoff(t, (body.success ? body.data.order : undefined) ?? suggestedPlayoff(t).order.map((q) => q.teamId));
+    } catch (e) {
+      return reply.code(409).send(errBody(e));
+    }
+    void dispatchAll();
+    return details(getTournament(t.id)!);
+  });
+
+  app.post<{ Params: { id: string } }>('/api/tournaments/:id/playoff/reset', ctrl, async (req, reply) => {
+    const t = await requireTournament(req, reply);
+    if (!t) return;
+    try {
+      resetPlayoff(t);
+    } catch (e) {
+      return reply.code(409).send(errBody(e));
+    }
     return details(getTournament(t.id)!);
   });
 

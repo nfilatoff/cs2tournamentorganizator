@@ -40,7 +40,8 @@ export interface TournamentSummary {
 export type EntryDto = { type: 'team'; id: number; name: string; seed: number | null } | { type: 'tbd' } | { type: 'bye' };
 
 export interface MatchDto {
-  code: string; bracket: 'W' | 'L' | 'GF'; round: number; position: number; roundFromEnd: number;
+  code: string; bracket: 'W' | 'L' | 'GF' | 'G'; round: number; position: number; roundFromEnd: number;
+  stage: 'group' | 'playoff'; groupNo: number | null;
   from: ({ kind: 'winner' | 'loser' | 'slot'; code: string } | null)[];
   a: EntryDto; b: EntryDto; status: 'pending' | 'ready' | 'live' | 'done' | 'bye' | 'skipped';
   winner: 'a' | 'b' | null; bestOf: number; scoreA: number; scoreB: number; forced: boolean;
@@ -60,6 +61,8 @@ export interface TournamentDetails extends Omit<TournamentSummary, 'teamCount'> 
   boConfig: Record<string, number>;
   grandFinalReset: boolean;
   autoDispatch: boolean;
+  groupConfig: GroupConfig;
+  groups: GroupsInfo | null;
   champion: { id: number; name: string } | null;
   teams: { id: number; name: string; seed: number | null; roster: number[] }[];
   maps: MapItem[];
@@ -74,4 +77,37 @@ export interface ServerStatus {
   serverMatchId?: number | null;
   panelMatch: { code: string; tournament_id: number } | null;
   lastError: { error: string; params?: Record<string, unknown> } | null;
+}
+
+export interface StandingRow {
+  teamId: number; name: string; played: number; wins: number; losses: number; points: number;
+  mapsFor: number; mapsAgainst: number; mapDiff: number; buchholz: number; seed: number; rank: number;
+  tiedBySeed: boolean; qualified: boolean;
+}
+
+export interface GroupConfig {
+  stageMode: 'playoff' | 'groups';
+  phase: 'playoff' | 'groups' | 'groups_done';
+  format: 'round_robin' | 'swiss' | 'gsl' | null;
+  groupsCount: number;
+  advance: number;
+  swissRounds: number | null;
+  bestOf: number;
+  hasPlayoff: boolean;
+}
+
+export interface GroupsInfo {
+  swissTotal: number | null;
+  tables: { no: number; standings: StandingRow[] }[];
+}
+
+export interface PlayoffPreview {
+  ties: boolean;
+  order: { id: number; name: string; group: number | null; rank: number | null; tiedBySeed: boolean }[];
+  matches: MatchDto[];
+}
+
+export interface Preview {
+  matches: MatchDto[];
+  groupAssignment?: { no: number; teams: { id: number; name: string; seed: number }[] }[];
 }

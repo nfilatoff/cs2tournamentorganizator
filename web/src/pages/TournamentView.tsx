@@ -1,16 +1,17 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { api, type MatchDto, type Me, type Team, type TournamentDetails } from '../api';
+import { api, type Me, type Preview, type Team, type TournamentDetails } from '../api';
 import { useI18n } from '../i18n';
 import { BracketTree } from '../components/BracketTree';
 import type { MatchActions } from '../components/MatchCard';
+import { GroupAssignment, GroupsView, PlayoffPanel } from '../components/GroupsView';
 
 export function TournamentView({ me }: { me: Me }) {
   const { t, err } = useI18n();
   const { id } = useParams();
   const navigate = useNavigate();
   const [tr, setTr] = useState<TournamentDetails | null>(null);
-  const [preview, setPreview] = useState<MatchDto[]>([]);
+  const [preview, setPreview] = useState<Preview>({ matches: [] });
   const [myTeams, setMyTeams] = useState<Team[]>([]);
   const [allTeams, setAllTeams] = useState<Team[]>([]);
   const [teamId, setTeamId] = useState<number | null>(null);
@@ -43,7 +44,7 @@ export function TournamentView({ me }: { me: Me }) {
   const inRegistration = tr?.status === 'registration';
   useEffect(() => {
     if (!inRegistration) return;
-    api<{ matches: MatchDto[] }>(`/api/tournaments/${id}/preview`).then((p) => setPreview(p.matches)).catch(() => setPreview([]));
+    api<Preview>(`/api/tournaments/${id}/preview`).then(setPreview).catch(() => setPreview({ matches: [] }));
   }, [id, inRegistration, seedKey]);
 
   const act = async (fn: () => Promise<TournamentDetails | unknown>) => {
@@ -179,14 +180,30 @@ export function TournamentView({ me }: { me: Me }) {
         </label>
       )}
 
-      {tr.status === 'registration' && preview.length > 0 && (
+      {tr.status === 'registration' && (preview.groupAssignment || preview.matches.length > 0) && (
         <>
           <h2>{t('preview.title')}</h2>
-          <p className="muted">{t('preview.hint')}</p>
-          <BracketTree matches={preview} format={tr.format} />
+          <p className="muted">{preview.groupAssignment ? t('preview.groupsHint') : t('preview.hint')}</p>
+          {preview.groupAssignment
+            ? <GroupAssignment groups={preview.groupAssignment} />
+            : <BracketTree matches={preview.matches} format={tr.format} />}
         </>
       )}
-      {tr.status !== 'registration' && <BracketTree matches={tr.matches} format={tr.format} actions={actions} />}
+      {tr.status !== 'registration' && (
+        <>
+          {tr.groups && <p className="muted">{t(`phase.${tr.groupConfig.phase}` as 'phase.groups')}</p>}
+          {tr.groups && <GroupsView tr={tr} actions={actions} />}
+          {admin && tr.groupConfig.phase === 'groups_done' && tr.groupConfig.hasPlayoff && <PlayoffPanel tr={tr} onDone={setTr} />}
+          {admin && tr.groupConfig.stageMode === 'groups' && tr.groupConfig.phase === 'playoff' && (
+            <p>
+              <button className="ghost" onClick={() => confirm(t('playoff.confirmReset')) && act(() => api(`/api/tournaments/${tr.id}/playoff/reset`, { method: 'POST', body: {} }))}>
+                {t('playoff.reset')}
+              </button>
+            </p>
+          )}
+          {tr.matches.some((m) => m.stage === 'playoff') && <BracketTree matches={tr.matches} format={tr.format} actions={actions} />}
+        </>
+      )}
     </>
   );
 }

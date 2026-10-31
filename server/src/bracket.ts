@@ -3,7 +3,7 @@ import { AppError } from './errors.js';
 // для любого числа команд (недостающие места до степени двойки заполняются bye).
 
 export type Format = 'single' | 'double';
-export type BracketId = 'W' | 'L' | 'GF';
+export type BracketId = 'W' | 'L' | 'GF' | 'G';
 
 export type Source =
   | { t: 'seed' }

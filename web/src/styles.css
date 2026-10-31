@@ -64,3 +64,6 @@ main { max-width: 1200px; }
 .links { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; z-index: 0; }
 .links path { fill: none; stroke: #4a5465; stroke-width: 2; }
 .match.bye { opacity: .5; }
+.standings td, .standings th { padding: 5px 8px; }
+.standings tr.qualified td:first-child { border-left: 3px solid var(--accent); }
+.matchlist { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
