@@ -1,0 +1,684 @@
+using System;
+using System.IO;
+using System.Data;
+using System.Data.Common;
+using System.Text.Json;
+using System.Globalization;
+using Microsoft.Data.Sqlite;
+using Dapper;
+using CounterStrikeSharp.API;
+using CounterStrikeSharp.API.Core;
+using CounterStrikeSharp.API.Modules.Memory;
+using CsvHelper;
+using CsvHelper.Configuration;
+using MySqlConnector;
+
+
+
+namespace ArenaPro
+{
+    public class Database
+    {
+        private string connectionString = "";
+        private bool isSqlite = true;
+
+        // Writes run one after another, in the order they were requested, each on its own (pooled) connection.
+        // A single shared connection used by overlapping writes lost data, and callers that queued their write after an
+        // HTTP request could have it land out of order (e.g. the map CSV exported before the last round's stats).
+        private readonly object writeQueueLock = new();
+        private Task writeQueueTail = Task.CompletedTask;
+
+        private DbConnection OpenConnection()
+        {
+            DbConnection connection = isSqlite ? new SqliteConnection(connectionString) : new MySqlConnection(connectionString);
+            connection.Open();
+            return connection;
+        }
+
+        private async Task<DbConnection> OpenConnectionAsync()
+        {
+            DbConnection connection = isSqlite ? new SqliteConnection(connectionString) : new MySqlConnection(connectionString);
+            await connection.OpenAsync();
+            return connection;
+        }
+
+        private string Now => isSqlite ? "datetime('now')" : "NOW()";
+
+        // Call from the game thread, in the order the writes must happen. Errors are logged by each operation.
+        private Task EnqueueWrite(string name, Func<DbConnection, Task> operation)
+        {
+            lock (writeQueueLock)
+            {
+                writeQueueTail = writeQueueTail.ContinueWith(async _ =>
+                {
+                    try
+                    {
+                        await using DbConnection connection = await OpenConnectionAsync();
+                        await operation(connection);
+                    }
+                    catch (Exception ex)
+                    {
+                        Log($"[{name} - FATAL] Database error: {ex.Message}");
+                    }
+                }, TaskScheduler.Default).Unwrap();
+                return writeQueueTail;
+            }
+        }
+
+        DatabaseConfig? config;
+        public DatabaseType databaseType { get; set; }
+
+        public void InitializeDatabase(string directory)
+        {
+            ConnectDatabase(directory);
+            try
+            {
+                using DbConnection connection = OpenConnection();
+                string dbType = isSqlite ? "SQLite" : "MySQL";
+                Log($"[InitializeDatabase] {dbType} Database connection successful");
+
+                // Create the `arenapro_stats_matches`, `arenapro_stats_players` and `arenapro_stats_maps` tables if they doesn't exist
+                if (isSqlite) {
+                    // WAL lets the separate connections read while another one writes.
+                    connection.Execute("PRAGMA journal_mode=WAL;");
+                    CreateRequiredTablesSQLite(connection);
+                } else {
+                    CreateRequiredTablesSQL(connection);
+                    try
+                    {
+                        // Tables created by earlier versions have VARCHAR(16), too short for team names.
+                        connection.Execute("ALTER TABLE arenapro_stats_maps MODIFY winner VARCHAR(255) NOT NULL DEFAULT ''");
+                    }
+                    catch (Exception ex)
+                    {
+                        Log($"[InitializeDatabase] Could not widen arenapro_stats_maps.winner: {ex.Message}");
+                    }
+                }
+
+                Log("[InitializeDatabase] Table arenapro_stats_matches created (or already exists)");
+                Log("[InitializeDatabase] Table arenapro_stats_players created (or already exists)");
+                Log("[InitializeDatabase] Table arenapro_stats_maps created (or already exists)");
+            }
+            catch (Exception ex)
+            {
+                Log($"[InitializeDatabase - FATAL] Database connection or table creation error: {ex.Message}");
+            }
+        }
+
+        public void ConnectDatabase(string directory)
+        {
+            try
+            {
+                SetDatabaseConfig(directory);
+
+                // Default Timeout: how long SQLite waits for another connection's write to finish instead of failing.
+                string sqliteConnectionString = $"Data Source={Path.Join(directory, "arenapro.db")};Default Timeout=30;Pooling=True";
+                if (databaseType == DatabaseType.SQLite)
+                {
+                    connectionString = sqliteConnectionString;
+                    isSqlite = true;
+                }
+                else if (config != null && databaseType == DatabaseType.MySQL)
+                {
+                    connectionString = $"Server={config.MySqlHost};Port={config.MySqlPort};Database={config.MySqlDatabase};User Id={config.MySqlUsername};Password={config.MySqlPassword};";
+                    isSqlite = false;
+                }
+                else
+                {
+                    Log($"[InitializeDatabase] Invalid database specified, using SQLite.");
+                    connectionString = sqliteConnectionString;
+                    isSqlite = true;
+                    databaseType = DatabaseType.SQLite;
+                }
+            } 
+            catch (Exception ex)
+            {
+                Log($"[InitializeDatabase - FATAL] Database connection error: {ex.Message}");
+            }
+
+        }
+
+        public void CreateRequiredTablesSQLite(IDbConnection connection)
+{
+            connection.Execute($@"
+            CREATE TABLE IF NOT EXISTS arenapro_stats_matches (
+                matchid INTEGER PRIMARY KEY AUTOINCREMENT,
+                start_time DATETIME NOT NULL,
+                end_time DATETIME DEFAULT NULL,
+                winner TEXT NOT NULL DEFAULT '',
+                series_type TEXT NOT NULL DEFAULT '',
+                team1_name TEXT NOT NULL DEFAULT '',
+                team1_score INTEGER NOT NULL DEFAULT 0,
+                team2_name TEXT NOT NULL DEFAULT '',
+                team2_score INTEGER NOT NULL DEFAULT 0,
+                server_ip TEXT NOT NULL DEFAULT '0'
+            )");
+
+            connection.Execute(@"
+                CREATE TABLE IF NOT EXISTS arenapro_stats_maps (
+                    matchid INTEGER NOT NULL,
+                    mapnumber INTEGER NOT NULL,
+                    start_time DATETIME NOT NULL,
+                    end_time DATETIME DEFAULT NULL,
+                    winner TEXT NOT NULL DEFAULT '',
+                    mapname TEXT NOT NULL DEFAULT '',
+                    team1_score INTEGER NOT NULL DEFAULT 0,
+                    team2_score INTEGER NOT NULL DEFAULT 0,
+                    PRIMARY KEY (matchid, mapnumber),
+                    FOREIGN KEY (matchid) REFERENCES arenapro_stats_matches (matchid)
+                )");
+
+            connection.Execute(@"
+                CREATE TABLE IF NOT EXISTS arenapro_stats_players (
+                    matchid INTEGER NOT NULL,
+                    mapnumber INTEGER NOT NULL,
+                    steamid64 INTEGER NOT NULL,
+                    team TEXT NOT NULL DEFAULT '',
+                    name TEXT NOT NULL,
+                    kills INTEGER NOT NULL,
+                    deaths INTEGER NOT NULL,
+                    damage INTEGER NOT NULL,
+                    assists INTEGER NOT NULL,
+                    enemy5ks INTEGER NOT NULL,
+                    enemy4ks INTEGER NOT NULL,
+                    enemy3ks INTEGER NOT NULL,
+                    enemy2ks INTEGER NOT NULL,
+                    utility_count INTEGER NOT NULL,
+                    utility_damage INTEGER NOT NULL,
+                    utility_successes INTEGER NOT NULL,
+                    utility_enemies INTEGER NOT NULL,
+                    flash_count INTEGER NOT NULL,
+                    flash_successes INTEGER NOT NULL,
+                    health_points_removed_total INTEGER NOT NULL,
+                    health_points_dealt_total INTEGER NOT NULL,
+                    shots_fired_total INTEGER NOT NULL,
+                    shots_on_target_total INTEGER NOT NULL,
+                    v1_count INTEGER NOT NULL,
+                    v1_wins INTEGER NOT NULL,
+                    v2_count INTEGER NOT NULL,
+                    v2_wins INTEGER NOT NULL,
+                    entry_count INTEGER NOT NULL,
+                    entry_wins INTEGER NOT NULL,
+                    equipment_value INTEGER NOT NULL,
+                    money_saved INTEGER NOT NULL,
+                    kill_reward INTEGER NOT NULL,
+                    live_time INTEGER NOT NULL,
+                    head_shot_kills INTEGER NOT NULL,
+                    cash_earned INTEGER NOT NULL,
+                    enemies_flashed INTEGER NOT NULL,
+                    PRIMARY KEY (matchid, mapnumber, steamid64),
+                    FOREIGN KEY (matchid) REFERENCES arenapro_stats_matches (matchid),
+                    FOREIGN KEY (matchid, mapnumber) REFERENCES arenapro_stats_maps (matchid, mapnumber)
+                )");
+        }
+
+        public void CreateRequiredTablesSQL(IDbConnection connection)
+{
+            connection.Execute($@"
+                CREATE TABLE IF NOT EXISTS arenapro_stats_matches (
+                    matchid INT PRIMARY KEY AUTO_INCREMENT,
+                    start_time DATETIME NOT NULL,
+                    end_time DATETIME DEFAULT NULL,
+                    winner VARCHAR(255) NOT NULL DEFAULT '',
+                    series_type VARCHAR(255) NOT NULL DEFAULT '',
+                    team1_name VARCHAR(255) NOT NULL DEFAULT '',
+                    team1_score INT NOT NULL DEFAULT 0,
+                    team2_name VARCHAR(255) NOT NULL DEFAULT '',
+                    team2_score INT NOT NULL DEFAULT 0,
+                    server_ip VARCHAR(255) NOT NULL DEFAULT '0'
+                )");
+                
+            connection.Execute($@"
+            CREATE TABLE IF NOT EXISTS arenapro_stats_maps (
+                matchid INT NOT NULL,
+                mapnumber TINYINT(3) UNSIGNED NOT NULL,
+                start_time DATETIME NOT NULL,
+                end_time DATETIME DEFAULT NULL,
+                winner VARCHAR(255) NOT NULL DEFAULT '',
+                mapname VARCHAR(64) NOT NULL DEFAULT '',
+                team1_score INT NOT NULL DEFAULT 0,
+                team2_score INT NOT NULL DEFAULT 0,
+                PRIMARY KEY (matchid, mapnumber),
+                INDEX mapnumber_index (mapnumber),
+                CONSTRAINT arenapro_stats_maps_matchid FOREIGN KEY (matchid) REFERENCES arenapro_stats_matches (matchid)
+            )");
+
+            connection.Execute($@"
+            CREATE TABLE IF NOT EXISTS arenapro_stats_players (
+                matchid INT NOT NULL,
+                mapnumber TINYINT(3) UNSIGNED NOT NULL,
+                steamid64 BIGINT NOT NULL,
+                team VARCHAR(255) NOT NULL DEFAULT '',
+                name VARCHAR(255) NOT NULL,
+                kills INT NOT NULL,
+                deaths INT NOT NULL,
+                damage INT NOT NULL,
+                assists INT NOT NULL,
+                enemy5ks INT NOT NULL,
+                enemy4ks INT NOT NULL,
+                enemy3ks INT NOT NULL,
+                enemy2ks INT NOT NULL,
+                utility_count INT NOT NULL,
+                utility_damage INT NOT NULL,
+                utility_successes INT NOT NULL,
+                utility_enemies INT NOT NULL,
+                flash_count INT NOT NULL,
+                flash_successes INT NOT NULL,
+                health_points_removed_total INT NOT NULL,
+                health_points_dealt_total INT NOT NULL,
+                shots_fired_total INT NOT NULL,
+                shots_on_target_total INT NOT NULL,
+                v1_count INT NOT NULL,
+                v1_wins INT NOT NULL,
+                v2_count INT NOT NULL,
+                v2_wins INT NOT NULL,
+                entry_count INT NOT NULL,
+                entry_wins INT NOT NULL,
+                equipment_value INT NOT NULL,
+                money_saved INT NOT NULL,
+                kill_reward INT NOT NULL,
+                live_time INT NOT NULL,
+                head_shot_kills INT NOT NULL,
+                cash_earned INT NOT NULL,
+                enemies_flashed INT NOT NULL,
+                PRIMARY KEY (matchid, mapnumber, steamid64),
+                CONSTRAINT fk_player_map_ref FOREIGN KEY (matchid, mapnumber) 
+                    REFERENCES arenapro_stats_maps (matchid, mapnumber)
+            )");
+        }
+
+        // Creates (or reopens) the match row on map 0 and the map row, and returns the match id. For a match config with its own
+        // matchid both rows are upserted: a reused matchid used to fail the insert, leave the map row missing, and on MySQL make
+        // every player stats row fail its foreign key. Runs on its own connection.
+        public long InitMatch(string team1name, string team2name, string serverIp, bool isMatchSetup, long liveMatchId, int mapNumber, string seriesType, MatchConfig matchConfig)
+        {
+            try
+            {
+                using DbConnection connection = OpenConnection();
+                string mapName = isMatchSetup ? matchConfig.Maplist[mapNumber] : Server.MapName;
+                bool hasOwnMatchId = isMatchSetup && liveMatchId != -1;
+                long matchId = liveMatchId;
+
+                if (hasOwnMatchId)
+                {
+                    // On map 0 a reused matchid reopens the match; on later maps the row is only created if it is missing.
+                    string matchUpsert = mapNumber == 0
+                        ? (isSqlite
+                            ? "ON CONFLICT(matchid) DO UPDATE SET team1_name = excluded.team1_name, team2_name = excluded.team2_name, series_type = excluded.series_type, server_ip = excluded.server_ip, end_time = NULL, winner = ''"
+                            : "ON DUPLICATE KEY UPDATE team1_name = VALUES(team1_name), team2_name = VALUES(team2_name), series_type = VALUES(series_type), server_ip = VALUES(server_ip), end_time = NULL, winner = ''")
+                        : (isSqlite ? "ON CONFLICT(matchid) DO NOTHING" : "ON DUPLICATE KEY UPDATE matchid = matchid");
+                    connection.Execute($@"
+                        INSERT INTO arenapro_stats_matches (matchid, start_time, team1_name, team2_name, series_type, server_ip)
+                        VALUES (@liveMatchId, {Now}, @team1name, @team2name, @seriesType, @serverIp)
+                        {matchUpsert}",
+                        new { liveMatchId, team1name, team2name, seriesType, serverIp });
+                }
+                else if (mapNumber == 0)
+                {
+                    connection.Execute($@"
+                        INSERT INTO arenapro_stats_matches (start_time, team1_name, team2_name, series_type, server_ip)
+                        VALUES ({Now}, @team1name, @team2name, @seriesType, @serverIp)",
+                        new { team1name, team2name, seriesType, serverIp });
+                    // Same connection, so this is the row inserted above.
+                    matchId = connection.ExecuteScalar<long>(isSqlite ? "SELECT last_insert_rowid()" : "SELECT LAST_INSERT_ID()");
+                }
+
+                if (matchId == -1)
+                {
+                    Log($"[InitMatch] No match id for map {mapNumber}, map row not created.");
+                    return liveMatchId;
+                }
+
+                string mapUpsert = isSqlite
+                    ? "ON CONFLICT(matchid, mapnumber) DO UPDATE SET start_time = excluded.start_time, mapname = excluded.mapname, end_time = NULL, winner = '', team1_score = 0, team2_score = 0"
+                    : "ON DUPLICATE KEY UPDATE start_time = VALUES(start_time), mapname = VALUES(mapname), end_time = NULL, winner = '', team1_score = 0, team2_score = 0";
+                connection.Execute($@"
+                    INSERT INTO arenapro_stats_maps (matchid, start_time, mapnumber, mapname)
+                    VALUES (@matchId, {Now}, @mapNumber, @mapName)
+                    {mapUpsert}",
+                    new { matchId, mapNumber, mapName });
+
+                Log($"[InitMatch] Match {matchId} map {mapNumber} ({mapName}) recorded");
+                return matchId;
+            }
+            catch (Exception ex)
+            {
+                Log($"[InitMatch - FATAL] Error inserting data: {ex.Message}");
+                return liveMatchId;
+            }
+        }
+
+        public void UpdateTeamData(int matchId, string team1name, string team2name) {
+            try
+            {
+                using DbConnection connection = OpenConnection();
+                connection.Execute(@"
+                    UPDATE arenapro_stats_matches
+                    SET team1_name = @team1name, team2_name = @team2name
+                    WHERE matchid = @matchId",
+                    new { matchId, team1name, team2name });
+
+                Log($"[UpdateTeamData] Data updated for matchId: {matchId} team1name: {team1name} team2name: {team2name}");
+            }
+            catch (Exception ex)
+            {
+                Log($"[UpdateTeamData - FATAL] Error updating data of matchId: {matchId} [ERROR]: {ex.Message}");
+            }
+        }
+
+        public Task SetMapEndData(long matchId, int mapNumber, string winnerName, int t1score, int t2score, int team1SeriesScore, int team2SeriesScore) => EnqueueWrite("SetMapEndData", async connection =>
+        {
+            try
+            {
+                string dateTimeExpression = Now;
+
+                string sqlQuery = $@"
+                    UPDATE arenapro_stats_maps
+                    SET winner = @winnerName, end_time = {dateTimeExpression}, team1_score = @t1score, team2_score = @t2score
+                    WHERE matchid = @matchId AND mapNumber = @mapNumber";
+
+                try
+                {
+                    await connection.ExecuteAsync(sqlQuery, new { matchId, winnerName, t1score, t2score, mapNumber });
+                }
+                catch (Exception ex)
+                {
+                    // The series score below is still written.
+                    Log($"[SetMapEndData - FATAL] Error updating map {mapNumber} of matchId: {matchId} [ERROR]: {ex.Message}");
+                }
+
+                sqlQuery = $@"
+                    UPDATE arenapro_stats_matches
+                    SET team1_score = @team1SeriesScore, team2_score = @team2SeriesScore
+                    WHERE matchid = @matchId";
+
+                await connection.ExecuteAsync(sqlQuery, new { matchId, team1SeriesScore, team2SeriesScore });
+
+                Log($"[SetMapEndData] Data updated for matchId: {matchId} mapNumber: {mapNumber} winnerName: {winnerName}");
+            }
+            catch (Exception ex)
+            {
+                Log($"[SetMapEndData - FATAL] Error updating data of matchId: {matchId} mapNumber: {mapNumber} [ERROR]: {ex.Message}");
+            } 
+        });
+
+        public Task SetMatchEndData(long matchId, string winnerName, int t1score, int t2score) => EnqueueWrite("SetMatchEndData", async connection =>
+        {
+            try
+            {
+                string dateTimeExpression = Now;
+
+                string sqlQuery = $@"
+                    UPDATE arenapro_stats_matches
+                    SET winner = @winnerName, end_time = {dateTimeExpression}, team1_score = @t1score, team2_score = @t2score
+                    WHERE matchid = @matchId";
+
+                await connection.ExecuteAsync(sqlQuery, new { matchId, winnerName, t1score, t2score });
+
+                Log($"[SetMatchEndData] Data updated for matchId: {matchId} winnerName: {winnerName}");
+            }
+            catch (Exception ex)
+            {
+                Log($"[SetMatchEndData - FATAL] Error updating data of matchId: {matchId} [ERROR]: {ex.Message}");
+            }
+        });
+
+        public Task UpdateMapStatsAsync(long matchId, int mapNumber, int t1score, int t2score) => EnqueueWrite("UpdateMapStats", async connection =>
+        {
+            try
+            {
+                string sqlQuery = $@"
+                    UPDATE arenapro_stats_maps
+                    SET team1_score = @t1score, team2_score = @t2score
+                    WHERE matchid = @matchId AND mapnumber = @mapNumber";
+
+                await connection.ExecuteAsync(sqlQuery, new { matchId, mapNumber, t1score, t2score });
+            }
+            catch (Exception ex)
+            {
+                Log($"[UpdatePlayerStats - FATAL] Error updating data of matchId: {matchId} [ERROR]: {ex.Message}");
+            }
+        });
+
+        public Task UpdatePlayerStatsAsync(long matchId, int mapNumber, Dictionary<ulong, Dictionary<string, object>> playerStatsDictionary) => EnqueueWrite("UpdatePlayerStats", async connection =>
+        {
+            try
+            {
+                foreach (ulong steamid64 in playerStatsDictionary.Keys)
+                {
+                    Log($"[UpdatePlayerStats] Going to update data for Match: {matchId}, MapNumber: {mapNumber}, Player: {steamid64}");
+
+                    var playerStats = playerStatsDictionary[steamid64];
+
+                    string sqlQuery = $@"
+                    INSERT INTO arenapro_stats_players (
+                        matchid, mapnumber, steamid64, team, name, kills, deaths, damage, assists,
+                        enemy5ks, enemy4ks, enemy3ks, enemy2ks, utility_count, utility_damage,
+                        utility_successes, utility_enemies, flash_count, flash_successes,
+                        health_points_removed_total, health_points_dealt_total, shots_fired_total,
+                        shots_on_target_total, v1_count, v1_wins, v2_count, v2_wins, entry_count, entry_wins,
+                        equipment_value, money_saved, kill_reward, live_time, head_shot_kills,
+                        cash_earned, enemies_flashed)
+                    VALUES (
+                        @matchId, @mapNumber, @steamid64, @team, @name, @kills, @deaths, @damage, @assists,
+                        @enemy5ks, @enemy4ks, @enemy3ks, @enemy2ks, @utility_count, @utility_damage,
+                        @utility_successes, @utility_enemies, @flash_count, @flash_successes,
+                        @health_points_removed_total, @health_points_dealt_total, @shots_fired_total,
+                        @shots_on_target_total, @v1_count, @v1_wins, @v2_count, @v2_wins, @entry_count,
+                        @entry_wins, @equipment_value, @money_saved, @kill_reward, @live_time,
+                        @head_shot_kills, @cash_earned, @enemies_flashed)
+                    ON DUPLICATE KEY UPDATE
+                        team = @team, name = @name, kills = @kills, deaths = @deaths, damage = @damage,
+                        assists = @assists, enemy5ks = @enemy5ks, enemy4ks = @enemy4ks, enemy3ks = @enemy3ks,
+                        enemy2ks = @enemy2ks, utility_count = @utility_count, utility_damage = @utility_damage,
+                        utility_successes = @utility_successes, utility_enemies = @utility_enemies,
+                        flash_count = @flash_count, flash_successes = @flash_successes,
+                        health_points_removed_total = @health_points_removed_total,
+                        health_points_dealt_total = @health_points_dealt_total,
+                        shots_fired_total = @shots_fired_total, shots_on_target_total = @shots_on_target_total,
+                        v1_count = @v1_count, v1_wins = @v1_wins, v2_count = @v2_count, v2_wins = @v2_wins,
+                        entry_count = @entry_count, entry_wins = @entry_wins,
+                        equipment_value = @equipment_value, money_saved = @money_saved,
+                        kill_reward = @kill_reward, live_time = @live_time, head_shot_kills = @head_shot_kills,
+                        cash_earned = @cash_earned, enemies_flashed = @enemies_flashed";
+
+                    if (isSqlite) {
+                        sqlQuery = @"
+                        INSERT OR REPLACE INTO arenapro_stats_players (
+                            matchid, mapnumber, steamid64, team, name, kills, deaths, damage, assists,
+                            enemy5ks, enemy4ks, enemy3ks, enemy2ks, utility_count, utility_damage,
+                            utility_successes, utility_enemies, flash_count, flash_successes,
+                            health_points_removed_total, health_points_dealt_total, shots_fired_total,
+                            shots_on_target_total, v1_count, v1_wins, v2_count, v2_wins, entry_count, entry_wins,
+                            equipment_value, money_saved, kill_reward, live_time, head_shot_kills,
+                            cash_earned, enemies_flashed)
+                        VALUES (
+                            @matchId, @mapNumber, @steamid64, @team, @name, @kills, @deaths, @damage, @assists,
+                            @enemy5ks, @enemy4ks, @enemy3ks, @enemy2ks, @utility_count, @utility_damage,
+                            @utility_successes, @utility_enemies, @flash_count, @flash_successes,
+                            @health_points_removed_total, @health_points_dealt_total, @shots_fired_total,
+                            @shots_on_target_total, @v1_count, @v1_wins, @v2_count, @v2_wins, @entry_count,
+                            @entry_wins, @equipment_value, @money_saved, @kill_reward, @live_time,
+                            @head_shot_kills, @cash_earned, @enemies_flashed)";
+                    }
+
+                    try
+                    {
+                    await connection.ExecuteAsync(sqlQuery,
+                        new
+                        {
+                            matchId,
+                            mapNumber,
+                            steamid64,
+                            team = playerStats["TeamName"],
+                            name = playerStats["PlayerName"],
+                            kills = playerStats["Kills"],
+                            deaths = playerStats["Deaths"],
+                            damage = playerStats["Damage"],
+                            assists = playerStats["Assists"],
+                            enemy5ks = playerStats["Enemy5Ks"],
+                            enemy4ks = playerStats["Enemy4Ks"],
+                            enemy3ks = playerStats["Enemy3Ks"],
+                            enemy2ks = playerStats["Enemy2Ks"],
+                            utility_count = playerStats["UtilityCount"],
+                            utility_damage = playerStats["UtilityDamage"],
+                            utility_successes = playerStats["UtilitySuccess"],
+                            utility_enemies = playerStats["UtilityEnemies"],
+                            flash_count = playerStats["FlashCount"],
+                            flash_successes = playerStats["FlashSuccess"],
+                            health_points_removed_total = playerStats["HealthPointsRemovedTotal"],
+                            health_points_dealt_total = playerStats["HealthPointsDealtTotal"],
+                            shots_fired_total = playerStats["ShotsFiredTotal"],
+                            shots_on_target_total = playerStats["ShotsOnTargetTotal"],
+                            v1_count = playerStats["1v1Count"],
+                            v1_wins = playerStats["1v1Wins"],
+                            v2_count = playerStats["1v2Count"],
+                            v2_wins = playerStats["1v2Wins"],
+                            entry_count = playerStats["EntryCount"],
+                            entry_wins = playerStats["EntryWins"],
+                            equipment_value = playerStats["EquipmentValue"],
+                            money_saved = playerStats["MoneySaved"],
+                            kill_reward = playerStats["KillReward"],
+                            live_time = playerStats["LiveTime"],
+                            head_shot_kills = playerStats["HeadShotKills"],
+                            cash_earned = playerStats["CashEarned"],
+                            enemies_flashed = playerStats["EnemiesFlashed"]
+                        });
+
+                    Log($"[UpdatePlayerStats] Data inserted/updated for player {steamid64} in match {matchId}");
+                    }
+                    catch (Exception ex)
+                    {
+                        // One rejected row must not stop the rest of the players from being written.
+                        Log($"[UpdatePlayerStats - FATAL] Could not write player {steamid64} in match {matchId}: {ex.Message}");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Log($"[UpdatePlayerStats - FATAL] Error inserting/updating data: {ex.Message}");
+            }
+        });
+
+        public Task WritePlayerStatsToCsv(string filePath, long matchId, int mapNumber) => EnqueueWrite("WritePlayerStatsToCsv", async connection =>
+        {
+            try {
+                string csvFilePath = $"{filePath}/match_data_map{mapNumber}_{matchId}.csv";
+                string? directoryPath = Path.GetDirectoryName(csvFilePath);
+                if (directoryPath != null)
+                {
+                    if (!Directory.Exists(directoryPath))
+                    {
+                        Directory.CreateDirectory(directoryPath);
+                    }
+                }
+
+                using (var writer = new StreamWriter(csvFilePath))
+                using (var csv = new CsvWriter(writer, new CsvConfiguration(CultureInfo.InvariantCulture)))
+                {
+                    IEnumerable<dynamic> playerStatsData = await connection.QueryAsync(
+                        "SELECT * FROM arenapro_stats_players WHERE matchid = @MatchId AND mapnumber = @MapNumber ORDER BY team, kills DESC", new { MatchId = matchId, MapNumber = mapNumber });
+
+                    // Use the first data row to get the column names
+                    dynamic? firstDataRow = playerStatsData.FirstOrDefault();
+                    if (firstDataRow != null)
+                    {
+                        foreach (var propertyName in ((IDictionary<string, object>)firstDataRow).Keys)
+                        {
+                            csv.WriteField(propertyName);
+                        }
+                        csv.NextRecord(); // End of the column names row
+
+                        // Write data to the CSV file
+                        foreach (var playerStats in playerStatsData)
+                        {
+                            foreach (var propertyValue in ((IDictionary<string, object>)playerStats).Values)
+                            {
+                                csv.WriteField(propertyValue);
+                            }
+                            csv.NextRecord();
+                        }
+                    }
+                }
+                Log($"[WritePlayerStatsToCsv] Match stats for ID: {matchId} written successfully at: {csvFilePath}");
+            }
+            catch (Exception ex)
+            {
+                Log($"[WritePlayerStatsToCsv - FATAL] Error writing data: {ex.Message}");
+            }
+
+        });
+
+        private void CreateDefaultConfigFile(string configFile)
+        {
+            // Create a default configuration
+            DatabaseConfig defaultConfig = new DatabaseConfig
+            {
+                DatabaseType = "SQLite",
+                MySqlHost = "your_mysql_host",
+                MySqlDatabase = "your_mysql_database",
+                MySqlUsername = "your_mysql_username",
+                MySqlPassword = "your_mysql_password",
+                MySqlPort = 3306
+            };
+
+            // Serialize and save the default configuration to the file
+            string defaultConfigJson = JsonSerializer.Serialize(defaultConfig, new JsonSerializerOptions { WriteIndented = true });
+            File.WriteAllText(configFile, defaultConfigJson);
+
+            Log($"[InitializeDatabase] Default configuration file created at: {configFile}");
+        }
+
+        private void SetDatabaseConfig(string directory)
+        {
+            string fileName = "database.json";
+            string configFile = Path.Combine(Server.GameDirectory + "/csgo/cfg/ArenaPro", fileName);
+            if (!File.Exists(configFile))
+            {
+                // Create a default configuration if the file doesn't exist
+                Log($"[InitializeDatabase] database.json doesn't exist, creating default!");
+                CreateDefaultConfigFile(configFile);
+            }
+
+            try
+            {
+                string jsonContent = File.ReadAllText(configFile);
+                config = JsonSerializer.Deserialize<DatabaseConfig>(jsonContent);
+                // Set the database type
+                if (config != null && config.DatabaseType?.Trim().ToLower() == "mysql") {
+                    databaseType = DatabaseType.MySQL;
+                } else {
+                    databaseType = DatabaseType.SQLite;
+                }
+                
+            }
+            catch (JsonException ex)
+            {
+                Log($"[TryDeserializeConfig - ERROR] Error deserializing database.json: {ex.Message}. Using SQLite DB");
+                databaseType = DatabaseType.SQLite;
+            }
+        }
+
+        private void Log(string message)
+        {
+            Console.WriteLine("[ArenaPro] " + message);
+        }
+
+        public enum DatabaseType
+        {
+            SQLite,
+            MySQL
+        }
+    }
+
+    public class DatabaseConfig
+    {
+        public string? DatabaseType { get; set; }
+        public string? MySqlHost { get; set; }
+        public string? MySqlDatabase { get; set; }
+        public string? MySqlUsername { get; set; }
+        public string? MySqlPassword { get; set; }
+        public int? MySqlPort { get; set; }
+    }
+
+}
