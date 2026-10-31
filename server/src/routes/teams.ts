@@ -5,16 +5,16 @@ import { z } from 'zod';
 import { db, tx } from '../db.js';
 import { getSession, requirePlayer } from '../auth.js';
 
-const MAX_MEMBERS = 10;
+export const MAX_MEMBERS = 10;
 
-interface TeamRow { id: number; name: string; join_code: string; captain_id: number }
+export interface TeamRow { id: number; name: string; join_code: string; captain_id: number }
 interface MemberRow { player_id: number; name: string; steam_id: string; avatar_url: string | null }
 
 function playerId(req: Parameters<typeof getSession>[0]): number {
   return getSession(req)!.userId;
 }
 
-function members(teamId: number): MemberRow[] {
+export function members(teamId: number): MemberRow[] {
   return db.prepare(`
     SELECT tm.player_id, p.name, p.steam_id, p.avatar_url
     FROM team_members tm JOIN players p ON p.id = tm.player_id
@@ -22,7 +22,7 @@ function members(teamId: number): MemberRow[] {
   `).all(teamId) as unknown as MemberRow[];
 }
 
-function teamDto(t: TeamRow) {
+export function teamDto(t: TeamRow) {
   return {
     id: t.id,
     name: t.name,
@@ -35,7 +35,7 @@ function teamDto(t: TeamRow) {
 }
 
 // Игрок состоит в составе команды, заявленной в незавершённом турнире.
-function inActiveRoster(teamId: number, pid: number): boolean {
+export function inActiveRoster(teamId: number, pid: number): boolean {
   const rows = db.prepare(`
     SELECT tt.roster FROM tournament_teams tt JOIN tournaments t ON t.id = tt.tournament_id
     WHERE tt.team_id = ? AND t.status != 'finished'
@@ -43,7 +43,7 @@ function inActiveRoster(teamId: number, pid: number): boolean {
   return rows.some((r) => (JSON.parse(r.roster) as number[]).includes(pid));
 }
 
-function inActiveTournament(teamId: number): boolean {
+export function inActiveTournament(teamId: number): boolean {
   return !!db.prepare(`
     SELECT 1 FROM tournament_teams tt JOIN tournaments t ON t.id = tt.tournament_id
     WHERE tt.team_id = ? AND t.status != 'finished'

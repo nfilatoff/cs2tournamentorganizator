@@ -7,6 +7,7 @@ import { Servers } from './pages/Servers';
 import { Maps } from './pages/Maps';
 import { Home } from './pages/Home';
 import { Teams } from './pages/Teams';
+import { AdminTeams } from './pages/AdminTeams';
 import { Tournaments } from './pages/Tournaments';
 import { TournamentForm } from './pages/TournamentForm';
 import { TournamentView } from './pages/TournamentView';
@@ -55,7 +56,7 @@ export function App() {
           <Route path="/tournaments" element={<Tournaments me={me} />} />
           <Route path="/tournaments/new" element={me.kind === 'admin' ? <TournamentForm /> : <Navigate to="/login" />} />
           <Route path="/tournaments/:id" element={<TournamentView me={me} />} />
-          <Route path="/teams" element={me.kind !== null ? <Teams me={me} /> : <Navigate to="/login" />} />
+          <Route path="/teams" element={me.kind === 'admin' ? <AdminTeams /> : me.kind === 'player' ? <Teams me={me} /> : <Navigate to="/login" />} />
           <Route path="/login" element={<Login onLogin={refresh} />} />
           <Route path="/servers" element={me.kind === 'admin' ? <Servers /> : <Navigate to="/login" />} />
           <Route path="/maps" element={me.kind === 'admin' ? <Maps /> : <Navigate to="/login" />} />

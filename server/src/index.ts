@@ -15,6 +15,7 @@ import { mapRoutes } from './routes/maps.js';
 import { teamRoutes } from './routes/teams.js';
 import { tournamentRoutes } from './routes/tournaments.js';
 import { arenaproRoutes } from './routes/arenapro.js';
+import { adminTeamRoutes } from './routes/adminTeams.js';
 import { dispatchAll, startDispatchTimer } from './dispatcher.js';
 
 async function ensureAdmin(): Promise<void> {
@@ -35,6 +36,7 @@ await app.register(authRoutes);
 await app.register(serverRoutes);
 await app.register(mapRoutes);
 await app.register(teamRoutes);
+await app.register(adminTeamRoutes);
 await app.register(tournamentRoutes);
 await app.register(arenaproRoutes);
 

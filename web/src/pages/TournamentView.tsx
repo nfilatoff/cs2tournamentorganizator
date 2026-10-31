@@ -124,6 +124,7 @@ export function TournamentView({ me }: { me: Me }) {
   const navigate = useNavigate();
   const [tr, setTr] = useState<TournamentDetails | null>(null);
   const [myTeams, setMyTeams] = useState<Team[]>([]);
+  const [allTeams, setAllTeams] = useState<Team[]>([]);
   const [teamId, setTeamId] = useState<number | null>(null);
   const [roster, setRoster] = useState<number[]>([]);
   const [shuffle, setShuffle] = useState(true);
@@ -143,8 +144,11 @@ export function TournamentView({ me }: { me: Me }) {
   }, [running, load]);
 
   useEffect(() => {
-    if (me.kind !== 'player') return;
-    api<Team[]>('/api/teams/mine').then((ts) => setMyTeams(ts.filter((x) => x.captainId === me.id))).catch(() => undefined);
+    if (me.kind === 'player') {
+      api<Team[]>('/api/teams/mine').then((ts) => setMyTeams(ts.filter((x) => x.captainId === me.id))).catch(() => undefined);
+    } else if (me.kind === 'admin') {
+      api<Team[]>('/api/admin/teams').then(setAllTeams).catch(() => undefined);
+    }
   }, [me]);
 
   const act = async (fn: () => Promise<TournamentDetails | unknown>) => {
@@ -162,7 +166,7 @@ export function TournamentView({ me }: { me: Me }) {
 
   const admin = me.kind === 'admin';
   const registeredIds = new Set(tr.teams.map((x) => x.id));
-  const selectable = myTeams.filter((x) => !registeredIds.has(x.id));
+  const selectable = (admin ? allTeams : myTeams).filter((x) => !registeredIds.has(x.id));
   const chosen = selectable.find((x) => x.id === teamId) ?? selectable[0];
   const effectiveRoster = roster.length > 0 ? roster : chosen?.members.slice(0, tr.teamSize).map((m) => m.id) ?? [];
 
@@ -201,7 +205,7 @@ export function TournamentView({ me }: { me: Me }) {
               {tr.teams.length === 0 && <tr><td className="muted">{t('view.noTeams')}</td></tr>}
             </tbody>
           </table>
-          {tr.status === 'registration' && me.kind === 'player' && (
+          {tr.status === 'registration' && me.kind !== null && (
             selectable.length > 0 && chosen ? (
               <div style={{ marginTop: 12 }}>
                 <label>{t('view.yourTeam')}
@@ -224,7 +228,7 @@ export function TournamentView({ me }: { me: Me }) {
                 <p><button onClick={register}>{t('view.register')}</button></p>
               </div>
             ) : (
-              <p className="muted">{t('view.needTeam', { n: tr.teamSize })}</p>
+              <p className="muted">{admin ? t('view.adminNeedTeam') : t('view.needTeam', { n: tr.teamSize })}</p>
             )
           )}
         </div>
