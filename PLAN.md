@@ -55,3 +55,12 @@
 - MatchZy и 2v2/Wingman (`players_per_team`, режим Wingman): нужен смоук-тест.
 - Загрузка Workshop-карт на сервере (нужен Steam Web API key) и на клиентах.
 - Совместимость MatchZy с текущим обновлением CS2.
+
+## Результаты смоук-теста сервера (2026-10-31)
+- Отдельная загрузка dedicated server не нужна: CS2 (app 730) запускается как сервер флагом `-dedicated`. Серверная копия лежит вне Steam (`D:\cs2-server\cs2`), обновляется через SteamCMD (`app_update 730 validate`).
+- Сервер Windows, версия 1.41.9.4, Metamod 2.0 (build 1483), CounterStrikeSharp (встроен в сборку MatchZy), MatchZy 0.9.2 загружаются без ошибок.
+- Ключи запуска: `-dedicated -console -condebug -usercon -insecure -ip 0.0.0.0 -port <порт> +sv_lan 1 +rcon_password <пароль> +game_type 0 +game_mode 2 +map <карта>`. Без `-usercon` RCON по TCP не слушает; без `-ip` сервер привязывается к первому адаптеру (на этом ПК это VPN).
+- **FACEIT Anti-Cheat блокирует запуск cs2.exe вне Steam-установки** («Отказано в доступе»). Перед запуском сервера клиент FACEIT нужно закрыть.
+- RCON: CS2 не поддерживает маркерный пакет, ответ читается «до паузы в данных» ([rcon.ts](server/src/rcon.ts)).
+- MatchZy принимает матч 2v2 (`players_per_team: 2`, `wingman: true`, `min_players_to_ready: 4`). `matchid` должен быть числом. Статус матча: `get5_status` (JSON).
+- Не проверено: переход в live с реальными игроками, `live_wingman.cfg`, Workshop-карты (нужен Steam Web API key для `-authkey`), события на HTTP-эндпоинт панели.
