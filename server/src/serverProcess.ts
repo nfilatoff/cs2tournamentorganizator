@@ -133,13 +133,14 @@ export async function startServer(id: number): Promise<void> {
   if (await rconAlive(s)) throw new AppError('serverAlreadyRunning');
 
   const cfg = writeCfg(root, s);
-  const child = spawn(exeIn(root), launchArgs(s, cfg), {
-    cwd: root,
-    // Отдельное окно консоли: сервер переживает перезапуск панели и виден администратору
-    detached: true,
-    stdio: 'ignore',
-    windowsHide: false,
-  });
+  const args = launchArgs(s, cfg);
+  // На Windows `start /wait` создаёт для cs2.exe настоящее окно консоли со своими потоками вывода
+  // (при stdio: 'ignore' окно открывалось пустым); cmd живёт, пока работает сервер, и даёт pid для учёта.
+  const child = process.platform === 'win32'
+    ? spawn('cmd.exe', ['/d', '/c', 'start', `CS2 server ${id}`, '/wait', '/D', root, exeIn(root), ...args], {
+        cwd: root, stdio: 'ignore', windowsHide: true,
+      })
+    : spawn(exeIn(root), args, { cwd: root, detached: true, stdio: 'ignore' });
   await new Promise<void>((ok, fail) => {
     child.once('spawn', ok);
     child.once('error', (e) => fail(new AppError('serverStartFailed', { message: e.message })));
@@ -175,7 +176,12 @@ export async function stopServer(id: number, force = false): Promise<void> {
   }
   for (let i = 0; i < 20 && procs.has(id); i++) await sleep(500);
   if (procs.get(id) === p) {
-    p.child.kill();
+    if (process.platform === 'win32' && p.child.pid) {
+      // Убиваем всё дерево: cmd и запущенный им cs2.exe
+      spawn('taskkill', ['/pid', String(p.child.pid), '/T', '/F'], { stdio: 'ignore', windowsHide: true }).unref();
+    } else {
+      p.child.kill();
+    }
     procs.delete(id);
   }
 }
