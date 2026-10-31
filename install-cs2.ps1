@@ -18,7 +18,7 @@ param(
     [string]$RepositoryUrl = 'https://github.com/nfilatoff/cs2tournamentorganizator.git',
     [string]$RepositoryBranch = '',
     # LAN IPv4 of this computer. Empty = 'auto': the panel detects the current address itself, so the computer needs no
-    # fixed IP, and the local CS2 server is reached through 127.0.0.1.
+    # fixed IP, and the local CS2 server is bound to the detected address.
     [string]$ServerAddress = '',
     [ValidateRange(1, 65535)][int]$ServerPort = 27015,
     [ValidateRange(1, 65535)][int]$PanelPort = 3000,
@@ -361,8 +361,18 @@ $settings = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'installation.json
 
 $exe = Join-Path $PSScriptRoot 'cs2\game\bin\win64\cs2.exe'
 Set-Location (Join-Path $PSScriptRoot 'cs2')
-# Without a fixed address (auto) the server listens on every adapter, including 127.0.0.1 for the panel.
-$extra = if ($settings.ServerAddress -and $settings.ServerAddress -ne 'auto') { @('-ip', $settings.ServerAddress) } else { @() }
+# Without -ip CS2 picks one adapter on its own (often a VPN one) and the panel cannot reach RCON, so the server is
+# always bound to an address: the fixed one, or for auto the LAN address the panel uses too (default route).
+$bind = $settings.ServerAddress
+if (-not $bind -or $bind -eq 'auto') {
+    try {
+        $udp = New-Object Net.Sockets.UdpClient
+        $udp.Connect('1.1.1.1', 53)
+        $bind = $udp.Client.LocalEndPoint.Address.ToString()
+        $udp.Close()
+    } catch { $bind = $null }
+}
+$extra = if ($bind -and $bind -notmatch '^(127\.|0\.|169\.254\.)') { @('-ip', $bind) } else { @() }
 # Optional Steam Web API key for Workshop maps: put it into authkey.txt next to this script.
 $keyFile = Join-Path $PSScriptRoot 'authkey.txt'
 if ((Test-Path -LiteralPath $keyFile) -and [IO.File]::ReadAllText($keyFile).Trim()) { $extra += @('-authkey', [IO.File]::ReadAllText($keyFile).Trim()) }

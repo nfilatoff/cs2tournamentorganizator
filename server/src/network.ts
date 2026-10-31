@@ -4,7 +4,7 @@ import { networkInterfaces } from 'node:os';
 // Адрес этого компьютера в локальной сети определяется сам: его не нужно назначать вручную, и смена IP
 // (DHCP, другой роутер) подхватывается без перезапуска.
 
-// Сервер CS2 на этом же компьютере: игрокам показывается текущий LAN-адрес, а панель говорит с ним через 127.0.0.1
+// Сервер CS2 на этом же компьютере: игрокам показывается текущий LAN-адрес, а панель говорит с ним по тому же LAN-адресу (сервер запускается с -ip этого адреса)
 export const AUTO_HOST = 'auto';
 export const isAutoHost = (host: string) => host.trim().toLowerCase() === AUTO_HOST;
 
@@ -58,7 +58,7 @@ export function publicHost(host: string): string {
 
 // Куда подключается сама панель (RCON)
 export function rconHost(host: string): string {
-  return isAutoHost(host) ? '127.0.0.1' : host;
+  return isAutoHost(host) ? current : host;
 }
 
 export async function startNetworkWatch(onChange?: (ip: string) => void): Promise<void> {

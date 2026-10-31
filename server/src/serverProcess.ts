@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { isIP } from 'node:net';
 import { join, resolve } from 'node:path';
 import { db, getSetting } from './db.js';
-import { AUTO_HOST } from './network.js';
+import { AUTO_HOST, isAutoHost, lanAddress } from './network.js';
 import { AppError } from './errors.js';
 import { getServer, withRcon, type ServerRow } from './dispatcher.js';
 
@@ -84,27 +84,13 @@ export function mapArgs(startMap: string): string[] {
   return ws ? ['+host_workshop_map', ws[1]!] : ['+map', startMap];
 }
 
-// cs2.exe — оконное приложение: свою консоль он открывает, но лог пишет в унаследованные stdout/stderr.
-// Поэтому на Windows сервер запускается из .cmd в отдельном окне консоли: cmd ждёт cs2.exe (в скрипте cmd
-// ждёт и оконные программы), а cs2.exe наследует от него консоль, и в окне виден весь вывод сервера.
-export function launcherText(root: string, title: string, args: string[]): string {
-  // В .cmd знак процента раскрывается как переменная
-  const q = (a: string) => (/[\s&|<>^()]/.test(a) ? `"${a}"` : a).replace(/%/g, '%%');
-  return [
-    '@echo off',
-    'rem Создано панелью турниров: запуск сервера CS2 с выводом в это окно.',
-    'chcp 65001 >nul',
-    `title ${title.replace(/[&|<>^%"]/g, '')}`,
-    `cd /d "${root}"`,
-    [`"${exeIn(root)}"`, ...args.map(q)].join(' '),
-  ].join('\r\n') + '\r\n';
-}
-
 function launchArgs(s: ManagedRow, cfg: string): string[] {
   const gm = GAME_MODES[s.game_mode] ?? GAME_MODES.competitive;
   const args = ['-dedicated', '-console', '-condebug', '-usercon', '-insecure', '-port', String(s.port), '-maxplayers', String(s.max_players)];
-  // Сервер с адресом auto слушает все адаптеры (и 127.0.0.1 для панели); -ip передаём только для явного адреса в LAN
-  if (isIP(s.host) === 4 && !s.host.startsWith('127.')) args.push('-ip', s.host);
+  // Без -ip CS2 сам выбирает один адаптер для RCON (часто VPN), поэтому адрес закрепляем: для auto это LAN-адрес
+  // компьютера, к которому панель потом и подключается (rconHost)
+  const bind = isAutoHost(s.host) ? lanAddress() : s.host;
+  if (isIP(bind) === 4 && !bind.startsWith('127.')) args.push('-ip', bind);
   if (s.tv_enable) args.push('+tv_port', String(tvPortOf(s)));
   if (s.gslt) args.push('+sv_setsteamaccount', s.gslt);
   args.push('+game_type', String(gm.type), '+game_mode', String(gm.mode), '+exec', cfg, ...mapArgs(s.start_map));
@@ -150,19 +136,8 @@ export async function startServer(id: number): Promise<void> {
 
   const cfg = writeCfg(root, s);
   const args = launchArgs(s, cfg);
-  let child: ChildProcess;
-  if (process.platform === 'win32') {
-    // `start /wait` открывает для .cmd новое окно консоли (см. launcherText); внешний cmd живёт, пока работает
-    // сервер, и даёт pid для учёта и остановки всего дерева процессов.
-    const dir = join(root, 'game', 'csgo', 'cfg', CFG_DIR);
-    const launcher = `server-${id}.cmd`;
-    writeFileSync(join(dir, launcher), launcherText(root, `CS2 ${s.name} :${s.port}`, args), 'utf8');
-    child = spawn('cmd.exe', ['/d', '/c', 'start', `CS2 server ${id}`, '/wait', '/D', dir, launcher], {
-      cwd: dir, stdio: 'ignore', windowsHide: true,
-    });
-  } else {
-    child = spawn(exeIn(root), args, { cwd: root, detached: true, stdio: 'ignore' });
-  }
+  // cs2.exe открывает собственное окно с консолью; лог сервера пишется в game/csgo/console.log (-condebug)
+  const child: ChildProcess = spawn(exeIn(root), args, { cwd: root, detached: true, stdio: 'ignore' });
   await new Promise<void>((ok, fail) => {
     child.once('spawn', ok);
     child.once('error', (e) => fail(new AppError('serverStartFailed', { message: e.message })));

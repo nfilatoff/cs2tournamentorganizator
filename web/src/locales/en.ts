@@ -522,5 +522,5 @@ export const en: Dict = {
   'mp.open': 'Match page',
   'home.openMatch': 'Match page',
   'srv.autoHost': 'this computer, address detected automatically',
-  'srv.autoHostHint': 'Address auto means this computer: players see its current network IP, and the panel reaches the server through 127.0.0.1. For a server on another computer, enter its IP.',
+  'srv.autoHostHint': 'Address auto means this computer: players see its current network IP, and the panel reaches the server at the same address (restart the server after the IP changes). For a server on another computer, enter its IP.',
 };
