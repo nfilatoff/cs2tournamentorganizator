@@ -75,6 +75,22 @@ try {
     $autoPanel = Get-Content -LiteralPath (Join-Path $autoRoot 'start-panel.ps1') -Raw
     Assert ($autoServer -match "-ne 'auto'" -and $autoPanel -match 'if \(\$settings\.PublicUrl\)') 'Auto-address launchers must skip -ip and PUBLIC_URL.'
     Write-Host 'PASS: auto-address launchers pass no fixed IP or panel URL.'
+    $clientRoot = Join-Path $fixture "client with spaces\Counter-Strike Global Offensive"
+    foreach ($file in @('game\bin\win64\cs2.exe', 'game\csgo\pak01_000.vpk', 'game\csgo\console.log', 'game\csgo\match.dem', 'content\csgo\big.vmat')) {
+        New-Item -ItemType File -Path (Join-Path $clientRoot $file) -Force | Out-Null
+        Set-Content -LiteralPath (Join-Path $clientRoot $file) -Value 'data'
+    }
+    $copyRoot = Join-Path $fixture 'server copy\cs2'
+    $copyLog = Join-Path $fixture 'cs2-copy.log'
+    $copyExit = Copy-Cs2Client $clientRoot $copyRoot $copyLog
+    $copied = @(Get-ChildItem -LiteralPath $copyRoot -File -Recurse | ForEach-Object { $_.FullName.Substring($copyRoot.Length) }) | Sort-Object
+    Assert ($copyExit -lt 8 -and ($copied -join ',') -eq '\game\bin\win64\cs2.exe,\game\csgo\pak01_000.vpk' -and (Test-Path -LiteralPath $copyLog)) "Client copy failed: exit $copyExit, files $($copied -join ',')"
+    Assert (@(Get-ClientCopyPlan $clientRoot $copyRoot).Count -eq 0) 'Copied files must be recognized as complete.'
+    Set-Content -LiteralPath (Join-Path $clientRoot 'game\csgo\pak01_000.vpk') -Value 'changed data'
+    $plan = @(Get-ClientCopyPlan $clientRoot $copyRoot)
+    Assert ($plan.Count -eq 1 -and $plan[0].Path -like '*pak01_000.vpk') 'Only the changed file must be planned for copying.'
+    Assert ((Copy-Cs2Client $clientRoot $copyRoot $copyLog) -lt 8 -and @(Get-ClientCopyPlan $clientRoot $copyRoot).Count -eq 0) 'Repeated client copy must bring the changed file over.'
+    Write-Host 'PASS: client copy skips content, demos and logs, and its progress plan tracks completed and changed files.'
     $launcher = Join-Path $launchRoot 'start-server.ps1'
     Add-Content -LiteralPath $launcher -Value '# keep local launcher changes'
     $launcherHash = (Get-FileHash -LiteralPath $launcher).Hash

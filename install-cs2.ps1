@@ -202,6 +202,70 @@ function Invoke-Native([string]$File, [string[]]$Arguments) {
     if ($LASTEXITCODE -ne 0) { throw "Command failed (exit $LASTEXITCODE): $File" }
 }
 
+# A copied file is complete once its size and modification time match the client's: robocopy sets the time last
+# (its file size is reserved in full up front, so the folder size says nothing about progress).
+function Test-FileCopied([string]$Path, [long]$Length, [datetime]$TimeUtc) {
+    $item = Get-Item -LiteralPath $Path -Force -ErrorAction SilentlyContinue
+    return [bool]($item -and $item.Length -eq $Length -and $item.LastWriteTimeUtc -eq $TimeUtc)
+}
+
+# Files robocopy will copy (same exclusions as Copy-Cs2Client): those missing in the server folder or differing in
+# size or time. On a rerun this is only what is left to copy.
+function Get-ClientCopyPlan([string]$Source, [string]$Destination) {
+    $skipDir = Join-Path $Source 'content'
+    foreach ($file in Get-ChildItem -LiteralPath $Source -File -Recurse -Force -ErrorAction SilentlyContinue) {
+        if ($file.FullName.StartsWith($skipDir + '\', [StringComparison]::OrdinalIgnoreCase)) { continue }
+        if ($file.Name -ieq 'console.log' -or $file.Extension -in @('.dem', '.mdmp')) { continue }
+        $target = Join-Path $Destination $file.FullName.Substring($Source.Length).TrimStart('\')
+        if (Test-FileCopied $target $file.Length $file.LastWriteTimeUtc) { continue }
+        [pscustomobject]@{ Path = $target; Length = $file.Length; TimeUtc = $file.LastWriteTimeUtc }
+    }
+}
+
+# Copies the installed CS2 client into the server folder with robocopy and shows a progress bar by completed files.
+# Returns the robocopy exit code.
+function Copy-Cs2Client([string]$Source, [string]$Destination, [string]$LogPath) {
+    Write-Host '  Comparing the client with the server folder...'
+    $pending = New-Object Collections.Generic.List[object]
+    foreach ($entry in @(Get-ClientCopyPlan $Source $Destination)) { $pending.Add($entry) }
+    $total = 0L
+    foreach ($entry in $pending) { $total += $entry.Length }
+    Write-Host ('  To copy: {0} files, {1:N1} GiB' -f $pending.Count, ($total / 1GB))
+    $total = [Math]::Max(1L, $total)
+    $quote = { param($text) '"' + $text + '"' }
+    # Windows PowerShell 5.1 passes Start-Process arguments as one command line, so paths are quoted here.
+    $arguments = @((& $quote $Source), (& $quote $Destination), '/E', '/DCOPY:DA', '/COPY:DAT', '/MT:8', '/R:1', '/W:1', '/NP', '/NFL', '/NDL',
+        '/XD', (& $quote (Join-Path $Source 'content')), '/XF', 'console.log', '*.dem', '*.mdmp', (& $quote "/LOG:$LogPath")) -join ' '
+    $process = Start-Process -FilePath (Join-Path $env:SystemRoot 'System32\robocopy.exe') -ArgumentList $arguments -WindowStyle Hidden -PassThru
+    $null = $process.Handle # keeps ExitCode available after the process ends
+    $activity = 'Copying CS2 from the Steam client'
+    $started = Get-Date
+    $done = 0L
+    $lastStep = -1
+    while (-not $process.HasExited) {
+        Start-Sleep -Seconds 2
+        # Only files not yet seen complete are checked again.
+        $left = New-Object Collections.Generic.List[object]
+        foreach ($entry in $pending) {
+            if (Test-FileCopied $entry.Path $entry.Length $entry.TimeUtc) { $done += $entry.Length } else { $left.Add($entry) }
+        }
+        $pending = $left
+        $percent = [int][Math]::Floor([Math]::Min($done, $total) * 100 / $total)
+        $elapsed = ((Get-Date) - $started).TotalSeconds
+        $speed = if ($elapsed -gt 0) { $done / $elapsed } else { 0 }
+        $status = '{0:N1} of {1:N1} GiB ({2}%), {3:N0} MiB/s' -f ($done / 1GB), ($total / 1GB), $percent, ($speed / 1MB)
+        $progress = @{ Activity = $activity; Status = $status; PercentComplete = [Math]::Min(100, $percent) }
+        if ($speed -gt 0 -and $done -lt $total) { $progress.SecondsRemaining = [int](($total - $done) / $speed) }
+        Write-Progress @progress
+        # A text line every 10% also reaches the console when the progress bar is not shown.
+        $step = [int][Math]::Floor($percent / 10)
+        if ($step -ne $lastStep) { Write-Host "  $status"; $lastStep = $step }
+    }
+    $process.WaitForExit()
+    Write-Progress -Activity $activity -Completed
+    return $process.ExitCode
+}
+
 function Invoke-WithPreservedFiles([string[]]$Paths, [scriptblock]$Action) {
     $savedFiles = @{}
     foreach ($path in $Paths) {
@@ -751,10 +815,9 @@ try {
         }
         Write-Host "  Copying CS2 from the Steam client ($Cs2Path)..."
         $copyLog = Join-Path $InstallRoot 'logs\cs2-copy.log'
-        $null = & robocopy.exe $Cs2Path $serverRoot /E /DCOPY:DA /COPY:DAT /MT:8 /R:1 /W:1 /NP /NFL /NDL `
-            /XD (Join-Path $Cs2Path 'content') /XF console.log '*.dem' '*.mdmp' "/LOG:$copyLog"
+        $copyExit = Copy-Cs2Client $Cs2Path $serverRoot $copyLog
         # Robocopy exit codes 0-7 mean success (files copied, skipped or extra); 8 and above are failures.
-        if ($LASTEXITCODE -ge 8) { throw "Copying CS2 from the Steam client failed (robocopy exit code $LASTEXITCODE). See logs\cs2-copy.log, or rerun with -NoClientCopy." }
+        if ($copyExit -ge 8) { throw "Copying CS2 from the Steam client failed (robocopy exit code $copyExit). See logs\cs2-copy.log, or rerun with -NoClientCopy." }
         Assert-FreeSpace $driveRoot (8GB)
     }
     if (-not $state['CS2 server'] -or $UpdateGame) {
