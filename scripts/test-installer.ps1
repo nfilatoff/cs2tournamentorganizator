@@ -32,6 +32,8 @@ try {
     Set-Content -LiteralPath $binary -Value ''
     Assert ((Resolve-Cs2Directory $game) -eq $game) 'Game directory with spaces was not resolved.'
     Assert ((Resolve-Cs2Directory $binary) -eq $game) 'cs2.exe path was not resolved.'
+    $unique = @(Select-UniqueWindowsPath @($game.ToLowerInvariant(), $game.ToUpperInvariant(), ($game.Replace('\', '/') + '/')))
+    Assert ($unique.Count -eq 1) 'The same Windows game path must not count as multiple installations.'
     Expect-Failure { Resolve-Cs2Directory $fixture } 'CS2 was not found'
     Expect-Failure { Get-FullLocalPath '\\server\share\cs2' } 'absolute local drive'
     Expect-Failure { Get-FullLocalPath '.\relative' } 'absolute local drive'
@@ -65,6 +67,13 @@ try {
     foreach ($name in @('start-panel.ps1', 'start-server.ps1', 'start-all.ps1')) { Parse-Script (Join-Path $launchRoot $name) }
     $settings = Get-Content -LiteralPath (Join-Path $launchRoot 'installation.json') -Raw | ConvertFrom-Json
     Assert ($settings.ServerPort -eq 27015 -and $settings.PublicUrl -eq 'http://192.168.1.10:3000') 'Settings round-trip failed.'
+    $launcher = Join-Path $launchRoot 'start-server.ps1'
+    Add-Content -LiteralPath $launcher -Value '# keep local launcher changes'
+    $launcherHash = (Get-FileHash -LiteralPath $launcher).Hash
+    Remove-Item -LiteralPath (Join-Path $launchRoot 'start-panel.ps1')
+    Write-Launchers $launchRoot $settings -MissingOnly
+    Assert ((Get-FileHash -LiteralPath $launcher).Hash -eq $launcherHash) 'Repair must preserve an existing launcher.'
+    Assert (Test-Path -LiteralPath (Join-Path $launchRoot 'start-panel.ps1')) 'Missing launcher was not repaired.'
     Assert ((New-Secret) -match '^[a-f0-9]{48}$') 'Invalid generated password.'
     $asset = [pscustomobject]@{ name = 'counterstrikesharp-with-runtime-windows-1.0.379.zip' }
     Assert ($asset.name -match '^counterstrikesharp-with-runtime-windows-(?:x64-)?[\d.]+\.zip$') 'Official CounterStrikeSharp asset name must match.'
@@ -86,10 +95,10 @@ try {
     $git = (Get-Command git.exe -ErrorAction Stop).Source
     $cloneSource = Join-Path $fixture 'git source'
     Invoke-Native $git @('init', '--quiet', '--initial-branch=main', $cloneSource)
-    foreach ($directory in @('server', 'web', 'plugin', 'scripts')) {
+    foreach ($directory in @('server\src', 'web\src', 'plugin\gamedata', 'scripts')) {
         New-Item -ItemType Directory -Path (Join-Path $cloneSource $directory) -Force | Out-Null
     }
-    foreach ($name in @('package.json', 'package-lock.json', 'server\package.json', 'web\package.json', 'plugin\ArenaPro.csproj', 'scripts\build-plugin.ps1')) {
+    foreach ($name in @('package.json', 'package-lock.json', 'server\package.json', 'server\src\index.ts', 'web\package.json', 'web\index.html', 'web\src\main.tsx', 'plugin\ArenaPro.csproj', 'plugin\gamedata\arenapro.json', 'scripts\build-plugin.ps1')) {
         Set-Content -LiteralPath (Join-Path $cloneSource $name) -Value 'fixture'
     }
     Invoke-Native $git @('-C', $cloneSource, 'add', '--all')
@@ -100,6 +109,75 @@ try {
     Copy-Project $git $sourceUrl 'main' (Join-Path $fixture 'clone branch')
     Copy-Project $git $sourceUrl 'test-version' (Join-Path $fixture 'clone tag')
     Write-Host 'PASS: actual git clone into selected folders, default branch, explicit branch and tag.'
+    Assert (Test-ProjectComplete $cloneSource) 'Complete source fixture was not detected.'
+    Remove-Item -LiteralPath (Join-Path $cloneSource 'plugin\ArenaPro.csproj')
+    Assert (-not (Test-ProjectComplete $cloneSource)) 'A partial clone must not be reported as complete.'
+
+    $partialNpm = Join-Path $fixture 'partial npm'
+    New-Item -ItemType Directory -Path (Join-Path $partialNpm 'node_modules') -Force | Out-Null
+    Set-Content -LiteralPath (Join-Path $partialNpm 'package-lock.json') -Value '{"packages":{}}'
+    Assert (-not (Test-NpmComplete $partialNpm)) 'An interrupted npm install must not be accepted.'
+    foreach ($name in @('node_modules\typescript\bin\tsc', 'node_modules\vite\bin\vite.js', 'node_modules\@esbuild\win32-x64\esbuild.exe')) {
+        $path = Join-Path $partialNpm $name
+        New-Item -ItemType Directory -Path (Split-Path $path -Parent) -Force | Out-Null
+        Set-Content -LiteralPath $path -Value 'fixture'
+    }
+    Set-Content -LiteralPath (Join-Path $partialNpm 'package-lock.json') -Value '{"packages":{"":{"name":"fixture"},"node_modules/server":{"resolved":"server","link":true}}}'
+    [IO.File]::WriteAllText((Join-Path $partialNpm 'node_modules\.installer-lock.sha256'), (Get-FileHash -LiteralPath (Join-Path $partialNpm 'package-lock.json') -Algorithm SHA256).Hash)
+    Assert (Test-NpmComplete $partialNpm) 'A completed npm install with workspace links must be accepted.'
+    Remove-Item -LiteralPath (Join-Path $partialNpm 'node_modules\vite\bin\vite.js')
+    Assert (-not (Test-NpmComplete $partialNpm)) 'Missing build tools must trigger npm repair even with a completion marker.'
+    Assert ((Get-RepairSpaceBytes $game 120 (Join-Path $fixture 'server') $true $false) -eq 8GB) 'Repairing installed CS2 must not require a new 120 GiB download.'
+    Assert ((Get-RepairSpaceBytes $game 120 (Join-Path $fixture 'server') $true $true) -eq 20GB) 'Updating installed CS2 must use the update reserve.'
+    Write-Host 'PASS: interrupted project/npm detection and repair/update disk-space estimates.'
+
+    $cleanupRoot = Join-Path $fixture 'cleanup-root'
+    $outside = Join-Path $fixture 'outside-cleanup-root'
+    New-Item -ItemType Directory -Path $cleanupRoot, $outside | Out-Null
+    $sentinel = Join-Path $outside 'keep.txt'
+    Set-Content -LiteralPath $sentinel -Value 'must survive'
+    $junction = Join-Path $cleanupRoot 'junction'
+    New-Item -ItemType Junction -Path $junction -Target $outside | Out-Null
+    try {
+        Expect-Failure { Remove-InsideRoot $cleanupRoot (Join-Path $junction 'keep.txt') } 'junction/symlink'
+        Expect-Failure { Assert-NoReparsePoint $cleanupRoot $cleanupRoot } 'junction/symlink'
+        Expect-Failure { Assert-NoReparsePoint $cleanupRoot $cleanupRoot -AllowInternalLinks } 'junction/symlink'
+        Assert (Test-Path -LiteralPath $sentinel) 'Cleanup followed a junction outside the install root.'
+    } finally { [IO.Directory]::Delete($junction) }
+    $inside = Join-Path $cleanupRoot 'workspace'
+    New-Item -ItemType Directory -Path $inside | Out-Null
+    New-Item -ItemType Junction -Path $junction -Target $inside | Out-Null
+    try {
+        Assert-NoReparsePoint $cleanupRoot $cleanupRoot -AllowInternalLinks
+        Expect-Failure { Remove-InsideRoot $cleanupRoot $junction } 'junction/symlink'
+    } finally { [IO.Directory]::Delete($junction) }
+    Write-Host 'PASS: cleanup refuses junctions and preserves external files.'
+    $configDir = Join-Path $fixture 'preserved config'
+    New-Item -ItemType Directory -Path $configDir | Out-Null
+    $configFile = Join-Path $configDir 'core.json'
+    Set-Content -LiteralPath $configFile -Value 'existing settings'
+    $configHash = (Get-FileHash -LiteralPath $configFile).Hash
+    Invoke-WithPreservedFiles @($configDir) { Set-Content -LiteralPath $configFile -Value 'archive defaults' }
+    Assert ((Get-FileHash -LiteralPath $configFile).Hash -eq $configHash) 'Framework repair overwrote existing settings.'
+    Expect-Failure { Invoke-WithPreservedFiles @($configDir) { Set-Content -LiteralPath $configFile -Value 'partial extract'; throw 'simulated extraction failure' } } 'simulated extraction failure'
+    Assert ((Get-FileHash -LiteralPath $configFile).Hash -eq $configHash) 'Failed extraction lost existing settings.'
+    Write-Host 'PASS: existing plugin/framework settings survive repair and extraction failures.'
+
+    & {
+        $mockProgram = 'D:\Fixture\node.exe'
+        $mockEnabled = 'True'
+        function Get-NetFirewallRule { param($Name) [pscustomobject]@{ Enabled = $mockEnabled; Action = 'Allow'; Direction = 'Inbound'; Profile = 'Domain, Private' } }
+        function Get-NetFirewallApplicationFilter { param([Parameter(ValueFromPipeline)]$InputObject) process { [pscustomobject]@{ Program = $mockProgram } } }
+        function Get-NetFirewallPortFilter { param([Parameter(ValueFromPipeline)]$InputObject) process { [pscustomobject]@{ LocalPort = '3000'; Protocol = 'TCP' } } }
+        function Get-NetFirewallAddressFilter { param([Parameter(ValueFromPipeline)]$InputObject) process { [pscustomobject]@{ RemoteAddress = 'LocalSubnet' } } }
+        Assert (Test-FirewallRule 'fixture' 'd:\fixture\node.exe' 3000 'TCP') 'Matching firewall rule was not detected.'
+        $mockProgram = 'D:\Other installation\node.exe'
+        Assert (-not (Test-FirewallRule 'fixture' 'D:\Fixture\node.exe' 3000 'TCP')) 'Same-named firewall rule for another executable must not be accepted.'
+        $mockProgram = 'D:\Fixture\node.exe'
+        $mockEnabled = 'False'
+        Assert (-not (Test-FirewallRule 'fixture' 'D:\Fixture\node.exe' 3000 'TCP')) 'Disabled firewall rule must not be accepted.'
+    }
+    Write-Host 'PASS: firewall matching rejects disabled and unrelated same-named rules (mocked; no firewall changes).'
 
     if ((Get-Command node.exe -ErrorAction SilentlyContinue) -and (Test-Path -LiteralPath (Join-Path $root 'server\dist\auth.js'))) {
         $bootstrapNode = $ast.Find({ param($n) $n -is [Management.Automation.Language.StringConstantExpressionAst] -and $n.Value.StartsWith("import { readFileSync } from 'node:fs';") }, $true)
@@ -134,6 +212,39 @@ db.close();
             $verifyPath = Join-Path $bootstrapRoot 'verify.mjs'
             Set-Content -LiteralPath $verifyPath -Value $verify -Encoding UTF8
             Invoke-Native (Get-Command node.exe).Source @($verifyPath)
+            $dbPath = Join-Path $env:DATA_DIR 'app.db'
+            $dbFilesBefore = @(Get-ChildItem -LiteralPath $env:DATA_DIR -File | ForEach-Object { $_.Name + ':' + (Get-FileHash -LiteralPath $_.FullName).Hash }) -join '|'
+            Assert (Test-PanelDatabase (Get-Command node.exe).Source $dbPath '192.168.1.10' 27015) 'Initialized panel database was not detected.'
+            $dbFilesAfter = @(Get-ChildItem -LiteralPath $env:DATA_DIR -File | ForEach-Object { $_.Name + ':' + (Get-FileHash -LiteralPath $_.FullName).Hash }) -join '|'
+            Assert ($dbFilesBefore -eq $dbFilesAfter) 'Database check must not change the database or leave journal files.'
+            $mismatchConfig = Join-Path $bootstrapRoot 'mismatch.cfg'
+            Set-Content -LiteralPath $mismatchConfig -Value 'rcon_password "different-password"'
+            Assert (-not (Test-PanelDatabase (Get-Command node.exe).Source $dbPath '192.168.1.10' 27015 $mismatchConfig)) 'Mismatched RCON config must not be reported healthy.'
+            # Retrying with different generated candidates must preserve existing accounts and RCON.
+            @{ AdminPassword = 'replacement-must-not-be-used'; RconPassword = 'replacement-rcon'; ServerAddress = '192.168.1.10'; ServerPort = 27015 } |
+                ConvertTo-Json | Set-Content -LiteralPath $inputPath -Encoding UTF8
+            Invoke-Native (Get-Command node.exe).Source @($bootstrapScript, $inputPath)
+            Invoke-Native (Get-Command node.exe).Source @($verifyPath)
+
+            # Fail AFTER database inserts by making the credentials directory unavailable.
+            # The file/schema remains, but the inserts must roll back and retry must repair it.
+            $env:DATA_DIR = Join-Path $bootstrapRoot 'interrupted-data'
+            $credentialFile = Join-Path $bootstrapRoot 'missing-dir\credentials.txt'
+            @{ AdminPassword = 'fixture-admin-password'; RconPassword = 'fixture-rcon-password'; ServerAddress = '192.168.1.10'; ServerPort = 27015; CredentialsPath = $credentialFile; PublicUrl = 'http://192.168.1.10:3000' } |
+                ConvertTo-Json | Set-Content -LiteralPath $inputPath -Encoding UTF8
+            $ErrorActionPreference = 'Continue'
+            try { & (Get-Command node.exe).Source $bootstrapScript $inputPath 2>$null; $bootstrapCode = $LASTEXITCODE }
+            finally { $ErrorActionPreference = 'Stop' }
+            Assert ($bootstrapCode -ne 0) 'Expected the simulated credential-write failure.'
+            $interruptedDb = Join-Path $env:DATA_DIR 'app.db'
+            Assert (-not (Test-PanelDatabase (Get-Command node.exe).Source $interruptedDb '192.168.1.10' 27015)) 'An empty/interrupted database must be marked missing.'
+            New-Item -ItemType Directory -Path (Split-Path $credentialFile -Parent) | Out-Null
+            Invoke-Native (Get-Command node.exe).Source @($bootstrapScript, $inputPath)
+            Invoke-Native (Get-Command node.exe).Source @($verifyPath)
+            $credentialsHash = (Get-FileHash -LiteralPath $credentialFile).Hash
+            Invoke-Native (Get-Command node.exe).Source @($bootstrapScript, $inputPath)
+            Assert ((Get-FileHash -LiteralPath $credentialFile).Hash -eq $credentialsHash) 'Credentials must not be rewritten on retry.'
+            Write-Host 'PASS: bootstrap retry, rollback, incomplete database repair and password preservation.'
         } finally { $env:DATA_DIR = $oldDataDir }
         Write-Host 'PASS: real SQLite bootstrap creates a hashed admin password and registered game server.'
     } else { Write-Host 'SKIP: database smoke test requires Node.js and npm run build output.' }
@@ -158,6 +269,27 @@ db.close();
     } finally { $ErrorActionPreference = 'Stop' }
     Assert ($code -eq 1 -and $output -match 'Server must be installed on the CS2 drive') "Wrong-drive protection failed: $output"
     Write-Host 'PASS: actual installer refuses a server directory on a different drive.'
+
+    # A previous installation with the game present must reach the read-only report,
+    # even when the configured fresh-install minimum is an impossible 4096 GiB.
+    $resumeRoot = Join-Path $fixture 'resume'
+    foreach ($directory in @('logs', 'cs2\game\bin\win64', 'cs2\steamapps')) { New-Item -ItemType Directory -Path (Join-Path $resumeRoot $directory) -Force | Out-Null }
+    Set-Content -LiteralPath (Join-Path $resumeRoot 'logs\install.log') -Value 'previous attempt'
+    Set-Content -LiteralPath (Join-Path $resumeRoot 'cs2\game\bin\win64\cs2.exe') -Value ''
+    Set-Content -LiteralPath (Join-Path $resumeRoot 'cs2\steamapps\appmanifest_730.acf') -Value '"StateFlags" "4"'
+    $address = @(Get-LocalIPv4)[0]
+    @{ ServerAddress = $address; ServerPort = 27015; PanelPort = 3000; TvPort = 27020; PublicUrl = "http://${address}:3000" } | ConvertTo-Json |
+        Set-Content -LiteralPath (Join-Path $resumeRoot 'installation.json') -Encoding UTF8
+    $before = @(Get-ChildItem -LiteralPath $resumeRoot -File -Recurse | ForEach-Object { $_.FullName + ':' + (Get-FileHash -LiteralPath $_.FullName).Hash }) -join '|'
+    $ErrorActionPreference = 'Continue'
+    try {
+        $output = & "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File $installer -Cs2Path $game -InstallRoot $resumeRoot -RequiredFreeGB 4096 -CheckOnly -SkipFirewall 2>&1 | Out-String
+        $code = $LASTEXITCODE
+    } finally { $ErrorActionPreference = 'Stop' }
+    Assert ($code -eq 0 -and $output -match 'Existing installation found' -and $output -match 'Preflight OK') "Resume preflight failed: $output"
+    $after = @(Get-ChildItem -LiteralPath $resumeRoot -File -Recurse | ForEach-Object { $_.FullName + ':' + (Get-FileHash -LiteralPath $_.FullName).Hash }) -join '|'
+    Assert ($before -eq $after) 'Resume -CheckOnly changed installation files.'
+    Write-Host 'PASS: existing-install CheckOnly reports components without downloads, writes or the fresh-game space threshold.'
     Write-Host 'All offline installer checks passed.'
 } finally {
     # Remove only this test's verified, unique child directory.
