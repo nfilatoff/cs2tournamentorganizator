@@ -67,9 +67,9 @@
 - **Крах сервера при подключении игрока:** `counterstrikesharp.dll` 1.0.376 (из сборки ArenaPro 0.9.2) падает с access violation на CS2 1.41.9.4. Помогло обновление CounterStrikeSharp до 1.0.379 (поверх `addons/counterstrikesharp`). После обновлений CS2 плагины нужно проверять до турнира.
 
 ## Плагин ArenaPro (наш форк MatchZy)
-- Исходники: `D:\arenapro-plugin\src` (ветка `arenapro`, удалённый репозиторий оригинала: `upstream`). Основан на MatchZy 0.9.2 (MIT, авторство сохранено в `LICENSE` и `NOTICE.md`).
-- Переименование выполнено автоматически (`D:\arenapro-plugin\tools\rename.mjs`): команды `arenapro_*`, папка `cfg/ArenaPro`, сборка `ArenaPro.dll`, префикс в игровом чате `[ArenaPro]`.
-- Обновление с оригинала: см. `D:\arenapro-plugin\tools\UPDATING.md`.
+- Исходники плагина лежат в этом же репозитории, папка `plugin/` (история оригинала сохранена; удалённый репозиторий оригинала: `upstream-matchzy`). Основан на MatchZy 0.9.2 (MIT, авторство сохранено в `plugin/LICENSE` и `plugin/NOTICE.md`).
+- Переименование выполнено автоматически (`plugin/tools/rename.mjs`): команды `arenapro_*`, папка `cfg/ArenaPro`, сборка `ArenaPro.dll`, префикс в игровом чате `[ArenaPro]`.
+- Обновление с оригинала: см. `plugin/tools/UPDATING.md`, наши правки поверх переименования: `plugin/PATCHES.md`; сборка: `npm run plugin:build`.
 - Проверено: 320 тестов плагина, загрузка на тестовом сервере, `arenapro_loadmatch` принимает матч 2v2. CounterStrikeSharp.API обновлён до 1.0.379.
 
 ## Статус (2026-10-31)

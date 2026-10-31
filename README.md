@@ -155,7 +155,7 @@ npm run admin -- create логин пароль                   # создат
    `steamcmd +force_install_dir D:\cs2-server\cs2 +login anonymous +app_update 730 validate +quit`.
    Либо скопируйте уже установленную игру и выполните `app_update 730 validate`. Отдельного «серверного» пакета у CS2 нет: тот же файл `cs2.exe` запускается с ключом `-dedicated`.
 2. **Metamod:Source 2.0**, **CounterStrikeSharp** (сборка with-runtime для Windows) и **ArenaPro**: распаковать в `game\csgo`. В `game\csgo\gameinfo.gi` в блоке `SearchPaths` добавьте строку `Game csgo/addons/metamod` **перед** `Game csgo`.
-   Плагин ArenaPro собирается из `D:\arenapro-plugin\src` командой `dotnet publish`. Порядок обновления с оригинального MatchZy описан в `D:\arenapro-plugin\tools\UPDATING.md`.
+   Исходники плагина лежат в папке `plugin/` этого репозитория. Сборка и установка на сервер: `npm run plugin:build` (пакет в `plugin-dist/`) или `.scriptsuild-plugin.ps1 -DeployTo "D:cs2-servercs2gamecsgo"` (сервер перед этим остановите). Порядок обновления с оригинального MatchZy описан в `plugin/tools/UPDATING.md`, наши правки поверх переименования — в `plugin/PATCHES.md`.
 3. **Запуск.** Пример (подставьте свой IP, порт и RCON-пароль):
 
    ```powershell
@@ -208,6 +208,8 @@ npm test -w server            # тесты движка сеток и групп
 npm run build                 # сборка сайта и сервера
 npm run dev:server            # сервер с перезапуском при изменениях
 npm run dev:web               # сайт в режиме разработки
+npm run plugin:test           # тесты плагина (dotnet)
+npm run plugin:build          # сборка пакета плагина в plugin-dist/
 ```
 
 Структура:
@@ -221,6 +223,8 @@ npm run dev:web               # сайт в режиме разработки
 | `server/src/dispatcher.ts` | Раздача матчей по серверам, RCON |
 | `server/src/routes/` | HTTP API (тут же приём событий серверов) |
 | `server/src/rcon.ts` | RCON-клиент для CS2 |
+| `plugin/` | Исходники плагина ArenaPro (форк MatchZy, C#), инструменты обновления с оригинала |
+| `scripts/build-plugin.ps1` | Сборка плагина и установка на сервер |
 | `server/scripts/admin.ts` | Управление админами из терминала |
 | `web/src/` | Сайт (React). Переводы в `web/src/locales/` |
 | `PLAN.md` | План разработки и результаты проверок сервера |

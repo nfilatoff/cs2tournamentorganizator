@@ -1,12 +1,17 @@
 {
   "name": "cs2-tournament-organizator",
   "private": true,
-  "workspaces": ["server", "web"],
+  "workspaces": [
+    "server",
+    "web"
+  ],
   "scripts": {
     "dev:server": "npm run dev -w server",
     "dev:web": "npm run dev -w web",
     "build": "npm run build -w web && npm run build -w server",
     "start": "npm run start -w server",
-    "admin": "npm run admin -w server --"
+    "admin": "npm run admin -w server --",
+    "plugin:test": "dotnet test plugin/tests/ArenaPro.Tests -c Release",
+    "plugin:build": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-plugin.ps1"
   }
 }
