@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { db, tx } from '../db.js';
 import { getSession, requireAdmin } from '../auth.js';
 import {
-  buildBracket, champion, minTeams, reportResult, roundFromEnd, roundLabel,
+  buildBracket, champion, forceWinner, minTeams, reportResult, roundFromEnd, roundLabel, undoResult,
   type BMatch, type BracketId, type Entry, type Format, type Source, type Status,
 } from '../bracket.js';
 
@@ -15,7 +15,7 @@ interface TournamentRow {
 interface MatchRow {
   code: string; bracket: BracketId; round: number; position: number;
   src_a: string; src_b: string; entry_a: string; entry_b: string;
-  winner: 'a' | 'b' | null; status: Status; best_of: number; score_a: number; score_b: number;
+  winner: 'a' | 'b' | null; status: Status; best_of: number; score_a: number; score_b: number; forced: number;
 }
 
 const BEST_OF = z.union([z.literal(1), z.literal(3), z.literal(5)]);
@@ -41,15 +41,15 @@ function loadMatches(tid: number): BMatch[] {
     code: r.code, bracket: r.bracket, round: r.round, position: r.position,
     srcA: JSON.parse(r.src_a) as Source, srcB: JSON.parse(r.src_b) as Source,
     a: JSON.parse(r.entry_a) as Entry, b: JSON.parse(r.entry_b) as Entry,
-    winner: r.winner, status: r.status, bestOf: r.best_of, scoreA: r.score_a, scoreB: r.score_b,
+    winner: r.winner, status: r.status, bestOf: r.best_of, scoreA: r.score_a, scoreB: r.score_b, forced: !!r.forced,
   }));
 }
 
 function saveMatches(tid: number, ms: BMatch[]): void {
-  const upd = db.prepare(`UPDATE matches SET entry_a = ?, entry_b = ?, winner = ?, status = ?, score_a = ?, score_b = ?
+  const upd = db.prepare(`UPDATE matches SET entry_a = ?, entry_b = ?, winner = ?, status = ?, score_a = ?, score_b = ?, forced = ?
     WHERE tournament_id = ? AND code = ?`);
   for (const m of ms) {
-    upd.run(JSON.stringify(m.a), JSON.stringify(m.b), m.winner, m.status, m.scoreA, m.scoreB, tid, m.code);
+    upd.run(JSON.stringify(m.a), JSON.stringify(m.b), m.winner, m.status, m.scoreA, m.scoreB, m.forced ? 1 : 0, tid, m.code);
   }
 }
 
@@ -106,7 +106,7 @@ function details(t: TournamentRow) {
       code: m.code, bracket: m.bracket, round: m.round, position: m.position,
       roundLabel: roundLabel(m.bracket, roundFromEnd(ms, m), t.format),
       a: entryDto(m.a), b: entryDto(m.b), status: m.status, winner: m.winner,
-      bestOf: m.bestOf, scoreA: m.scoreA, scoreB: m.scoreB,
+      bestOf: m.bestOf, scoreA: m.scoreA, scoreB: m.scoreB, forced: m.forced,
     })),
   };
 }
@@ -120,6 +120,16 @@ function setMaps(tid: number, mapIds: number[]): boolean {
   const ins = db.prepare('INSERT INTO tournament_maps (tournament_id, map_id, position) VALUES (?, ?, ?)');
   unique.forEach((id, i) => ins.run(tid, id, i + 1));
   return true;
+}
+
+// Сохраняет матчи и пересчитывает статус турнира: есть чемпион — завершён, иначе идёт.
+function commit(t: TournamentRow, ms: BMatch[]): void {
+  tx(() => {
+    saveMatches(t.id, ms);
+    const champ = champion(ms, t.format);
+    db.prepare('UPDATE tournaments SET status = ?, champion_team_id = ? WHERE id = ?')
+      .run(champ !== null ? 'finished' : 'running', champ, t.id);
+  });
 }
 
 async function requireTournament(req: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
@@ -256,13 +266,47 @@ export async function tournamentRoutes(app: FastifyInstance): Promise<void> {
       } catch (e) {
         return reply.code(400).send({ error: (e as Error).message });
       }
-      tx(() => {
-        saveMatches(t.id, ms);
-        const champ = champion(ms, t.format);
-        if (champ !== null) {
-          db.prepare("UPDATE tournaments SET status = 'finished', champion_team_id = ? WHERE id = ?").run(champ, t.id);
-        }
-      });
+      commit(t, ms);
+      return details(getTournament(t.id)!);
+    },
+  );
+
+  // Админ: назначить победителя без счёта
+  app.post<{ Params: { id: string; code: string } }>(
+    '/api/tournaments/:id/matches/:code/winner',
+    { preHandler: requireAdmin },
+    async (req, reply) => {
+      const t = getTournament(Number(req.params.id));
+      if (!t) return reply.code(404).send({ error: 'Турнир не найден' });
+      if (t.status !== 'running') return reply.code(409).send({ error: 'Турнир не идёт' });
+      const body = z.object({ winner: z.enum(['a', 'b']) }).safeParse(req.body);
+      if (!body.success) return reply.code(400).send({ error: 'Укажите победителя' });
+      const ms = loadMatches(t.id);
+      try {
+        forceWinner(ms, req.params.code, body.data.winner);
+      } catch (e) {
+        return reply.code(400).send({ error: (e as Error).message });
+      }
+      commit(t, ms);
+      return details(getTournament(t.id)!);
+    },
+  );
+
+  // Админ: отменить результат матча (в том числе в завершённом турнире)
+  app.post<{ Params: { id: string; code: string } }>(
+    '/api/tournaments/:id/matches/:code/undo',
+    { preHandler: requireAdmin },
+    async (req, reply) => {
+      const t = getTournament(Number(req.params.id));
+      if (!t) return reply.code(404).send({ error: 'Турнир не найден' });
+      if (t.status === 'registration') return reply.code(409).send({ error: 'Турнир не начался' });
+      const ms = loadMatches(t.id);
+      try {
+        undoResult(ms, req.params.code);
+      } catch (e) {
+        return reply.code(400).send({ error: (e as Error).message });
+      }
+      commit(t, ms);
       return details(getTournament(t.id)!);
     },
   );

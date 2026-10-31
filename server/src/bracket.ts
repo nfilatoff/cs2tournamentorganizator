@@ -28,6 +28,8 @@ export interface BMatch {
   bestOf: number;
   scoreA: number;
   scoreB: number;
+  // Победитель назначен админом, а не по счёту
+  forced: boolean;
 }
 
 const TBD: Entry = { k: 'tbd' };
@@ -51,7 +53,7 @@ function mk(bracket: BracketId, round: number, position: number, srcA: Source, s
   const code = bracket === 'GF' ? `GF-${round}` : `${bracket}${round}-${position}`;
   return {
     code, bracket, round, position, srcA, srcB,
-    a: TBD, b: TBD, winner: null, status: 'pending', bestOf: 1, scoreA: 0, scoreB: 0,
+    a: TBD, b: TBD, winner: null, status: 'pending', bestOf: 1, scoreA: 0, scoreB: 0, forced: false,
   };
 }
 
@@ -211,14 +213,69 @@ export function reportResult(matches: BMatch[], code: string, scoreA: number, sc
   }
   m.scoreA = scoreA;
   m.scoreB = scoreB;
-  m.winner = scoreA > scoreB ? 'a' : 'b';
-  m.status = 'done';
+  finish(matches, m, scoreA > scoreB ? 'a' : 'b', false);
+}
 
+// Админ назначает победителя без счёта (например, при неявке или сбое сервера).
+export function forceWinner(matches: BMatch[], code: string, winner: 'a' | 'b'): void {
+  const m = matches.find((x) => x.code === code);
+  if (!m) throw new Error('Матч не найден');
+  if (m.status !== 'ready' && m.status !== 'live') throw new Error('Матч ещё не готов или уже сыгран');
+  finish(matches, m, winner, true);
+}
+
+function finish(matches: BMatch[], m: BMatch, winner: 'a' | 'b', forced: boolean): void {
+  m.winner = winner;
+  m.forced = forced;
+  m.status = 'done';
   // Если чемпион верхней сетки выиграл первый гранд-финал, переигровка не нужна.
   if (m.code === 'GF-1' && m.winner === 'a') {
     const reset = matches.find((x) => x.code === 'GF-2');
     if (reset) reset.status = 'skipped';
   }
+  settle(matches);
+}
+
+// Отменяет результат матча. Нельзя, если следующие матчи уже сыграны или идут:
+// сначала нужно отменить их результаты.
+export function undoResult(matches: BMatch[], code: string): void {
+  const target = matches.find((x) => x.code === code);
+  if (!target) throw new Error('Матч не найден');
+  if (target.status !== 'done') throw new Error('У матча нет результата');
+
+  const refs = (m: BMatch, c: string) =>
+    [m.srcA, m.srcB].some((s) => s.t !== 'seed' && s.code === c);
+  const dependents = new Set<string>();
+  const queue = [code];
+  while (queue.length > 0) {
+    const cur = queue.pop()!;
+    for (const m of matches) {
+      if (refs(m, cur) && !dependents.has(m.code)) {
+        dependents.add(m.code);
+        queue.push(m.code);
+      }
+    }
+  }
+  const blocking = matches.filter((m) => dependents.has(m.code) && (m.status === 'done' || m.status === 'live'));
+  if (blocking.length > 0) {
+    throw new Error(`Сначала отмените результат матча ${blocking.map((m) => m.code).join(', ')}`);
+  }
+
+  for (const m of matches) {
+    if (!dependents.has(m.code)) continue;
+    m.status = 'pending';
+    m.winner = null;
+    m.forced = false;
+    m.scoreA = 0;
+    m.scoreB = 0;
+    if (m.srcA.t !== 'seed') m.a = TBD;
+    if (m.srcB.t !== 'seed') m.b = TBD;
+  }
+  target.status = 'pending';
+  target.winner = null;
+  target.forced = false;
+  target.scoreA = 0;
+  target.scoreB = 0;
   settle(matches);
 }
 

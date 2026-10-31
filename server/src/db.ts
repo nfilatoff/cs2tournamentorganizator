@@ -101,6 +101,7 @@ CREATE TABLE IF NOT EXISTS matches (
   best_of INTEGER NOT NULL,
   score_a INTEGER NOT NULL DEFAULT 0,
   score_b INTEGER NOT NULL DEFAULT 0,
+  forced INTEGER NOT NULL DEFAULT 0,
   UNIQUE (tournament_id, code)
 );
 
@@ -115,6 +116,11 @@ CREATE TABLE IF NOT EXISTS maps (
   created_at INTEGER NOT NULL DEFAULT (unixepoch())
 );
 `);
+
+const matchCols = db.prepare('PRAGMA table_info(matches)').all() as unknown as { name: string }[];
+if (!matchCols.some((c) => c.name === 'forced')) {
+  db.exec('ALTER TABLE matches ADD COLUMN forced INTEGER NOT NULL DEFAULT 0');
+}
 
 export function tx<T>(fn: () => T): T {
   db.exec('BEGIN');

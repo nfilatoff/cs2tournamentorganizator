@@ -15,28 +15,46 @@ function Slot({ entry, score, won }: { entry: EntryDto; score: number; won: bool
   );
 }
 
-function MatchCard({ m, admin, onResult }: { m: MatchDto; admin: boolean; onResult: (code: string, a: number, b: number) => void }) {
+interface Actions {
+  onResult: (code: string, a: number, b: number) => void;
+  onWinner: (code: string, winner: 'a' | 'b') => void;
+  onUndo: (code: string) => void;
+}
+
+function MatchCard({ m, admin, actions }: { m: MatchDto; admin: boolean; actions: Actions }) {
   const [a, setA] = useState(0);
   const [b, setB] = useState(0);
   const need = Math.ceil(m.bestOf / 2);
   return (
     <div className={`match ${m.status}`}>
-      <div className="mhead"><span>{m.code}</span><span>BO{m.bestOf}</span></div>
+      <div className="mhead"><span>{m.code}</span><span>{m.forced ? 'решение админа' : `BO${m.bestOf}`}</span></div>
       <Slot entry={m.a} score={m.scoreA} won={m.winner === 'a' && m.status === 'done'} />
       <Slot entry={m.b} score={m.scoreB} won={m.winner === 'b' && m.status === 'done'} />
       {admin && m.status === 'ready' && (
+        <>
+          <div className="result">
+            <input type="number" min={0} max={need} value={a} onChange={(e) => setA(Number(e.target.value))} />
+            <span>:</span>
+            <input type="number" min={0} max={need} value={b} onChange={(e) => setB(Number(e.target.value))} />
+            <button onClick={() => actions.onResult(m.code, a, b)}>OK</button>
+          </div>
+          <div className="result">
+            <span className="muted">Победа:</span>
+            <button className="ghost" onClick={() => actions.onWinner(m.code, 'a')}>A</button>
+            <button className="ghost" onClick={() => actions.onWinner(m.code, 'b')}>B</button>
+          </div>
+        </>
+      )}
+      {admin && m.status === 'done' && (
         <div className="result">
-          <input type="number" min={0} max={need} value={a} onChange={(e) => setA(Number(e.target.value))} />
-          <span>:</span>
-          <input type="number" min={0} max={need} value={b} onChange={(e) => setB(Number(e.target.value))} />
-          <button onClick={() => onResult(m.code, a, b)}>OK</button>
+          <button className="ghost" onClick={() => actions.onUndo(m.code)}>Отменить результат</button>
         </div>
       )}
     </div>
   );
 }
 
-function Bracket({ t, admin, onResult }: { t: TournamentDetails; admin: boolean; onResult: (code: string, a: number, b: number) => void }) {
+function Bracket({ t, admin, actions }: { t: TournamentDetails; admin: boolean; actions: Actions }) {
   const visible = t.matches.filter((m) => m.status !== 'bye' && m.status !== 'skipped');
   return (
     <>
@@ -53,7 +71,7 @@ function Bracket({ t, admin, onResult }: { t: TournamentDetails; admin: boolean;
                 return (
                   <div className="col" key={r}>
                     <div className="roundname">{col[0]!.roundLabel}</div>
-                    {col.map((m) => <MatchCard key={m.code} m={m} admin={admin} onResult={onResult} />)}
+                    {col.map((m) => <MatchCard key={m.code} m={m} admin={admin} actions={actions} />)}
                   </div>
                 );
               })}
@@ -188,8 +206,11 @@ export function TournamentView({ me }: { me: Me }) {
       </div>
 
       {t.status !== 'registration' && (
-        <Bracket t={t} admin={admin && t.status === 'running'}
-          onResult={(code, scoreA, scoreB) => act(() => api(`/api/tournaments/${t.id}/matches/${code}/result`, { method: 'POST', body: { scoreA, scoreB } }))} />
+        <Bracket t={t} admin={admin} actions={{
+          onResult: (code, scoreA, scoreB) => act(() => api(`/api/tournaments/${t.id}/matches/${code}/result`, { method: 'POST', body: { scoreA, scoreB } })),
+          onWinner: (code, winner) => act(() => api(`/api/tournaments/${t.id}/matches/${code}/winner`, { method: 'POST', body: { winner } })),
+          onUndo: (code) => act(() => api(`/api/tournaments/${t.id}/matches/${code}/undo`, { method: 'POST', body: {} })),
+        }} />
       )}
     </>
   );

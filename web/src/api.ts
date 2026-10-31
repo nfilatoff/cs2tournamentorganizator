@@ -42,7 +42,7 @@ export type EntryDto = { type: 'team'; id: number; name: string } | { type: 'tbd
 export interface MatchDto {
   code: string; bracket: 'W' | 'L' | 'GF'; round: number; position: number; roundLabel: string;
   a: EntryDto; b: EntryDto; status: 'pending' | 'ready' | 'live' | 'done' | 'bye' | 'skipped';
-  winner: 'a' | 'b' | null; bestOf: number; scoreA: number; scoreB: number;
+  winner: 'a' | 'b' | null; bestOf: number; scoreA: number; scoreB: number; forced: boolean;
 }
 
 export interface TournamentDetails extends Omit<TournamentSummary, 'teamCount'> {

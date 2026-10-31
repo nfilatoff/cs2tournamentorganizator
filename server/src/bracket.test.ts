@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildBracket, champion, reportResult, seedOrder, type BMatch, type Format } from './bracket.js';
+import { buildBracket, champion, forceWinner, reportResult, seedOrder, undoResult, type BMatch, type Format } from './bracket.js';
 
 const ids = (n: number) => Array.from({ length: n }, (_, i) => i + 1);
 const real = (ms: BMatch[]) => ms.filter((m) => m.status !== 'bye' && m.status !== 'skipped');
@@ -87,4 +87,97 @@ test('bye получают лучшие сиды', () => {
   const w2 = ms.filter((m) => m.round === 2).flatMap((m) => [m.a, m.b]);
   assert.ok(w2.some((e) => e.k === 'team' && e.id === 1));
   assert.ok(w2.some((e) => e.k === 'team' && e.id === 2));
+});
+
+const snapshot = (ms: BMatch[]) => JSON.stringify(ms);
+
+test('undoResult возвращает матч в готовое состояние и сбрасывает продвижение', () => {
+  const ms = buildBracket(ids(4), 'double', { grandFinalReset: true });
+  const before = snapshot(ms);
+  reportResult(ms, 'W1-1', 1, 0);
+  assert.notEqual(snapshot(ms), before);
+  undoResult(ms, 'W1-1');
+  assert.equal(snapshot(ms), before);
+});
+
+test('undoResult запрещён, пока сыграны следующие матчи', () => {
+  const ms = buildBracket(ids(4), 'single');
+  reportResult(ms, 'W1-1', 1, 0);
+  reportResult(ms, 'W1-2', 1, 0);
+  reportResult(ms, 'W2-1', 1, 0);
+  assert.throws(() => undoResult(ms, 'W1-1'), /W2-1/);
+  assert.equal(champion(ms, 'single'), 1);
+  undoResult(ms, 'W2-1');
+  assert.equal(champion(ms, 'single'), null);
+  undoResult(ms, 'W1-1');
+  assert.equal(ms.find((m) => m.code === 'W1-1')!.status, 'ready');
+});
+
+test('undoResult сбрасывает матчи, продвинутые через bye', () => {
+  // 3 команды double: сид 1 получает bye, дальше цепочки через нижнюю сетку
+  const ms = buildBracket(ids(3), 'double');
+  const before = snapshot(ms);
+  const first = ms.find((m) => m.status === 'ready')!;
+  reportResult(ms, first.code, 1, 0);
+  undoResult(ms, first.code);
+  assert.equal(snapshot(ms), before);
+});
+
+test('undoResult отменяет пропуск переигровки гранд-финала', () => {
+  const ms = buildBracket(ids(4), 'double', { grandFinalReset: true });
+  for (let g = 0; g < 20 && ms.find((m) => m.status === 'ready' && m.code !== 'GF-1'); g++) {
+    const m = ms.find((x) => x.status === 'ready' && x.code !== 'GF-1')!;
+    reportResult(ms, m.code, 1, 0);
+  }
+  reportResult(ms, 'GF-1', 1, 0);
+  assert.equal(ms.find((m) => m.code === 'GF-2')!.status, 'skipped');
+  undoResult(ms, 'GF-1');
+  assert.equal(ms.find((m) => m.code === 'GF-2')!.status, 'pending');
+  reportResult(ms, 'GF-1', 0, 1);
+  assert.equal(ms.find((m) => m.code === 'GF-2')!.status, 'ready');
+});
+
+test('forceWinner продвигает победителя без счёта, и его можно отменить', () => {
+  const ms = buildBracket(ids(4), 'single', { bestOf: () => 3 });
+  forceWinner(ms, 'W1-1', 'b');
+  const m = ms.find((x) => x.code === 'W1-1')!;
+  assert.equal(m.status, 'done');
+  assert.equal(m.forced, true);
+  assert.deepEqual(ms.find((x) => x.code === 'W2-1')!.a, { k: 'team', id: 4 });
+  assert.throws(() => forceWinner(ms, 'W1-1', 'a'));
+  undoResult(ms, 'W1-1');
+  assert.equal(m.forced, false);
+  assert.equal(m.status, 'ready');
+});
+
+test('случайная игра с отменами последних результатов завершается корректно', () => {
+  for (let n = 3; n <= 20; n++) {
+    for (const format of ['single', 'double'] as const) {
+      if (format === 'single' && n < 2) continue;
+      let seed = n * 31 + (format === 'double' ? 5 : 0);
+      const rnd = () => (seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
+      const ms = buildBracket(ids(n), format);
+      const history: string[] = [];
+      for (let step = 0; step < 500; step++) {
+        const ready = ms.filter((x) => x.status === 'ready');
+        if (ready.length === 0) break;
+        if (history.length > 0 && rnd() < 0.25) {
+          undoResult(ms, history.pop()!);
+          continue;
+        }
+        const m = ready[Math.floor(rnd() * ready.length)]!;
+        if (rnd() < 0.3) forceWinner(ms, m.code, rnd() < 0.5 ? 'a' : 'b');
+        else {
+          const need = Math.ceil(m.bestOf / 2);
+          if (rnd() < 0.5) reportResult(ms, m.code, need, 0); else reportResult(ms, m.code, 0, need);
+        }
+        history.push(m.code);
+      }
+      assert.ok(champion(ms, format) !== null, `${format} n=${n}: нет чемпиона`);
+      assert.ok(ms.every((m) => ['done', 'bye', 'skipped'].includes(m.status)), `${format} n=${n}: остались несыгранные`);
+      for (const m of ms) {
+        if (m.status === 'done') assert.ok(m.a.k === 'team' && m.b.k === 'team');
+      }
+    }
+  }
 });
