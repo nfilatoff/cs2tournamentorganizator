@@ -64,3 +64,4 @@
 - RCON: CS2 не поддерживает маркерный пакет, ответ читается «до паузы в данных» ([rcon.ts](server/src/rcon.ts)).
 - MatchZy принимает матч 2v2 (`players_per_team: 2`, `wingman: true`, `min_players_to_ready: 4`). `matchid` должен быть числом. Статус матча: `get5_status` (JSON).
 - Не проверено: переход в live с реальными игроками, `live_wingman.cfg`, Workshop-карты (нужен Steam Web API key для `-authkey`), события на HTTP-эндпоинт панели.
+- **Крах сервера при подключении игрока:** `counterstrikesharp.dll` 1.0.376 (из сборки MatchZy 0.9.2) падает с access violation на CS2 1.41.9.4. Помогло обновление CounterStrikeSharp до 1.0.379 (поверх `addons/counterstrikesharp`). После обновлений CS2 плагины нужно проверять до турнира.
