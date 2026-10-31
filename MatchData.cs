@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace MatchZy;
+namespace ArenaPro;
 public class Winner
 {
     [JsonPropertyName("side")]
@@ -131,7 +131,7 @@ public class PlayerStats
     public int Mvps { get; set; }
 }
 
-public class MatchZyTeamWrapper
+public class ArenaProTeamWrapper
 {
     [JsonPropertyName("id")]
     public string Id { get; set; }
@@ -139,14 +139,14 @@ public class MatchZyTeamWrapper
     [JsonPropertyName("name")]
     public string Name { get; set; }
 
-    public MatchZyTeamWrapper(string id, string name)
+    public ArenaProTeamWrapper(string id, string name)
     {
         Id = id;
         Name = name;
     }
 }
 
-public class MatchZyStatsTeam : MatchZyTeamWrapper
+public class ArenaProStatsTeam : ArenaProTeamWrapper
 {
     [JsonPropertyName("series_score")]
     public int SeriesScore { get; set; }
@@ -163,7 +163,7 @@ public class MatchZyStatsTeam : MatchZyTeamWrapper
     [JsonPropertyName("players")]
     public List<StatsPlayer> Players { get; set; }
 
-    public MatchZyStatsTeam(string id, string name, int seriesScore, int score, int scoreCt, int scoreT, List<StatsPlayer> players) : base(id, name)
+    public ArenaProStatsTeam(string id, string name, int seriesScore, int score, int scoreCt, int scoreT, List<StatsPlayer> players) : base(id, name)
     {
         SeriesScore = seriesScore;
         Score = score;

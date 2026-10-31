@@ -1,4 +1,4 @@
-namespace MatchZy
+namespace ArenaPro
 {
     // The kind of pause, with Get5's names (sent as pause_type in game_paused / game_unpaused).
     public enum PauseType

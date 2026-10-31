@@ -4,5 +4,5 @@ Since this plugin is built on C#, [.NET 10.0 SDK](https://dotnet.microsoft.com/e
 2. Use `dotnet restore` to restore and install the dependencies.
 3. Make your changes
 4. Use `dotnet publish` command and you'll get a folder called `bin` in your plugin directory.
-5. Navigate to `bin/Release/net10.0/publish/`and copy all the content from there and paste it into `csgo/addons/counterstrikesharp/plugins/MatchZy` (CounterStrikeSharp.API.dll and CounterStrikeSharp.API.pdb can be skipped)
+5. Navigate to `bin/Release/net10.0/publish/`and copy all the content from there and paste it into `csgo/addons/counterstrikesharp/plugins/ArenaPro` (CounterStrikeSharp.API.dll and CounterStrikeSharp.API.pdb can be skipped)
 6. It's done! Now you can test your changes, and also contribute to the plugin if you want to :p 

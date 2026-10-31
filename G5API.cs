@@ -6,7 +6,7 @@ using CounterStrikeSharp.API.Modules.Utils;
 using System.Text.Json.Serialization;
 using System.Runtime.Serialization;
 
-namespace MatchZy
+namespace ArenaPro
 {
     public class Get5Status
     {
@@ -91,7 +91,7 @@ namespace MatchZy
         public string PluginVersion { get; } = "0.15.0";
     }
 
-    public partial class MatchZy
+    public partial class ArenaPro
     {
         [ConsoleCommand("get5_status", "Returns get5 status")]
         public void Get5StatusCommand(CCSPlayerController? player, CommandInfo command)
@@ -123,8 +123,8 @@ namespace MatchZy
             if (isMatchSetup)
             {
                 (int team1, int team2) = GetTeamsScore();
-                get5Status.Team1 = GetGet5StatusTeam(matchzyTeam1, team1);
-                get5Status.Team2 = GetGet5StatusTeam(matchzyTeam2, team2);
+                get5Status.Team1 = GetGet5StatusTeam(arenaproTeam1, team1);
+                get5Status.Team2 = GetGet5StatusTeam(arenaproTeam2, team2);
             }
 
             if (gamestate >= Get5GameState.GoingLive)
@@ -165,7 +165,7 @@ namespace MatchZy
 
         private Get5GameState getGet5Gamestate()
         {
-            // Get state from MatchZy state phase data and map to get5 state
+            // Get state from ArenaPro state phase data and map to get5 state
             // Get5 states: pre_veto, veto, warmup, knife, waiting_for_knife_decision, going_live, live, pending_restore, post_game
             // Please note, that Get5 have moved from integer based states to string based states, so the integer based states are not used.
             //

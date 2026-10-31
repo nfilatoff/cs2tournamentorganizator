@@ -1,4 +1,4 @@
-namespace MatchZy
+namespace ArenaPro
 {
     public enum ReadyTimeOutcome
     {
@@ -45,7 +45,7 @@ namespace MatchZy
             return (timeLeft >= 300 && timeLeft % 60 == 0) || (timeLeft < 300 && timeLeft % 30 == 0) || timeLeft == 10;
         }
 
-        // Join mode (matchzy_ready_mode 1): a team is ready once enough of its players have joined, no .ready needed.
+        // Join mode (arenapro_ready_mode 1): a team is ready once enough of its players have joined, no .ready needed.
         public static bool IsTeamComplete(int joinedPlayers, int minPlayersToReady)
         {
             return joinedPlayers > 0 && joinedPlayers >= minPlayersToReady;

@@ -1,6 +1,6 @@
 using System.Text.Json;
 
-namespace MatchZy
+namespace ArenaPro
 {
     // Bomb plants and defuses per player (SteamID64) on the current map. The game's match stats do not count them, so they
     // are counted from the bomb events, as in Get5, and stored in round backups so a round restore rolls them back too.

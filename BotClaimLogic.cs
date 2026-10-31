@@ -1,4 +1,4 @@
-namespace MatchZy
+namespace ArenaPro
 {
     // Which new bot a practice .bot request keeps. This file must not depend on CounterStrikeSharp so that it can be unit tested (see tests/).
     public static class BotClaimLogic

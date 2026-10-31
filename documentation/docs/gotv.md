@@ -1,6 +1,6 @@
 ## GOTV Broadcast
 
-MatchZy makes no changes to the broadcasting part of the GOTV, but will automatically adjust the
+ArenaPro makes no changes to the broadcasting part of the GOTV, but will automatically adjust the
 [`mp_match_restart_delay`](https://totalcsgo.com/command/mpmatchrestartdelay) when a map ends if GOTV is enabled to
 ensure that it won't be shorter than what is required for the GOTV broadcast to finish.
 
@@ -12,39 +12,39 @@ ensure that it won't be shorter than what is required for the GOTV broadcast to 
 
 ## Recording Demos
 
-MatchZy records the demos automatically. It recording starts once all teams have readied up and ends following a map result.
+ArenaPro records the demos automatically. It recording starts once all teams have readied up and ends following a map result.
 
-Path of demos can be configured using `matchzy_demo_path <directory>/`. If defined, it must not start with a slash and must end with a slash. Set to empty string to use the csgo root.
+Path of demos can be configured using `arenapro_demo_path <directory>/`. If defined, it must not start with a slash and must end with a slash. Set to empty string to use the csgo root.
 
-Demo files will be named according to `matchzy_demo_name_format`. The default format is: `"{TIME}_{MATCH_ID}_{MAP}_{TEAM1}_vs_{TEAM2}"`
+Demo files will be named according to `arenapro_demo_name_format`. The default format is: `"{TIME}_{MATCH_ID}_{MAP}_{TEAM1}_vs_{TEAM2}"`
 
 !!! info "Broadcast delay on GOTV recording"
 
     When the GOTV recording stops, the server will flush its framebuffer to disk. This may cause a lag spike or a
-    complete freeze of the GOTV broadcast if you have a substantial `tv_delay`, so MatchZy will wait until the entire match
+    complete freeze of the GOTV broadcast if you have a substantial `tv_delay`, so ArenaPro will wait until the entire match
     has been broadcast before it stops recording the demo.
 
 ## Automatic Upload
 
-In addition to recording demos, MatchZy can also upload them to a URL when the recording stops. You can define the upload URL with
-`matchzy_demo_upload_url <upload_url>`. The HTTP body will be the zipped demo file, and you can
+In addition to recording demos, ArenaPro can also upload them to a URL when the recording stops. You can define the upload URL with
+`arenapro_demo_upload_url <upload_url>`. The HTTP body will be the zipped demo file, and you can
 read the [headers](#headers) for file metadata.
 
-Example: `matchzy_demo_upload_url "https://your-website.com/upload-endpoint"`
+Example: `arenapro_demo_upload_url "https://your-website.com/upload-endpoint"`
 
 ### Headers
 
-MatchZy will add these HTTP headers to its demo upload request:
+ArenaPro will add these HTTP headers to its demo upload request:
 
-1. `MatchZy-FileName` is the name of the demo file
-2. `MatchZy-MapNumber` is the zero-indexed map number in the series.
-3. `MatchZy-MatchId` Unique ID of the match.
+1. `ArenaPro-FileName` is the name of the demo file
+2. `ArenaPro-MapNumber` is the zero-indexed map number in the series.
+3. `ArenaPro-MatchId` Unique ID of the match.
 
 
 ### Example
 
 This is an example of how a [Node.js](https://nodejs.org/en/) web server using [Express](https://expressjs.com/) might
-read the demo upload request sent by MatchZy.
+read the demo upload request sent by ArenaPro.
 
 !!! warning "Proof of concept only"
  
@@ -61,10 +61,10 @@ const port = 3000;
 
 app.post('/upload', function (req, res) {
 
-    // Read the MatchZy headers to know what to do with the file.
-    const filename = req.header('MatchZy-FileName');
-    const matchId = req.header('MatchZy-MatchId');
-    const mapNumber = req.header('MatchZy-MapNumber');
+    // Read the ArenaPro headers to know what to do with the file.
+    const filename = req.header('ArenaPro-FileName');
+    const matchId = req.header('ArenaPro-MatchId');
+    const mapNumber = req.header('ArenaPro-MapNumber');
  
     // Put all demos for the same match in a folder.
     const folder = path.join(__dirname, 'demos', matchId);

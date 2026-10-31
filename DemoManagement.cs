@@ -7,11 +7,11 @@ using System.IO.Compression;
 using System.Net.Http.Json;
 using System.Text;
 
-namespace MatchZy
+namespace ArenaPro
 {
-    public partial class MatchZy
+    public partial class ArenaPro
     {
-        public string demoPath = "MatchZy/";
+        public string demoPath = "ArenaPro/";
         public string demoNameFormat = "{TIME}_{MATCH_ID}_{MAP}_{TEAM1}_vs_{TEAM2}";
         public string demoUploadURL = "";
         public string demoUploadHeaderKey = "";
@@ -159,7 +159,7 @@ namespace MatchZy
         }
 
         [ConsoleCommand("get5_demo_upload_header_key", "If defined, a custom HTTP header with this name is added to the HTTP requests for demos")]
-        [ConsoleCommand("matchzy_demo_upload_header_key", "If defined, a custom HTTP header with this name is added to the HTTP requests for demos")]
+        [ConsoleCommand("arenapro_demo_upload_header_key", "If defined, a custom HTTP header with this name is added to the HTTP requests for demos")]
         public void DemoUploadHeaderKeyCommand(CCSPlayerController? player, CommandInfo command)
         {
             if (player != null) return;
@@ -169,7 +169,7 @@ namespace MatchZy
         }
 
         [ConsoleCommand("get5_demo_upload_header_value", "If defined, the value of the custom header added to the demos sent over HTTP")]
-        [ConsoleCommand("matchzy_demo_upload_header_value", "If defined, the value of the custom header added to the demos sent over HTTP")]
+        [ConsoleCommand("arenapro_demo_upload_header_value", "If defined, the value of the custom header added to the demos sent over HTTP")]
         public void DemoUploadHeaderValueCommand(CCSPlayerController? player, CommandInfo command)
         {
             if (player != null) return;

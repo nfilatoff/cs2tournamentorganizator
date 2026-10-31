@@ -1,6 +1,6 @@
 obj/*
 bin/*
 /.vs
-MatchZy.sln
+ArenaPro.sln
 tests/**/bin/
 tests/**/obj/

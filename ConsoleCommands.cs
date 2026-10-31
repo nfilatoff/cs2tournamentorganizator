@@ -6,9 +6,9 @@ using CounterStrikeSharp.API.Modules.Cvars;
 using CounterStrikeSharp.API.Modules.Utils;
 using System.Text.RegularExpressions;
 
-namespace MatchZy
+namespace ArenaPro
 {
-    public partial class MatchZy
+    public partial class ArenaPro
     {
         [ConsoleCommand("css_whitelist", "Toggles Whitelisting of players")]
         [ConsoleCommand("css_wl", "Toggles Whitelisting of players")]
@@ -17,16 +17,16 @@ namespace MatchZy
             if (IsPlayerAdmin(player, "css_whitelist", "@css/config"))
             {
                 isWhitelistRequired = !isWhitelistRequired;
-                string WLStatus = isWhitelistRequired ? Localizer["matchzy.cc.enabled"] : Localizer["matchzy.cc.disabled"];
+                string WLStatus = isWhitelistRequired ? Localizer["arenapro.cc.enabled"] : Localizer["arenapro.cc.disabled"];
                 if (player == null)
                 {
                     //ReplyToUserCommand(player, $"Whitelist is now {WLStatus}!");
-                    ReplyToUserCommand(player, Localizer["matchzy.cc.wl", WLStatus]);
+                    ReplyToUserCommand(player, Localizer["arenapro.cc.wl", WLStatus]);
                 }
                 else
                 {
                     //player.PrintToChat($"{chatPrefix} Whitelist is now {ChatColors.Green}{WLStatus}{ChatColors.Default}!");
-                    PrintToPlayerChat(player, Localizer["matchzy.cc.wl", WLStatus]);
+                    PrintToPlayerChat(player, Localizer["arenapro.cc.wl", WLStatus]);
                 }
             }
             else
@@ -42,16 +42,16 @@ namespace MatchZy
             if (IsPlayerAdmin(player, "css_save_nades_as_global", "@css/config"))
             {
                 isSaveNadesAsGlobalEnabled = !isSaveNadesAsGlobalEnabled;
-                string GlobalNadesStatus = isSaveNadesAsGlobalEnabled ? Localizer["matchzy.cc.enabled"] : Localizer["matchzy.cc.disabled"];
+                string GlobalNadesStatus = isSaveNadesAsGlobalEnabled ? Localizer["arenapro.cc.enabled"] : Localizer["arenapro.cc.disabled"];
                 if (player == null)
                 {
                     //ReplyToUserCommand(player, $"Saving/Loading Lineups Globally is now {GlobalNadesStatus}!");
-                    ReplyToUserCommand(player, Localizer["matchzy.cc.globalnades", GlobalNadesStatus]);
+                    ReplyToUserCommand(player, Localizer["arenapro.cc.globalnades", GlobalNadesStatus]);
                 }
                 else
                 {
                     //player.PrintToChat($"{chatPrefix} Saving/Loading Lineups Globally is now {ChatColors.Green}{GlobalNadesStatus}{ChatColors.Default}!");
-                    PrintToPlayerChat(player, Localizer["matchzy.cc.globalnades", GlobalNadesStatus]);
+                    PrintToPlayerChat(player, Localizer["arenapro.cc.globalnades", GlobalNadesStatus]);
 
                 }
             }
@@ -68,7 +68,7 @@ namespace MatchZy
             Log($"[!ready command] Sent by: {player.UserId} readyAvailable: {readyAvailable} matchStarted: {matchStarted}");
             if (IsJoinReadyMode() && readyAvailable && !matchStarted)
             {
-                PrintToPlayerChat(player, Localizer["matchzy.ready.joinmode"]);
+                PrintToPlayerChat(player, Localizer["arenapro.ready.joinmode"]);
                 return;
             }
             if (readyAvailable && !matchStarted)
@@ -82,13 +82,13 @@ namespace MatchZy
                     if (playerReadyStatus[player.UserId.Value])
                     {
                         // player.PrintToChat($"{chatPrefix} You are already ready!");
-                        PrintToPlayerChat(player, Localizer["matchzy.ready.markedready"]);
+                        PrintToPlayerChat(player, Localizer["arenapro.ready.markedready"]);
                     }
                     else
                     {
                         playerReadyStatus[player.UserId.Value] = true;
-                        // player.PrintToChat($"{chatPrefix} {Localizer["matchzy.youareready"]}");
-                        PrintToPlayerChat(player, Localizer["matchzy.ready.markedready"]);
+                        // player.PrintToChat($"{chatPrefix} {Localizer["arenapro.youareready"]}");
+                        PrintToPlayerChat(player, Localizer["arenapro.ready.markedready"]);
                     }
                     CheckLiveRequired();
                     HandleClanTags();
@@ -104,7 +104,7 @@ namespace MatchZy
             Log($"[!unready command] {player.UserId}");
             if (IsJoinReadyMode() && readyAvailable && !matchStarted)
             {
-                PrintToPlayerChat(player, Localizer["matchzy.ready.joinmode"]);
+                PrintToPlayerChat(player, Localizer["arenapro.ready.joinmode"]);
                 return;
             }
             if (readyAvailable && !matchStarted)
@@ -117,12 +117,12 @@ namespace MatchZy
                     }
                     if (!playerReadyStatus[player.UserId.Value])
                     {
-                        PrintToPlayerChat(player, Localizer["matchzy.ready.markedunready"]);
+                        PrintToPlayerChat(player, Localizer["arenapro.ready.markedunready"]);
                     }
                     else
                     {
                         playerReadyStatus[player.UserId.Value] = false;
-                        PrintToPlayerChat(player, Localizer["matchzy.ready.markedunready"]);
+                        PrintToPlayerChat(player, Localizer["arenapro.ready.markedunready"]);
                     }
                     HandleClanTags();
                 }
@@ -137,7 +137,7 @@ namespace MatchZy
             Log($"[!stay command] {player.UserId}, TeamNum: {player.TeamNum}, knifeWinner: {knifeWinner}, isSideSelectionPhase: {isSideSelectionPhase}");
             if (player.TeamNum == knifeWinner)
             {
-                PrintToAllChat(Localizer["matchzy.knife.decidedtostay", knifeWinnerName]);
+                PrintToAllChat(Localizer["arenapro.knife.decidedtostay", knifeWinnerName]);
                 // Server.PrintToChatAll($"{chatPrefix} {ChatColors.Green}{knifeWinnerName}{ChatColors.Default} has decided to stay!");
                 StartLive();
             }
@@ -155,7 +155,7 @@ namespace MatchZy
             {
                 Server.ExecuteCommand("mp_swapteams;");
                 SwapSidesInTeamData(true);
-                PrintToAllChat(Localizer["matchzy.knife.decidedtoswitch", knifeWinnerName]);
+                PrintToAllChat(Localizer["arenapro.knife.decidedtoswitch", knifeWinnerName]);
                 // Server.PrintToChatAll($"{chatPrefix} {ChatColors.Green}{knifeWinnerName}{ChatColors.Default} has decided to switch!");
                 StartLive();
             }
@@ -247,7 +247,7 @@ namespace MatchZy
                 var pauseTeamName = unpauseData["pauseTeam"];
                 if ((string)pauseTeamName == "Admin" && player != null)
                 {
-                    PrintToPlayerChat(player, Localizer["matchzy.pause.onlyadmincanunpause"]);
+                    PrintToPlayerChat(player, Localizer["arenapro.pause.onlyadmincanunpause"]);
                     return;
                 }
 
@@ -255,7 +255,7 @@ namespace MatchZy
                 if (player != null && (player.TeamNum == 2 || player.TeamNum == 3))
                 {
                     Team unpausingTeam = player.TeamNum == 2 ? reverseTeamSides["TERRORIST"] : reverseTeamSides["CT"];
-                    if (HandleTechPauseUnpause(player, unpausingTeam == matchzyTeam1 ? 1 : 2)) return;
+                    if (HandleTechPauseUnpause(player, unpausingTeam == arenaproTeam1 ? 1 : 2)) return;
                 }
 
                 string unpauseTeamName = "Admin";
@@ -285,17 +285,17 @@ namespace MatchZy
                 }
                 if ((bool)unpauseData["t"] && (bool)unpauseData["ct"])
                 {
-                    PrintToAllChat(Localizer["matchzy.pause.teamsunpausedthematch"]);
+                    PrintToAllChat(Localizer["arenapro.pause.teamsunpausedthematch"]);
                     UnpauseMatch();
                 }
                 else if (unpauseTeamName == "Admin")
                 {
-                    PrintToAllChat(Localizer["matchzy.pause.adminunpausedthematch"]);
+                    PrintToAllChat(Localizer["arenapro.pause.adminunpausedthematch"]);
                     UnpauseMatch();
                 }
                 else
                 {
-                    PrintToAllChat(Localizer["matchzy.pause.teamwantstounpause", unpauseTeamName, remainingUnpauseTeam]);
+                    PrintToAllChat(Localizer["arenapro.pause.teamwantstounpause", unpauseTeamName, remainingUnpauseTeam]);
                     // Server.PrintToChatAll($"{chatPrefix} {ChatColors.Green}{unpauseTeamName}{ChatColors.Default} wants to unpause the match. {ChatColors.Green}{remainingUnpauseTeam}{ChatColors.Default}, please write !unpause to confirm.");
                 }
                 if (!isPaused && pausedStateTimer != null)
@@ -317,7 +317,7 @@ namespace MatchZy
                 if (isPaused)
                 {
                     // ReplyToUserCommand(player, "Match is already paused, cannot start a tactical timeout!");
-                    ReplyToUserCommand(player, Localizer["matchzy.cc.matchpaused"]);
+                    ReplyToUserCommand(player, Localizer["arenapro.cc.matchpaused"]);
                     return;
                 }
                 var gameRules = Utilities.FindAllEntitiesByDesignerName<CCSGameRulesProxy>("cs_gamerules").First().GameRules!;
@@ -330,7 +330,7 @@ namespace MatchZy
                     else
                     {
                         // ReplyToUserCommand(player, "You do not have any tactical timeouts left!");
-                        ReplyToUserCommand(player, Localizer["matchzy.cc.nomorepauses"]);
+                        ReplyToUserCommand(player, Localizer["arenapro.cc.nomorepauses"]);
                     }
                 }
                 else if (player.TeamNum == 3)
@@ -342,7 +342,7 @@ namespace MatchZy
                     else
                     {
                         // ReplyToUserCommand(player, "You do not have any tactical timeouts left!");
-                        ReplyToUserCommand(player, Localizer["matchzy.cc.nomorepauses"]);
+                        ReplyToUserCommand(player, Localizer["arenapro.cc.nomorepauses"]);
                     }
                 }
             }
@@ -359,12 +359,12 @@ namespace MatchZy
                     if (player == null)
                     {
                         // ReplyToUserCommand(player, $"Skip veto command cannot be used if match has already started!");
-                        ReplyToUserCommand(player, Localizer["matchzy.cc.skipvetomatchstarted"]);
+                        ReplyToUserCommand(player, Localizer["arenapro.cc.skipvetomatchstarted"]);
                     }
                     else
                     {
                         // player.PrintToChat($"{chatPrefix} Skip veto command cannot be used if match has already started!");
-                        PrintToPlayerChat(player, Localizer["matchzy.cc.skipvetomatchstarted"]);
+                        PrintToPlayerChat(player, Localizer["arenapro.cc.skipvetomatchstarted"]);
                     }
                 }
                 else
@@ -373,12 +373,12 @@ namespace MatchZy
                     if (player == null)
                     {
                         // ReplyToUserCommand(player, $"Veto phase has been cancelled!");
-                        ReplyToUserCommand(player, Localizer["matchzy.cc.skipveto"]);
+                        ReplyToUserCommand(player, Localizer["arenapro.cc.skipveto"]);
                     }
                     else
                     {
                         // player.PrintToChat($"{chatPrefix} Veto phase has been cancelled!");
-                        PrintToPlayerChat(player, Localizer["matchzy.cc.skipveto"]);
+                        PrintToPlayerChat(player, Localizer["arenapro.cc.skipveto"]);
                     }
                 }
             }
@@ -395,16 +395,16 @@ namespace MatchZy
             if (IsPlayerAdmin(player, "css_roundknife", "@css/config"))
             {
                 isKnifeRequired = !isKnifeRequired;
-                string knifeStatus = isKnifeRequired ? Localizer["matchzy.cc.enabled"] : Localizer["matchzy.cc.disabled"];
+                string knifeStatus = isKnifeRequired ? Localizer["arenapro.cc.enabled"] : Localizer["arenapro.cc.disabled"];
                 if (player == null)
                 {
                     // ReplyToUserCommand(player, $"Knife round is now {knifeStatus}!");
-                    ReplyToUserCommand(player, Localizer["matchzy.cc.roundknife", knifeStatus]);
+                    ReplyToUserCommand(player, Localizer["arenapro.cc.roundknife", knifeStatus]);
                 }
                 else
                 {
                     // player.PrintToChat($"{chatPrefix} Knife round is now {ChatColors.Green}{knifeStatus}{ChatColors.Default}!");
-                    PrintToPlayerChat(player, Localizer["matchzy.cc.roundknife", knifeStatus]);
+                    PrintToPlayerChat(player, Localizer["arenapro.cc.roundknife", knifeStatus]);
                 }
             }
             else
@@ -427,7 +427,7 @@ namespace MatchZy
                 {
                     string minimumReadyRequiredFormatted = (player == null) ? $"{minimumReadyRequired}" : $"{ChatColors.Green}{minimumReadyRequired}{ChatColors.Default}";
                     // ReplyToUserCommand(player, $"Current Ready Required: {minimumReadyRequiredFormatted}. Usage: !readyrequired <number_of_ready_players_required>");
-                    ReplyToUserCommand(player, Localizer["matchzy.cc.minreadyrequired", minimumReadyRequiredFormatted]);
+                    ReplyToUserCommand(player, Localizer["arenapro.cc.minreadyrequired", minimumReadyRequiredFormatted]);
                 }
             }
             else
@@ -443,26 +443,26 @@ namespace MatchZy
 
             if (IsPlayerAdmin(player, "css_settings", "@css/config"))
             {
-                string knifeStatus = isKnifeRequired ? Localizer["matchzy.cc.enabled"] : Localizer["matchzy.cc.disabled"];
-                string playoutStatus = isPlayOutEnabled ? Localizer["matchzy.cc.enabled"] : Localizer["matchzy.cc.disabled"];
+                string knifeStatus = isKnifeRequired ? Localizer["arenapro.cc.enabled"] : Localizer["arenapro.cc.disabled"];
+                string playoutStatus = isPlayOutEnabled ? Localizer["arenapro.cc.enabled"] : Localizer["arenapro.cc.disabled"];
                 // player.PrintToChat($"{chatPrefix} Current Settings:");
-                PrintToPlayerChat(player, Localizer["matchzy.cc.currentsettings"]);
+                PrintToPlayerChat(player, Localizer["arenapro.cc.currentsettings"]);
                 // player.PrintToChat($"{chatPrefix} Knife: {ChatColors.Green}{knifeStatus}{ChatColors.Default}");
-                PrintToPlayerChat(player, Localizer["matchzy.cc.knifestatus", knifeStatus]);
+                PrintToPlayerChat(player, Localizer["arenapro.cc.knifestatus", knifeStatus]);
                 if (isMatchSetup)
                 {
                     // player.PrintToChat($"{chatPrefix} Minimum Ready Players Required (Per Team): {ChatColors.Green}{matchConfig.MinPlayersToReady}{ChatColors.Default}");
-                    PrintToPlayerChat(player, Localizer["matchzy.cc.minreadyplayersperteam", matchConfig.MinPlayersToReady]);
+                    PrintToPlayerChat(player, Localizer["arenapro.cc.minreadyplayersperteam", matchConfig.MinPlayersToReady]);
                     // player.PrintToChat($"{chatPrefix} Minimum Ready Spectators Required: {ChatColors.Green}{matchConfig.MinSpectatorsToReady}{ChatColors.Default}");
-                    PrintToPlayerChat(player, Localizer["matchzy.cc.minreadyspecs", matchConfig.MinSpectatorsToReady]);
+                    PrintToPlayerChat(player, Localizer["arenapro.cc.minreadyspecs", matchConfig.MinSpectatorsToReady]);
                 }
                 else
                 {
                     // player.PrintToChat($"{chatPrefix} Minimum Ready Required: {ChatColors.Green}{minimumReadyRequired}{ChatColors.Default}");
-                    PrintToPlayerChat(player, Localizer["matchzy.cc.minreadyplayers", minimumReadyRequired]);
+                    PrintToPlayerChat(player, Localizer["arenapro.cc.minreadyplayers", minimumReadyRequired]);
                 }
                 // player.PrintToChat($"{chatPrefix} Playout: {ChatColors.Green}{playoutStatus}{ChatColors.Default}");
-                PrintToPlayerChat(player, Localizer["matchzy.cc.playoutstatus", playoutStatus]);
+                PrintToPlayerChat(player, Localizer["arenapro.cc.playoutstatus", playoutStatus]);
             }
             else
             {
@@ -489,23 +489,23 @@ namespace MatchZy
                     winnerArg = winnerArg.Trim().ToLowerInvariant();
                     Team? forcedWinner = winnerArg switch
                     {
-                        "team1" => matchzyTeam1,
-                        "team2" => matchzyTeam2,
+                        "team1" => arenaproTeam1,
+                        "team2" => arenaproTeam2,
                         _ => null,
                     };
                     if (winnerArg != "" && forcedWinner == null)
                     {
-                        ReplyToUserCommand(player, Localizer["matchzy.cc.usage", ".forceend [team1|team2]"]);
+                        ReplyToUserCommand(player, Localizer["arenapro.cc.usage", ".forceend [team1|team2]"]);
                         return;
                     }
                     if (forcedWinner != null && !isMatchSetup && !matchStarted)
                     {
                         // Nothing to award: no match is loaded and none has started.
-                        ReplyToUserCommand(player, Localizer["matchzy.cc.endmatchnomatch"]);
+                        ReplyToUserCommand(player, Localizer["arenapro.cc.endmatchnomatch"]);
                         return;
                     }
                     // Server.PrintToChatAll($"{chatPrefix} An admin force-ended the match.");
-                    PrintToAllChat(Localizer["matchzy.cc.endmatch"]);
+                    PrintToAllChat(Localizer["arenapro.cc.endmatch"]);
                     if ((isMatchSetup || matchStarted) && !seriesEnded)
                     {
                         ForceEndSeries(forcedWinner);
@@ -518,7 +518,7 @@ namespace MatchZy
                 else
                 {
                     // ReplyToUserCommand(player, "Practice mode is active, cannot end the match.");
-                    ReplyToUserCommand(player, Localizer["matchzy.cc.endmatchispracc"]);
+                    ReplyToUserCommand(player, Localizer["arenapro.cc.endmatchispracc"]);
                 }
             }
             else
@@ -539,7 +539,7 @@ namespace MatchZy
                     {
                         // The restarted match is abandoned: give it an end time (with no winner) so it does not look like it is still running.
                         long matchId = liveMatchId;
-                        (int team1SeriesScore, int team2SeriesScore) = (matchzyTeam1.seriesScore, matchzyTeam2.seriesScore);
+                        (int team1SeriesScore, int team2SeriesScore) = (arenaproTeam1.seriesScore, arenaproTeam2.seriesScore);
                         database.SetMatchEndData(matchId, "", team1SeriesScore, team2SeriesScore);
                     }
                     ResetMatch();
@@ -547,7 +547,7 @@ namespace MatchZy
                 else
                 {
                     // ReplyToUserCommand(player, "Practice mode is active, cannot restart the match.");
-                    ReplyToUserCommand(player, Localizer["matchzy.cc.rrispracc"]);
+                    ReplyToUserCommand(player, Localizer["arenapro.cc.rrispracc"]);
                 }
             }
             else
@@ -586,7 +586,7 @@ namespace MatchZy
             else
             {
                 // ReplyToUserCommand(player, "Invalid map name!");
-                ReplyToUserCommand(player, Localizer["matchzy.cc.invalidmap"]);
+                ReplyToUserCommand(player, Localizer["arenapro.cc.invalidmap"]);
             }
         }
 
@@ -600,18 +600,18 @@ namespace MatchZy
                 if (isPractice)
                 {
                     // ReplyToUserCommand(player, "Cannot start a match while in practice mode. Please use .exitprac command to exit practice mode first!");
-                    ReplyToUserCommand(player, Localizer["matchzy.cc.startisprac"]);
+                    ReplyToUserCommand(player, Localizer["arenapro.cc.startisprac"]);
                     return;
                 }
                 if (matchStarted)
                 {
                     //ReplyToUserCommand(player, "Start command cannot be used if match is already started! If you want to unpause, please use .unpause");
-                    ReplyToUserCommand(player, Localizer["matchzy.cc.startmatchstarted"]);
+                    ReplyToUserCommand(player, Localizer["arenapro.cc.startmatchstarted"]);
                 }
                 else
                 {
                     //Server.PrintToChatAll($"{chatPrefix} {ChatColors.Green}Admin{ChatColors.Default} has started the game!");
-                    PrintToAllChat(Localizer["matchzy.cc.gamestarted"]);
+                    PrintToAllChat(Localizer["arenapro.cc.gamestarted"]);
                     HandleMatchStart();
                 }
             }
@@ -643,7 +643,7 @@ namespace MatchZy
             Server.PrintToChatAll($"{adminChatPrefix} {message}");
         }
 
-        [ConsoleCommand("reload_admins", "Reload admins of MatchZy")]
+        [ConsoleCommand("reload_admins", "Reload admins of ArenaPro")]
         public void OnReloadAdmins(CCSPlayerController? player, CommandInfo? command)
         {
             if (IsPlayerAdmin(player, "reload_admins", "@css/config"))
@@ -668,8 +668,8 @@ namespace MatchZy
 
             if (matchStarted)
             {
-                // ReplyToUserCommand(player, "MatchZy is already in match mode!");
-                ReplyToUserCommand(player, Localizer["matchzy.cc.match"]);
+                // ReplyToUserCommand(player, "ArenaPro is already in match mode!");
+                ReplyToUserCommand(player, Localizer["arenapro.cc.match"]);
                 return;
             }
 
@@ -687,8 +687,8 @@ namespace MatchZy
 
             if (matchStarted)
             {
-                //ReplyToUserCommand(player, "MatchZy is already in match mode!");
-                ReplyToUserCommand(player, Localizer["matchzy.cc.exitprac"]);
+                //ReplyToUserCommand(player, "ArenaPro is already in match mode!");
+                ReplyToUserCommand(player, Localizer["arenapro.cc.exitprac"]);
                 return;
             }
 
@@ -703,10 +703,10 @@ namespace MatchZy
                 SendPlayerNotAdminMessage(player);
                 return;
             }
-            Log($"[RCON] {player?.PlayerName ?? "Console"} ({player?.SteamID.ToString() ?? "-"}) executed: {MatchZySecurity.RedactConsoleCommand(command.ArgString)}");
+            Log($"[RCON] {player?.PlayerName ?? "Console"} ({player?.SteamID.ToString() ?? "-"}) executed: {ArenaProSecurity.RedactConsoleCommand(command.ArgString)}");
             Server.ExecuteCommand(command.ArgString);
             // ReplyToUserCommand(player, "Command sent successfully!");
-            ReplyToUserCommand(player, Localizer["matchzy.cc.rcon"]);
+            ReplyToUserCommand(player, Localizer["arenapro.cc.rcon"]);
 
         }
 
@@ -722,16 +722,16 @@ namespace MatchZy
             if (IsPlayerAdmin(player, "css_playout", "@css/config"))
             {
                 isPlayOutEnabled = !isPlayOutEnabled;
-                string playoutStatus = isPlayOutEnabled ? Localizer["matchzy.cc.enabled"] : Localizer["matchzy.cc.disabled"];
+                string playoutStatus = isPlayOutEnabled ? Localizer["arenapro.cc.enabled"] : Localizer["arenapro.cc.disabled"];
                 if (player == null)
                 {
                     // ReplyToUserCommand(player, $"Playout is now {playoutStatus}!");
-                    ReplyToUserCommand(player, Localizer["matchzy.cc.playout", playoutStatus]);
+                    ReplyToUserCommand(player, Localizer["arenapro.cc.playout", playoutStatus]);
                 }
                 else
                 {
                     // player.PrintToChat($"{chatPrefix} Playout is now {ChatColors.Green}{playoutStatus}{ChatColors.Default}!");
-                    PrintToPlayerChat(player, Localizer["matchzy.cc.playout", playoutStatus]);
+                    PrintToPlayerChat(player, Localizer["arenapro.cc.playout", playoutStatus]);
                 }
 
                 HandlePlayoutConfig();

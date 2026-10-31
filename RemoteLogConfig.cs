@@ -2,9 +2,9 @@ using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Modules.Commands;
 
-namespace MatchZy
+namespace ArenaPro
 {
-    public partial class MatchZy
+    public partial class ArenaPro
     {
         // Remote log settings from config.cfg / the server console. Every new match starts from these; a match config's
         // "cvars" can override them for that match only (see ApplyMatchRemoteLogCvar).
@@ -14,9 +14,9 @@ namespace MatchZy
 
         public static readonly HashSet<string> remoteLogCvars = new(StringComparer.OrdinalIgnoreCase)
         {
-            "matchzy_remote_log_url", "get5_remote_log_url",
-            "matchzy_remote_log_header_key", "get5_remote_log_header_key",
-            "matchzy_remote_log_header_value", "get5_remote_log_header_value",
+            "arenapro_remote_log_url", "get5_remote_log_url",
+            "arenapro_remote_log_header_key", "get5_remote_log_header_key",
+            "arenapro_remote_log_header_value", "get5_remote_log_header_value",
         };
 
         // Applies a remote log setting from a match config directly to the current match, without changing the server defaults.
@@ -27,7 +27,7 @@ namespace MatchZy
             {
                 if (!IsValidUrl(value))
                 {
-                    Log($"[ApplyMatchRemoteLogCvar] Invalid URL: {MatchZySecurity.RedactUrl(value)}. Please provide a valid URL!");
+                    Log($"[ApplyMatchRemoteLogCvar] Invalid URL: {ArenaProSecurity.RedactUrl(value)}. Please provide a valid URL!");
                     return;
                 }
                 matchConfig.RemoteLogURL = value;
@@ -55,7 +55,7 @@ namespace MatchZy
         }
 
         [ConsoleCommand("get5_remote_log_url","If defined, all events are sent to this URL over HTTP. If no protocol is provided")]
-        [ConsoleCommand("matchzy_remote_log_url", "If defined, all events are sent to this URL over HTTP. If no protocol is provided")]
+        [ConsoleCommand("arenapro_remote_log_url", "If defined, all events are sent to this URL over HTTP. If no protocol is provided")]
         public void RemoteLogURLCommand(CCSPlayerController? player, CommandInfo command)
         {
             if (player != null) return;
@@ -63,7 +63,7 @@ namespace MatchZy
 
             if (!IsValidUrl(url))
             {
-                Log($"[RemoteLogURLCommand] Invalid URL: {MatchZySecurity.RedactUrl(url)}. Please provide a valid URL!");
+                Log($"[RemoteLogURLCommand] Invalid URL: {ArenaProSecurity.RedactUrl(url)}. Please provide a valid URL!");
                 return;
             }
 
@@ -72,7 +72,7 @@ namespace MatchZy
         }
 
         [ConsoleCommand("get5_remote_log_header_key", "If defined, a custom HTTP header with this name is added to the HTTP requests for events")]
-        [ConsoleCommand("matchzy_remote_log_header_key", "If defined, a custom HTTP header with this name is added to the HTTP requests for events")]
+        [ConsoleCommand("arenapro_remote_log_header_key", "If defined, a custom HTTP header with this name is added to the HTTP requests for events")]
         public void RemoteLogHeaderKeyCommand(CCSPlayerController? player, CommandInfo command)
         {
             if (player != null) return;
@@ -86,7 +86,7 @@ namespace MatchZy
         }
 
         [ConsoleCommand("get5_remote_log_header_value", "If defined, the value of the custom header added to the events sent over HTTP")]
-        [ConsoleCommand("matchzy_remote_log_header_value", "If defined, the value of the custom header added to the events sent over HTTP")]
+        [ConsoleCommand("arenapro_remote_log_header_value", "If defined, the value of the custom header added to the events sent over HTTP")]
         public void RemoteLogHeaderValueCommand(CCSPlayerController? player, CommandInfo command)
         {
             if (player != null) return;

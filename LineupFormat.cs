@@ -1,6 +1,6 @@
 using System.Globalization;
 
-namespace MatchZy
+namespace ArenaPro
 {
     // How saved lineups (savednades.json) store positions and angles: three numbers separated by spaces.
     // This file must not depend on CounterStrikeSharp so that it can be unit tested (see tests/).

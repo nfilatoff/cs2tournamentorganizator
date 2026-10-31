@@ -1,7 +1,7 @@
-using MatchZy;
-using static MatchZy.BotClaimLogic;
+using ArenaPro;
+using static ArenaPro.BotClaimLogic;
 
-namespace MatchZy.Tests;
+namespace ArenaPro.Tests;
 
 public class BotClaimLogicTests
 {

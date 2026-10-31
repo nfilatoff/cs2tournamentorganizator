@@ -1,7 +1,7 @@
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Utils;
 
-namespace MatchZy;
+namespace ArenaPro;
 
 public enum PracticeTimerType
 {

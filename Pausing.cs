@@ -5,11 +5,11 @@ using CounterStrikeSharp.API.Modules.Commands;
 using CounterStrikeSharp.API.Modules.Timers;
 using CounterStrikeSharp.API.Modules.Utils;
 
-namespace MatchZy;
+namespace ArenaPro;
 
 // Technical pauses as in Get5 (get5_max_tech_pauses / get5_tech_pause_time). Both limits default to 0 (unlimited, both teams
-// have to unpause), which is how .tech / .pause have always worked in MatchZy.
-public partial class MatchZy
+// have to unpause), which is how .tech / .pause have always worked in ArenaPro.
+public partial class ArenaPro
 {
     // Technical pauses a team can call per map (0 = unlimited) and seconds after which any one team can unpause (0 = never).
     public int maxTechPauses = 0;
@@ -27,7 +27,7 @@ public partial class MatchZy
     private int pauseMapNumber = 0;
     private CounterStrikeSharp.API.Modules.Timers.Timer? pauseTimer;
 
-    [ConsoleCommand("matchzy_max_tech_pauses", "Number of technical pauses a team can use per map. 0 = unlimited. Default: 0")]
+    [ConsoleCommand("arenapro_max_tech_pauses", "Number of technical pauses a team can use per map. 0 = unlimited. Default: 0")]
     [ConsoleCommand("get5_max_tech_pauses", "Number of technical pauses a team can use per map. 0 = unlimited. Default: 0")]
     public void MaxTechPausesCommand(CCSPlayerController? player, CommandInfo command)
     {
@@ -35,7 +35,7 @@ public partial class MatchZy
         if (int.TryParse(GetSettingArgument(command), out int value) && value >= 0) maxTechPauses = value;
     }
 
-    [ConsoleCommand("matchzy_tech_pause_time", "Seconds a technical pause lasts before any one team can unpause it (otherwise both teams have to). 0 = no limit. Default: 0")]
+    [ConsoleCommand("arenapro_tech_pause_time", "Seconds a technical pause lasts before any one team can unpause it (otherwise both teams have to). 0 = no limit. Default: 0")]
     [ConsoleCommand("get5_tech_pause_time", "Seconds a technical pause lasts before any one team can unpause it (otherwise both teams have to). 0 = no limit. Default: 0")]
     public void TechPauseTimeCommand(CCSPlayerController? player, CommandInfo command)
     {
@@ -43,7 +43,7 @@ public partial class MatchZy
         if (int.TryParse(GetSettingArgument(command), out int value) && value >= 0) techPauseTime = value;
     }
 
-    [ConsoleCommand("get5_allow_technical_pause", "Whether technical pauses are allowed (same as matchzy_enable_tech_pause). Default: true")]
+    [ConsoleCommand("get5_allow_technical_pause", "Whether technical pauses are allowed (same as arenapro_enable_tech_pause). Default: true")]
     public void AllowTechnicalPauseCommand(CCSPlayerController? player, CommandInfo command)
     {
         if (player != null) return;
@@ -91,7 +91,7 @@ public partial class MatchZy
         techPausesUsed[2] = team2Used;
     }
 
-    private Team? GetTeamByNumber(int teamNumber) => teamNumber == 1 ? matchzyTeam1 : teamNumber == 2 ? matchzyTeam2 : null;
+    private Team? GetTeamByNumber(int teamNumber) => teamNumber == 1 ? arenaproTeam1 : teamNumber == 2 ? arenaproTeam2 : null;
 
     // Every second while paused (Get5: Timer_PauseTimeCheck). A pause takes effect in freeze time, which is when it starts
     // counting; a technical pause is counted as used on its first second.
@@ -115,7 +115,7 @@ public partial class MatchZy
             if (secondsLeft == 0 && pauseSecondsElapsed == techPauseTime)
             {
                 // Only announced once; the pause goes on until a team unpauses.
-                PrintToAllChat(Localizer["matchzy.pause.anyonecanunpause"]);
+                PrintToAllChat(Localizer["arenapro.pause.anyonecanunpause"]);
             }
 
             Team? team = GetTeamByNumber(pausingTeamNumber);
@@ -123,8 +123,8 @@ public partial class MatchZy
             string side = teamSides.TryGetValue(team, out string? teamSide) && teamSide == "CT" ? "CT" : "T";
             string count = PauseLogic.PauseCountSuffix(used, maxTechPauses);
             string hint = secondsLeft > 0
-                ? Localizer["matchzy.pause.techhinttime", team.teamName, side, count, ReadyTimeLogic.FormatTime(secondsLeft)]
-                : Localizer["matchzy.pause.techhintawaiting", team.teamName, side, count];
+                ? Localizer["arenapro.pause.techhinttime", team.teamName, side, count, ReadyTimeLogic.FormatTime(secondsLeft)]
+                : Localizer["arenapro.pause.techhintawaiting", team.teamName, side, count];
             foreach (var player in playerData.Values)
             {
                 if (player.IsValid && !player.IsBot) player.PrintToCenter(hint);
@@ -139,7 +139,7 @@ public partial class MatchZy
     // game_paused / game_unpaused in Get5's format (team1 / team2 / none, and the pause type).
     private void SendPauseEvent(bool paused)
     {
-        var pauseEvent = new MatchZyPauseEvent(paused ? "game_paused" : "game_unpaused")
+        var pauseEvent = new ArenaProPauseEvent(paused ? "game_paused" : "game_unpaused")
         {
             MatchId = liveMatchId,
             MapNumber = pauseMapNumber,
@@ -159,13 +159,13 @@ public partial class MatchZy
         if (teamNumber == pausingTeamNumber && pauseSecondsElapsed < 0)
         {
             // The pause has not taken effect yet (no freeze time): the pausing team can cancel it, which does not use it up.
-            PrintToAllChat(Localizer["matchzy.pause.pauserequestcanceled", team.teamName]);
+            PrintToAllChat(Localizer["arenapro.pause.pauserequestcanceled", team.teamName]);
             UnpauseMatch();
             return true;
         }
         if (PauseLogic.AnyoneCanUnpause(pauseSecondsElapsed, techPauseTime, techPausesUsed[pausingTeamNumber], maxTechPauses))
         {
-            PrintToAllChat(Localizer["matchzy.pause.unpausedby", team.teamName]);
+            PrintToAllChat(Localizer["arenapro.pause.unpausedby", team.teamName]);
             UnpauseMatch();
             return true;
         }

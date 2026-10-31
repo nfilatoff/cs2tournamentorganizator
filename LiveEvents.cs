@@ -2,12 +2,12 @@ using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Cvars;
 
-namespace MatchZy
+namespace ArenaPro
 {
     // Get5's live events: round_start, player_death, bomb_planted, bomb_defused, backup_loaded and player_disconnect, with Get5's fields
     // (stats.sp / backups.sp), only while the match is live. G5API uses them for the kill feed and bomb plants, and to
     // remove them again for the rounds undone by a round restore.
-    public partial class MatchZy
+    public partial class ArenaPro
     {
         // Rounds played when the current round started (Get5's round_number, 0 for the first round).
         private int liveRoundNumber = 0;
@@ -36,7 +36,7 @@ namespace MatchZy
                         return HookResult.Continue;
                     }
                     if (!IsLiveForEvents()) return HookResult.Continue;
-                    var roundStartEvent = new MatchZyRoundStartedEvent
+                    var roundStartEvent = new ArenaProRoundStartedEvent
                     {
                         MatchId = liveMatchId,
                         MapNumber = matchConfig.CurrentMapNumber,
@@ -79,7 +79,7 @@ namespace MatchZy
                     lastBombSite = GetPlantedBombSite();
                     if (!IsLiveForEvents() || !IsPlayerValid(@event.Userid)) return HookResult.Continue;
                     bombStats.AddPlant(@event.Userid!.SteamID);
-                    var bombEvent = new MatchZyBombEvent("bomb_planted")
+                    var bombEvent = new ArenaProBombEvent("bomb_planted")
                     {
                         MatchId = liveMatchId,
                         MapNumber = matchConfig.CurrentMapNumber,
@@ -104,7 +104,7 @@ namespace MatchZy
                     // As in Get5: players (not bots or GOTV) leaving while a match is loaded.
                     CCSPlayerController? player = @event.Userid;
                     if (!isMatchSetup || player == null || !player.IsValid || player.IsBot || player.IsHLTV) return HookResult.Continue;
-                    var disconnectEvent = new MatchZyPlayerDisconnectedEvent
+                    var disconnectEvent = new ArenaProPlayerDisconnectedEvent
                     {
                         MatchId = liveMatchId,
                         Player = GetPlayerObject(player),
@@ -126,7 +126,7 @@ namespace MatchZy
                     bombStats.AddDefuse(@event.Userid!.SteamID);
                     int c4Timer = ConVar.Find("mp_c4timer")?.GetPrimitiveValue<int>() ?? 40;
                     int sincePlant = bombPlantedAt > 0 ? (int)Math.Round((Server.EngineTime - bombPlantedAt) * 1000) : 0;
-                    var defuseEvent = new MatchZyBombDefusedEvent
+                    var defuseEvent = new ArenaProBombDefusedEvent
                     {
                         MatchId = liveMatchId,
                         MapNumber = matchConfig.CurrentMapNumber,
@@ -152,10 +152,10 @@ namespace MatchZy
         private int GetRoundTime() => LiveEventLogic.RoundTime(roundStartedAt, Server.EngineTime);
 
         // Get5's GetPlayerObject.
-        private static MatchZyPlayer GetPlayerObject(CCSPlayerController player)
+        private static ArenaProPlayer GetPlayerObject(CCSPlayerController player)
         {
             int userId = player.UserId ?? 0;
-            return new MatchZyPlayer
+            return new ArenaProPlayer
             {
                 SteamId = LiveEventLogic.PlayerSteamId(player.SteamID, player.IsBot, userId),
                 Name = player.PlayerName,
@@ -165,7 +165,7 @@ namespace MatchZy
             };
         }
 
-        private bool IsCoach(CCSPlayerController player) => matchzyTeam1.coach.Contains(player) || matchzyTeam2.coach.Contains(player);
+        private bool IsCoach(CCSPlayerController player) => arenaproTeam1.coach.Contains(player) || arenaproTeam2.coach.Contains(player);
 
         private void SendPlayerDeathEvent(EventPlayerDeath @event)
         {
@@ -176,19 +176,19 @@ namespace MatchZy
             if (IsCoach(victim!)) return;
 
             CCSPlayerController? attacker = IsPlayerValid(@event.Attacker) ? @event.Attacker : null;
-            MatchZyPlayer victimPlayer = GetPlayerObject(victim!);
-            MatchZyPlayer? attackerPlayer = attacker != null ? GetPlayerObject(attacker) : null;
+            ArenaProPlayer victimPlayer = GetPlayerObject(victim!);
+            ArenaProPlayer? attackerPlayer = attacker != null ? GetPlayerObject(attacker) : null;
 
             string weapon = @event.Weapon ?? "";
             bool killedByBomb = LiveEventLogic.IsBombKill(weapon);
             bool attackerIsVictim = attacker != null && attacker == victim;
 
-            MatchZyAssist? assist = null;
+            ArenaProAssist? assist = null;
             CCSPlayerController? assister = @event.Assister;
             if (IsPlayerValid(assister))
             {
-                MatchZyPlayer assisterPlayer = GetPlayerObject(assister!);
-                assist = new MatchZyAssist
+                ArenaProPlayer assisterPlayer = GetPlayerObject(assister!);
+                assist = new ArenaProAssist
                 {
                     Player = assisterPlayer,
                     FriendlyFire = assisterPlayer.Side == victimPlayer.Side,
@@ -196,14 +196,14 @@ namespace MatchZy
                 };
             }
 
-            var deathEvent = new MatchZyPlayerDeathEvent
+            var deathEvent = new ArenaProPlayerDeathEvent
             {
                 MatchId = liveMatchId,
                 MapNumber = matchConfig.CurrentMapNumber,
                 RoundNumber = liveRoundNumber,
                 RoundTime = GetRoundTime(),
                 Player = victimPlayer,
-                Weapon = new MatchZyWeapon { Name = weapon, Id = LiveEventLogic.WeaponId(weapon) },
+                Weapon = new ArenaProWeapon { Name = weapon, Id = LiveEventLogic.WeaponId(weapon) },
                 Bomb = killedByBomb,
                 Headshot = @event.Headshot,
                 ThruSmoke = @event.Thrusmoke,
@@ -232,14 +232,14 @@ namespace MatchZy
         {
             liveRoundNumber = roundNumber;
             roundStartSentByRestore = true;
-            var backupEvent = new MatchZyBackupRestoredEvent
+            var backupEvent = new ArenaProBackupRestoredEvent
             {
                 MatchId = liveMatchId,
                 MapNumber = matchConfig.CurrentMapNumber,
                 RoundNumber = roundNumber,
                 FileName = fileName,
             };
-            var roundStartEvent = new MatchZyRoundStartedEvent
+            var roundStartEvent = new ArenaProRoundStartedEvent
             {
                 MatchId = liveMatchId,
                 MapNumber = matchConfig.CurrentMapNumber,

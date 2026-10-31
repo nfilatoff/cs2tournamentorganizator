@@ -1,4 +1,4 @@
-namespace MatchZy;
+namespace ArenaPro;
 
 class Constants
 {

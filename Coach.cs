@@ -4,17 +4,17 @@ using CounterStrikeSharp.API.Modules.Utils;
 using CounterStrikeSharp.API.Modules.Cvars;
 using System.Text.Json;
 
-namespace MatchZy;
+namespace ArenaPro;
 
-public partial class MatchZy
+public partial class ArenaPro
 {
 
     public CounterStrikeSharp.API.Modules.Timers.Timer? coachKillTimer = null;
 
     public HashSet<CCSPlayerController> GetAllCoaches()
     {
-        HashSet<CCSPlayerController> coaches = new(matchzyTeam1.coach);
-        coaches.UnionWith(matchzyTeam2.coach);
+        HashSet<CCSPlayerController> coaches = new(arenaproTeam1.coach);
+        coaches.UnionWith(arenaproTeam2.coach);
 
         return coaches;
     }
@@ -41,37 +41,37 @@ public partial class MatchZy
             return;
         }
 
-        if (matchzyTeam1.coach.Contains(player!) || matchzyTeam2.coach.Contains(player!))
+        if (arenaproTeam1.coach.Contains(player!) || arenaproTeam2.coach.Contains(player!))
         {
             ReplyToUserCommand(player, "You are already coaching a team!");
             return;
         }
 
-        Team matchZyCoachTeam;
+        Team arenaProCoachTeam;
 
         if (side == "t")
         {
-            matchZyCoachTeam = reverseTeamSides["TERRORIST"];
+            arenaProCoachTeam = reverseTeamSides["TERRORIST"];
         }
         else if (side == "ct")
         {
-            matchZyCoachTeam = reverseTeamSides["CT"];
+            arenaProCoachTeam = reverseTeamSides["CT"];
         }
         else
         {
             return;
         }
 
-        // if (matchZyCoachTeam.coach != null) {
+        // if (arenaProCoachTeam.coach != null) {
         //     ReplyToUserCommand(player, "Coach slot for this team has been already taken!");
         //     return;
         // }
 
-        matchZyCoachTeam.coach.Add(player!);
-        player!.Clan = $"[{matchZyCoachTeam.teamName} COACH]";
+        arenaProCoachTeam.coach.Add(player!);
+        player!.Clan = $"[{arenaProCoachTeam.teamName} COACH]";
         if (player.InGameMoneyServices != null) player.InGameMoneyServices.Account = 0;
-        ReplyToUserCommand(player, $"You are now coaching {matchZyCoachTeam.teamName}! Use .uncoach to stop coaching");
-        PrintToAllChat($"{ChatColors.Green}{player.PlayerName}{ChatColors.Default} is now coaching {ChatColors.Green}{matchZyCoachTeam.teamName}{ChatColors.Default}!");
+        ReplyToUserCommand(player, $"You are now coaching {arenaProCoachTeam.teamName}! Use .uncoach to stop coaching");
+        PrintToAllChat($"{ChatColors.Green}{player.PlayerName}{ChatColors.Default} is now coaching {ChatColors.Green}{arenaProCoachTeam.teamName}{ChatColors.Default}!");
     }
 
     public void HandleCoaches()
@@ -97,7 +97,7 @@ public partial class MatchZy
         foreach (CCSPlayerController coach in coaches)
         {
             if (!IsPlayerValid(coach)) continue;
-            Team coachTeam = matchzyTeam1.coach.Contains(coach) ? matchzyTeam1 : matchzyTeam2;
+            Team coachTeam = arenaproTeam1.coach.Contains(coach) ? arenaproTeam1 : arenaproTeam2;
             int coachTeamNum = teamSides[coachTeam] == "CT" ? 3 : 2;
             coach.InGameMoneyServices!.Account = 0;
 
@@ -212,24 +212,24 @@ public partial class MatchZy
 
     public CsTeam GetCoachTeam(CCSPlayerController coach)
     {
-        if (matchzyTeam1.coach.Contains(coach))
+        if (arenaproTeam1.coach.Contains(coach))
         {
-            if (teamSides[matchzyTeam1] == "CT")
+            if (teamSides[arenaproTeam1] == "CT")
             {
                 return CsTeam.CounterTerrorist;
             }
-            else if (teamSides[matchzyTeam1] == "TERRORIST")
+            else if (teamSides[arenaproTeam1] == "TERRORIST")
             {
                 return CsTeam.Terrorist;
             }
         }
-        if (matchzyTeam2.coach.Contains(coach))
+        if (arenaproTeam2.coach.Contains(coach))
         {
-            if (teamSides[matchzyTeam2] == "CT")
+            if (teamSides[arenaproTeam2] == "CT")
             {
                 return CsTeam.CounterTerrorist;
             }
-            else if (teamSides[matchzyTeam2] == "TERRORIST")
+            else if (teamSides[arenaproTeam2] == "TERRORIST")
             {
                 return CsTeam.Terrorist;
             }

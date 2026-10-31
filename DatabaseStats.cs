@@ -15,7 +15,7 @@ using MySqlConnector;
 
 
 
-namespace MatchZy
+namespace ArenaPro
 {
     public class Database
     {
@@ -77,7 +77,7 @@ namespace MatchZy
                 string dbType = isSqlite ? "SQLite" : "MySQL";
                 Log($"[InitializeDatabase] {dbType} Database connection successful");
 
-                // Create the `matchzy_stats_matches`, `matchzy_stats_players` and `matchzy_stats_maps` tables if they doesn't exist
+                // Create the `arenapro_stats_matches`, `arenapro_stats_players` and `arenapro_stats_maps` tables if they doesn't exist
                 if (isSqlite) {
                     // WAL lets the separate connections read while another one writes.
                     connection.Execute("PRAGMA journal_mode=WAL;");
@@ -87,17 +87,17 @@ namespace MatchZy
                     try
                     {
                         // Tables created by earlier versions have VARCHAR(16), too short for team names.
-                        connection.Execute("ALTER TABLE matchzy_stats_maps MODIFY winner VARCHAR(255) NOT NULL DEFAULT ''");
+                        connection.Execute("ALTER TABLE arenapro_stats_maps MODIFY winner VARCHAR(255) NOT NULL DEFAULT ''");
                     }
                     catch (Exception ex)
                     {
-                        Log($"[InitializeDatabase] Could not widen matchzy_stats_maps.winner: {ex.Message}");
+                        Log($"[InitializeDatabase] Could not widen arenapro_stats_maps.winner: {ex.Message}");
                     }
                 }
 
-                Log("[InitializeDatabase] Table matchzy_stats_matches created (or already exists)");
-                Log("[InitializeDatabase] Table matchzy_stats_players created (or already exists)");
-                Log("[InitializeDatabase] Table matchzy_stats_maps created (or already exists)");
+                Log("[InitializeDatabase] Table arenapro_stats_matches created (or already exists)");
+                Log("[InitializeDatabase] Table arenapro_stats_players created (or already exists)");
+                Log("[InitializeDatabase] Table arenapro_stats_maps created (or already exists)");
             }
             catch (Exception ex)
             {
@@ -112,7 +112,7 @@ namespace MatchZy
                 SetDatabaseConfig(directory);
 
                 // Default Timeout: how long SQLite waits for another connection's write to finish instead of failing.
-                string sqliteConnectionString = $"Data Source={Path.Join(directory, "matchzy.db")};Default Timeout=30;Pooling=True";
+                string sqliteConnectionString = $"Data Source={Path.Join(directory, "arenapro.db")};Default Timeout=30;Pooling=True";
                 if (databaseType == DatabaseType.SQLite)
                 {
                     connectionString = sqliteConnectionString;
@@ -141,7 +141,7 @@ namespace MatchZy
         public void CreateRequiredTablesSQLite(IDbConnection connection)
 {
             connection.Execute($@"
-            CREATE TABLE IF NOT EXISTS matchzy_stats_matches (
+            CREATE TABLE IF NOT EXISTS arenapro_stats_matches (
                 matchid INTEGER PRIMARY KEY AUTOINCREMENT,
                 start_time DATETIME NOT NULL,
                 end_time DATETIME DEFAULT NULL,
@@ -155,7 +155,7 @@ namespace MatchZy
             )");
 
             connection.Execute(@"
-                CREATE TABLE IF NOT EXISTS matchzy_stats_maps (
+                CREATE TABLE IF NOT EXISTS arenapro_stats_maps (
                     matchid INTEGER NOT NULL,
                     mapnumber INTEGER NOT NULL,
                     start_time DATETIME NOT NULL,
@@ -165,11 +165,11 @@ namespace MatchZy
                     team1_score INTEGER NOT NULL DEFAULT 0,
                     team2_score INTEGER NOT NULL DEFAULT 0,
                     PRIMARY KEY (matchid, mapnumber),
-                    FOREIGN KEY (matchid) REFERENCES matchzy_stats_matches (matchid)
+                    FOREIGN KEY (matchid) REFERENCES arenapro_stats_matches (matchid)
                 )");
 
             connection.Execute(@"
-                CREATE TABLE IF NOT EXISTS matchzy_stats_players (
+                CREATE TABLE IF NOT EXISTS arenapro_stats_players (
                     matchid INTEGER NOT NULL,
                     mapnumber INTEGER NOT NULL,
                     steamid64 INTEGER NOT NULL,
@@ -207,15 +207,15 @@ namespace MatchZy
                     cash_earned INTEGER NOT NULL,
                     enemies_flashed INTEGER NOT NULL,
                     PRIMARY KEY (matchid, mapnumber, steamid64),
-                    FOREIGN KEY (matchid) REFERENCES matchzy_stats_matches (matchid),
-                    FOREIGN KEY (matchid, mapnumber) REFERENCES matchzy_stats_maps (matchid, mapnumber)
+                    FOREIGN KEY (matchid) REFERENCES arenapro_stats_matches (matchid),
+                    FOREIGN KEY (matchid, mapnumber) REFERENCES arenapro_stats_maps (matchid, mapnumber)
                 )");
         }
 
         public void CreateRequiredTablesSQL(IDbConnection connection)
 {
             connection.Execute($@"
-                CREATE TABLE IF NOT EXISTS matchzy_stats_matches (
+                CREATE TABLE IF NOT EXISTS arenapro_stats_matches (
                     matchid INT PRIMARY KEY AUTO_INCREMENT,
                     start_time DATETIME NOT NULL,
                     end_time DATETIME DEFAULT NULL,
@@ -229,7 +229,7 @@ namespace MatchZy
                 )");
                 
             connection.Execute($@"
-            CREATE TABLE IF NOT EXISTS matchzy_stats_maps (
+            CREATE TABLE IF NOT EXISTS arenapro_stats_maps (
                 matchid INT NOT NULL,
                 mapnumber TINYINT(3) UNSIGNED NOT NULL,
                 start_time DATETIME NOT NULL,
@@ -240,11 +240,11 @@ namespace MatchZy
                 team2_score INT NOT NULL DEFAULT 0,
                 PRIMARY KEY (matchid, mapnumber),
                 INDEX mapnumber_index (mapnumber),
-                CONSTRAINT matchzy_stats_maps_matchid FOREIGN KEY (matchid) REFERENCES matchzy_stats_matches (matchid)
+                CONSTRAINT arenapro_stats_maps_matchid FOREIGN KEY (matchid) REFERENCES arenapro_stats_matches (matchid)
             )");
 
             connection.Execute($@"
-            CREATE TABLE IF NOT EXISTS matchzy_stats_players (
+            CREATE TABLE IF NOT EXISTS arenapro_stats_players (
                 matchid INT NOT NULL,
                 mapnumber TINYINT(3) UNSIGNED NOT NULL,
                 steamid64 BIGINT NOT NULL,
@@ -283,7 +283,7 @@ namespace MatchZy
                 enemies_flashed INT NOT NULL,
                 PRIMARY KEY (matchid, mapnumber, steamid64),
                 CONSTRAINT fk_player_map_ref FOREIGN KEY (matchid, mapnumber) 
-                    REFERENCES matchzy_stats_maps (matchid, mapnumber)
+                    REFERENCES arenapro_stats_maps (matchid, mapnumber)
             )");
         }
 
@@ -308,7 +308,7 @@ namespace MatchZy
                             : "ON DUPLICATE KEY UPDATE team1_name = VALUES(team1_name), team2_name = VALUES(team2_name), series_type = VALUES(series_type), server_ip = VALUES(server_ip), end_time = NULL, winner = ''")
                         : (isSqlite ? "ON CONFLICT(matchid) DO NOTHING" : "ON DUPLICATE KEY UPDATE matchid = matchid");
                     connection.Execute($@"
-                        INSERT INTO matchzy_stats_matches (matchid, start_time, team1_name, team2_name, series_type, server_ip)
+                        INSERT INTO arenapro_stats_matches (matchid, start_time, team1_name, team2_name, series_type, server_ip)
                         VALUES (@liveMatchId, {Now}, @team1name, @team2name, @seriesType, @serverIp)
                         {matchUpsert}",
                         new { liveMatchId, team1name, team2name, seriesType, serverIp });
@@ -316,7 +316,7 @@ namespace MatchZy
                 else if (mapNumber == 0)
                 {
                     connection.Execute($@"
-                        INSERT INTO matchzy_stats_matches (start_time, team1_name, team2_name, series_type, server_ip)
+                        INSERT INTO arenapro_stats_matches (start_time, team1_name, team2_name, series_type, server_ip)
                         VALUES ({Now}, @team1name, @team2name, @seriesType, @serverIp)",
                         new { team1name, team2name, seriesType, serverIp });
                     // Same connection, so this is the row inserted above.
@@ -333,7 +333,7 @@ namespace MatchZy
                     ? "ON CONFLICT(matchid, mapnumber) DO UPDATE SET start_time = excluded.start_time, mapname = excluded.mapname, end_time = NULL, winner = '', team1_score = 0, team2_score = 0"
                     : "ON DUPLICATE KEY UPDATE start_time = VALUES(start_time), mapname = VALUES(mapname), end_time = NULL, winner = '', team1_score = 0, team2_score = 0";
                 connection.Execute($@"
-                    INSERT INTO matchzy_stats_maps (matchid, start_time, mapnumber, mapname)
+                    INSERT INTO arenapro_stats_maps (matchid, start_time, mapnumber, mapname)
                     VALUES (@matchId, {Now}, @mapNumber, @mapName)
                     {mapUpsert}",
                     new { matchId, mapNumber, mapName });
@@ -353,7 +353,7 @@ namespace MatchZy
             {
                 using DbConnection connection = OpenConnection();
                 connection.Execute(@"
-                    UPDATE matchzy_stats_matches
+                    UPDATE arenapro_stats_matches
                     SET team1_name = @team1name, team2_name = @team2name
                     WHERE matchid = @matchId",
                     new { matchId, team1name, team2name });
@@ -373,7 +373,7 @@ namespace MatchZy
                 string dateTimeExpression = Now;
 
                 string sqlQuery = $@"
-                    UPDATE matchzy_stats_maps
+                    UPDATE arenapro_stats_maps
                     SET winner = @winnerName, end_time = {dateTimeExpression}, team1_score = @t1score, team2_score = @t2score
                     WHERE matchid = @matchId AND mapNumber = @mapNumber";
 
@@ -388,7 +388,7 @@ namespace MatchZy
                 }
 
                 sqlQuery = $@"
-                    UPDATE matchzy_stats_matches
+                    UPDATE arenapro_stats_matches
                     SET team1_score = @team1SeriesScore, team2_score = @team2SeriesScore
                     WHERE matchid = @matchId";
 
@@ -409,7 +409,7 @@ namespace MatchZy
                 string dateTimeExpression = Now;
 
                 string sqlQuery = $@"
-                    UPDATE matchzy_stats_matches
+                    UPDATE arenapro_stats_matches
                     SET winner = @winnerName, end_time = {dateTimeExpression}, team1_score = @t1score, team2_score = @t2score
                     WHERE matchid = @matchId";
 
@@ -428,7 +428,7 @@ namespace MatchZy
             try
             {
                 string sqlQuery = $@"
-                    UPDATE matchzy_stats_maps
+                    UPDATE arenapro_stats_maps
                     SET team1_score = @t1score, team2_score = @t2score
                     WHERE matchid = @matchId AND mapnumber = @mapNumber";
 
@@ -451,7 +451,7 @@ namespace MatchZy
                     var playerStats = playerStatsDictionary[steamid64];
 
                     string sqlQuery = $@"
-                    INSERT INTO matchzy_stats_players (
+                    INSERT INTO arenapro_stats_players (
                         matchid, mapnumber, steamid64, team, name, kills, deaths, damage, assists,
                         enemy5ks, enemy4ks, enemy3ks, enemy2ks, utility_count, utility_damage,
                         utility_successes, utility_enemies, flash_count, flash_successes,
@@ -484,7 +484,7 @@ namespace MatchZy
 
                     if (isSqlite) {
                         sqlQuery = @"
-                        INSERT OR REPLACE INTO matchzy_stats_players (
+                        INSERT OR REPLACE INTO arenapro_stats_players (
                             matchid, mapnumber, steamid64, team, name, kills, deaths, damage, assists,
                             enemy5ks, enemy4ks, enemy3ks, enemy2ks, utility_count, utility_damage,
                             utility_successes, utility_enemies, flash_count, flash_successes,
@@ -577,7 +577,7 @@ namespace MatchZy
                 using (var csv = new CsvWriter(writer, new CsvConfiguration(CultureInfo.InvariantCulture)))
                 {
                     IEnumerable<dynamic> playerStatsData = await connection.QueryAsync(
-                        "SELECT * FROM matchzy_stats_players WHERE matchid = @MatchId AND mapnumber = @MapNumber ORDER BY team, kills DESC", new { MatchId = matchId, MapNumber = mapNumber });
+                        "SELECT * FROM arenapro_stats_players WHERE matchid = @MatchId AND mapnumber = @MapNumber ORDER BY team, kills DESC", new { MatchId = matchId, MapNumber = mapNumber });
 
                     // Use the first data row to get the column names
                     dynamic? firstDataRow = playerStatsData.FirstOrDefault();
@@ -632,7 +632,7 @@ namespace MatchZy
         private void SetDatabaseConfig(string directory)
         {
             string fileName = "database.json";
-            string configFile = Path.Combine(Server.GameDirectory + "/csgo/cfg/MatchZy", fileName);
+            string configFile = Path.Combine(Server.GameDirectory + "/csgo/cfg/ArenaPro", fileName);
             if (!File.Exists(configFile))
             {
                 // Create a default configuration if the file doesn't exist
@@ -661,7 +661,7 @@ namespace MatchZy
 
         private void Log(string message)
         {
-            Console.WriteLine("[MatchZy] " + message);
+            Console.WriteLine("[ArenaPro] " + message);
         }
 
         public enum DatabaseType

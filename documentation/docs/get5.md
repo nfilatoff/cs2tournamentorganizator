@@ -1,6 +1,6 @@
 ## Get5 Panel
 
-MatchZy can work with Get5 Web panel ([G5V](https://github.com/PhlexPlexico/G5V) and [G5API](https://github.com/PhlexPlexico/G5API)) to setup and manage matches!
+ArenaPro can work with Get5 Web panel ([G5V](https://github.com/PhlexPlexico/G5V) and [G5API](https://github.com/PhlexPlexico/G5API)) to setup and manage matches!
 
 ### Features
 
@@ -12,7 +12,7 @@ MatchZy can work with Get5 Web panel ([G5V](https://github.com/PhlexPlexico/G5V)
 5. Add players in a live game
 6. And much more!!!
 
-### How to use Get5 Panel with MatchZy?
+### How to use Get5 Panel with ArenaPro?
 
 It's pretty simple, just install Get5 panel, add your server in it and you will be able to create and manage matches just like Get5 CSGO :D
 

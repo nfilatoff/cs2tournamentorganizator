@@ -3,19 +3,19 @@ using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Modules.Commands;
 using CounterStrikeSharp.API.Modules.Utils;
 
-namespace MatchZy
+namespace ArenaPro
 {
     // Get5's time to start (get5_time_to_start / get5_time_to_start_veto): in a loaded match, teams have a number of seconds to
     // ready up. When the time runs out, a team that is not ready forfeits the series, or the series ends in a tie when neither
     // team is ready. Every ready-up phase (map selection, and the warmup of each map) gets the full time.
-    public partial class MatchZy
+    public partial class ArenaPro
     {
         // Seconds teams have to ready up for live/knife, and for map selection. 0 = no limit.
         public int timeToStart = 0;
         public int timeToStartVeto = 0;
 
         // How teams get ready in a loaded match: 0 = players type .ready, 1 = join mode (a team is ready once
-        // min_players_to_ready of its players have joined; the match starts after matchzy_join_start_delay seconds).
+        // min_players_to_ready of its players have joined; the match starts after arenapro_join_start_delay seconds).
         public int readyMode = 0;
         public int joinStartDelay = 10;
         // Seconds left of the join mode start countdown, null while it does not run.
@@ -29,7 +29,7 @@ namespace MatchZy
 
         private enum ReadyPhase { None, MapSelection, Warmup }
 
-        [ConsoleCommand("matchzy_time_to_start", "Time (in seconds) teams have to ready up for live/knife before forfeiting the match. 0 = unlimited. Default: 0")]
+        [ConsoleCommand("arenapro_time_to_start", "Time (in seconds) teams have to ready up for live/knife before forfeiting the match. 0 = unlimited. Default: 0")]
         [ConsoleCommand("get5_time_to_start", "Time (in seconds) teams have to ready up for live/knife before forfeiting the match. 0 = unlimited. Default: 0")]
         public void TimeToStartCommand(CCSPlayerController? player, CommandInfo command)
         {
@@ -37,7 +37,7 @@ namespace MatchZy
             if (int.TryParse(GetSettingArgument(command), out int seconds) && seconds >= 0) timeToStart = seconds;
         }
 
-        [ConsoleCommand("matchzy_time_to_start_veto", "Time (in seconds) teams have to ready up for map selection before forfeiting the match. 0 = unlimited. Default: 0")]
+        [ConsoleCommand("arenapro_time_to_start_veto", "Time (in seconds) teams have to ready up for map selection before forfeiting the match. 0 = unlimited. Default: 0")]
         [ConsoleCommand("get5_time_to_start_veto", "Time (in seconds) teams have to ready up for map selection before forfeiting the match. 0 = unlimited. Default: 0")]
         public void TimeToStartVetoCommand(CCSPlayerController? player, CommandInfo command)
         {
@@ -45,14 +45,14 @@ namespace MatchZy
             if (int.TryParse(GetSettingArgument(command), out int seconds) && seconds >= 0) timeToStartVeto = seconds;
         }
 
-        [ConsoleCommand("matchzy_ready_mode", "How teams get ready in a loaded match: 0 = players type .ready, 1 = a team is ready once min_players_to_ready of its players have joined. Default: 0")]
+        [ConsoleCommand("arenapro_ready_mode", "How teams get ready in a loaded match: 0 = players type .ready, 1 = a team is ready once min_players_to_ready of its players have joined. Default: 0")]
         public void ReadyModeCommand(CCSPlayerController? player, CommandInfo command)
         {
             if (player != null) return;
             if (int.TryParse(GetSettingArgument(command), out int mode) && (mode == 0 || mode == 1)) readyMode = mode;
         }
 
-        [ConsoleCommand("matchzy_join_start_delay", "matchzy_ready_mode 1: seconds between all players having joined and the match starting. Default: 10")]
+        [ConsoleCommand("arenapro_join_start_delay", "arenapro_ready_mode 1: seconds between all players having joined and the match starting. Default: 10")]
         public void JoinStartDelayCommand(CCSPlayerController? player, CommandInfo command)
         {
             if (player != null) return;
@@ -63,7 +63,7 @@ namespace MatchZy
         public int GetJoinedPlayerCount(int team)
         {
             return playerData.Values.Count(p => p.IsValid && !p.IsBot && p.TeamNum == team
-                && !matchzyTeam1.coach.Contains(p) && !matchzyTeam2.coach.Contains(p));
+                && !arenaproTeam1.coach.Contains(p) && !arenaproTeam2.coach.Contains(p));
         }
 
         // Join mode: starts the match once everyone has joined and the countdown has run. A player leaving stops it.
@@ -76,13 +76,13 @@ namespace MatchZy
             switch (step)
             {
                 case JoinCountdownStep.Started:
-                    PrintToAllChat(Localizer["matchzy.ready.joinstartcountdown", secondsLeft!.Value]);
+                    PrintToAllChat(Localizer["arenapro.ready.joinstartcountdown", secondsLeft!.Value]);
                     break;
                 case JoinCountdownStep.Running:
-                    if (ReadyTimeLogic.ShouldAnnounceJoinCountdown(secondsLeft!.Value)) PrintToAllChat(Localizer["matchzy.ready.joinstartin", secondsLeft.Value]);
+                    if (ReadyTimeLogic.ShouldAnnounceJoinCountdown(secondsLeft!.Value)) PrintToAllChat(Localizer["arenapro.ready.joinstartin", secondsLeft.Value]);
                     break;
                 case JoinCountdownStep.Stopped:
-                    PrintToAllChat(Localizer["matchzy.ready.joinstartstopped"]);
+                    PrintToAllChat(Localizer["arenapro.ready.joinstartstopped"]);
                     break;
                 case JoinCountdownStep.Finished:
                     Log("[HandleJoinStartCountdown] All players have joined, starting the match.");
@@ -92,7 +92,7 @@ namespace MatchZy
         }
 
         [ConsoleCommand("css_addreadytime", "Gives the teams more time to ready up. Usage: .addreadytime <seconds>")]
-        [ConsoleCommand("matchzy_add_ready_time", "Gives the teams more time to ready up. Usage: matchzy_add_ready_time <seconds>")]
+        [ConsoleCommand("arenapro_add_ready_time", "Gives the teams more time to ready up. Usage: arenapro_add_ready_time <seconds>")]
         [ConsoleCommand("get5_add_ready_time", "Gives the teams more time to ready up. Usage: get5_add_ready_time <seconds>")]
         public void OnAddReadyTimeCommand(CCSPlayerController? player, CommandInfo? command)
         {
@@ -110,20 +110,20 @@ namespace MatchZy
             if (phase == ReadyPhase.None) return;
             if (!int.TryParse(argument, out int seconds) || seconds <= 0)
             {
-                ReplyToUserCommand(player, Localizer["matchzy.cc.usage", ".addreadytime <seconds>"]);
+                ReplyToUserCommand(player, Localizer["arenapro.cc.usage", ".addreadytime <seconds>"]);
                 return;
             }
             int timeLimit = phase == ReadyPhase.MapSelection ? timeToStartVeto : timeToStart;
             if (timeLimit <= 0)
             {
-                ReplyToUserCommand(player, Localizer["matchzy.ready.nolimit"]);
+                ReplyToUserCommand(player, Localizer["arenapro.ready.nolimit"]);
                 return;
             }
             // As in Get5: the seconds are taken off the time used, which cannot go below 0 (so at most the full time is left).
             int usedBefore = readyTimeWaitingUsed;
             readyTimeWaitingUsed = Math.Max(0, readyTimeWaitingUsed - seconds);
             int added = usedBefore - readyTimeWaitingUsed;
-            ReplyToUserCommand(player, Localizer["matchzy.ready.addreadytime", added, ReadyTimeLogic.FormatTime(timeLimit - readyTimeWaitingUsed)]);
+            ReplyToUserCommand(player, Localizer["arenapro.ready.addreadytime", added, ReadyTimeLogic.FormatTime(timeLimit - readyTimeWaitingUsed)]);
         }
 
         private ReadyPhase GetReadyPhase()
@@ -183,28 +183,28 @@ namespace MatchZy
                     string formattedTimeLeft = ReadyTimeLogic.FormatTime(timeLeft);
                     if (!team1Ready && !team2Ready)
                     {
-                        PrintToAllChat(Localizer["matchzy.ready.teamsmustbereadyortie", formattedTimeLeft]);
+                        PrintToAllChat(Localizer["arenapro.ready.teamsmustbereadyortie", formattedTimeLeft]);
                     }
                     else
                     {
-                        Team notReady = team1Ready ? matchzyTeam2 : matchzyTeam1;
-                        PrintToAllChat(Localizer["matchzy.ready.teammustbereadyorforfeit", notReady.teamName, formattedTimeLeft]);
+                        Team notReady = team1Ready ? arenaproTeam2 : arenaproTeam1;
+                        PrintToAllChat(Localizer["arenapro.ready.teammustbereadyorforfeit", notReady.teamName, formattedTimeLeft]);
                     }
                     return;
                 }
 
                 // Time is up.
                 int winner = ReadyTimeLogic.ForfeitWinner(team1Ready, team2Ready);
-                Team? winningTeam = winner == 1 ? matchzyTeam1 : winner == 2 ? matchzyTeam2 : null;
+                Team? winningTeam = winner == 1 ? arenaproTeam1 : winner == 2 ? arenaproTeam2 : null;
                 if (winningTeam != null)
                 {
-                    Team forfeitingTeam = winningTeam == matchzyTeam1 ? matchzyTeam2 : matchzyTeam1;
-                    PrintToAllChat(Localizer["matchzy.ready.teamforfeited", forfeitingTeam.teamName]);
+                    Team forfeitingTeam = winningTeam == arenaproTeam1 ? arenaproTeam2 : arenaproTeam1;
+                    PrintToAllChat(Localizer["arenapro.ready.teamforfeited", forfeitingTeam.teamName]);
                     Log($"[CheckReadyTime] {forfeitingTeam.teamName} did not ready up within {timeLimit}s and forfeits the series.");
                 }
                 else
                 {
-                    PrintToAllChat(Localizer["matchzy.ready.teamstiednotready", matchzyTeam1.teamName, matchzyTeam2.teamName]);
+                    PrintToAllChat(Localizer["arenapro.ready.teamstiednotready", arenaproTeam1.teamName, arenaproTeam2.teamName]);
                     Log($"[CheckReadyTime] Neither team readied up within {timeLimit}s, the series ends in a tie.");
                 }
                 readyTimeWaitingUsed = 0;

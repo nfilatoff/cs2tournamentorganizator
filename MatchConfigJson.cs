@@ -1,6 +1,6 @@
 using Newtonsoft.Json.Linq;
 
-namespace MatchZy
+namespace ArenaPro
 {
     // Helpers for reading Get5-style match configs. This file must not depend on CounterStrikeSharp so that it can be unit tested (see tests/).
     public static class MatchConfigJson

@@ -4,12 +4,12 @@ using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Modules.Commands;
 
 
-namespace MatchZy
+namespace ArenaPro
 {
 
-    public partial class MatchZy
+    public partial class ArenaPro
     {
-        public const string sleepCfgPath = "MatchZy/sleep.cfg";
+        public const string sleepCfgPath = "ArenaPro/sleep.cfg";
 
         public void StartSleepMode()
         {
@@ -37,7 +37,7 @@ namespace MatchZy
                 Server.ExecuteCommand("""exec gamemode_competitive.cfg;""");
             }
             ExecOverrideCfg(sleepCfgPath);
-            Log($"[StartSleepMode] MatchZy deactivated!");
+            Log($"[StartSleepMode] ArenaPro deactivated!");
         }
 
         [ConsoleCommand("css_sleep", "Starts sleep mode")]
@@ -52,7 +52,7 @@ namespace MatchZy
             if (matchStarted)
             {
                 // ReplyToUserCommand(player, "Sleep Mode cannot be started when a match has been started!");
-                ReplyToUserCommand(player, Localizer["matchzy.sleep.sleepwhenmatchstared"]);
+                ReplyToUserCommand(player, Localizer["arenapro.sleep.sleepwhenmatchstared"]);
                 return;
             }
             StartSleepMode();

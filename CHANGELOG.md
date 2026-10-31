@@ -1,22 +1,22 @@
-# MatchZy Changelog
+# ArenaPro Changelog
 
 # 0.9.2
 
 ### October 18, 2026
 
 - Fixed round restores not working after the October 14th update. 
-- Added override CFGs for the other CFGs MatchZy executes, like the existing `live_override.cfg` / `live_wingman_override.cfg`: `config_override.cfg`, `warmup_override.cfg`, `knife_override.cfg`, `prac_override.cfg`, `dryrun_override.cfg` and `sleep_override.cfg` in `cfg/MatchZy`. MatchZy executes `<name>_override.cfg` right after `<name>.cfg` (also when `<name>.cfg` is missing and the default config in the code is used), so put your own settings there: updates overwrite the shipped CFGs, but not the override CFGs. To reload `config.cfg` and `config_override.cfg` by hand, run `exec MatchZy/config.cfg; execifexists MatchZy/config_override.cfg`.
-- The release no longer contains `live_override.cfg` and `live_wingman_override.cfg` (they were empty), so extracting an update no longer overwrites them. MatchZy executes the override CFGs itself now, and `live.cfg` / `live_wingman.cfg` no longer `exec` them, so a missing override CFG doesn't log an error.
+- Added override CFGs for the other CFGs ArenaPro executes, like the existing `live_override.cfg` / `live_wingman_override.cfg`: `config_override.cfg`, `warmup_override.cfg`, `knife_override.cfg`, `prac_override.cfg`, `dryrun_override.cfg` and `sleep_override.cfg` in `cfg/ArenaPro`. ArenaPro executes `<name>_override.cfg` right after `<name>.cfg` (also when `<name>.cfg` is missing and the default config in the code is used), so put your own settings there: updates overwrite the shipped CFGs, but not the override CFGs. To reload `config.cfg` and `config_override.cfg` by hand, run `exec ArenaPro/config.cfg; execifexists ArenaPro/config_override.cfg`.
+- The release no longer contains `live_override.cfg` and `live_wingman_override.cfg` (they were empty), so extracting an update no longer overwrites them. ArenaPro executes the override CFGs itself now, and `live.cfg` / `live_wingman.cfg` no longer `exec` them, so a missing override CFG doesn't log an error.
 - Fixed `mp_overtime_enable` and `mp_match_can_clinch` set in `live_override.cfg` / `live_wingman_override.cfg` being reset to the `live.cfg` / `live_wingman.cfg` values when the match went live with playout off, or when `.playout` was turned off.
 
 # 0.9.1
 
 #### October 3, 2026
 
-- Added `matchzy_ready_mode` (default 0 = players type `.ready`). With `1`, joining is ready in a loaded match: a team is ready once `min_players_to_ready` of its players have joined their side, and the match starts on its own `matchzy_join_start_delay` (default 10) seconds after everyone has joined. Together with `matchzy_time_to_start`, a team that does not join in time forfeits, or the series ends in a tie.
-- Added `matchzy_time_to_start` and `matchzy_time_to_start_veto` (Get5's `get5_time_to_start` / `get5_time_to_start_veto`, which also work): in a loaded match, teams have this many seconds to ready up. When the time runs out, a team that is not ready forfeits the series, or the series ends in a tie if neither team is ready. Reminders are printed as in Get5. Admins can add time with `.addreadytime <seconds>` / `get5_add_ready_time`. Off by default.
-- Added technical pause limits as in Get5: `matchzy_max_tech_pauses` (`get5_max_tech_pauses`) technical pauses per team per map, and after `matchzy_tech_pause_time` (`get5_tech_pause_time`) seconds any one team can `.unpause` (until then both teams have to; the pause does not end on its own). A pause counts once it takes effect in freeze time, and the pausing team can cancel it before that. Players see a countdown. Both default to 0, which keeps the current behaviour. **Removed** `matchzy_max_tech_pauses_allowed` and `matchzy_tech_pause_duration`, which never had an effect. If your `config.cfg` still has them, delete those lines; until then the server logs them as unknown commands, which is harmless. `get5_allow_technical_pause` works as `matchzy_enable_tech_pause`. Round backups store the technical pauses used. As in Get5, they are only restored from a backup of another match or map, or when the match is not live (e.g. after a server restart). Restoring a round of the live map keeps the current counts, so restoring doesn't give pauses back.
-- Added the events `game_paused` / `game_unpaused` (team1 / team2 / none, pause type technical / admin / backup), `round_start`, `player_death`, `bomb_planted`, `bomb_defused`, `backup_loaded` and `player_disconnect`, in Get5's format, so G5API records pauses, the kill feed and bomb plants, and removes them again for rounds undone by a round restore. The round and kill events are sent only while the match is live (coach deaths are not sent); `player_disconnect` is sent when a player (not a bot) leaves while a match is loaded. MatchZy never sent `player_disconnect` before.
+- Added `arenapro_ready_mode` (default 0 = players type `.ready`). With `1`, joining is ready in a loaded match: a team is ready once `min_players_to_ready` of its players have joined their side, and the match starts on its own `arenapro_join_start_delay` (default 10) seconds after everyone has joined. Together with `arenapro_time_to_start`, a team that does not join in time forfeits, or the series ends in a tie.
+- Added `arenapro_time_to_start` and `arenapro_time_to_start_veto` (Get5's `get5_time_to_start` / `get5_time_to_start_veto`, which also work): in a loaded match, teams have this many seconds to ready up. When the time runs out, a team that is not ready forfeits the series, or the series ends in a tie if neither team is ready. Reminders are printed as in Get5. Admins can add time with `.addreadytime <seconds>` / `get5_add_ready_time`. Off by default.
+- Added technical pause limits as in Get5: `arenapro_max_tech_pauses` (`get5_max_tech_pauses`) technical pauses per team per map, and after `arenapro_tech_pause_time` (`get5_tech_pause_time`) seconds any one team can `.unpause` (until then both teams have to; the pause does not end on its own). A pause counts once it takes effect in freeze time, and the pausing team can cancel it before that. Players see a countdown. Both default to 0, which keeps the current behaviour. **Removed** `arenapro_max_tech_pauses_allowed` and `arenapro_tech_pause_duration`, which never had an effect. If your `config.cfg` still has them, delete those lines; until then the server logs them as unknown commands, which is harmless. `get5_allow_technical_pause` works as `arenapro_enable_tech_pause`. Round backups store the technical pauses used. As in Get5, they are only restored from a backup of another match or map, or when the match is not live (e.g. after a server restart). Restoring a round of the live map keeps the current counts, so restoring doesn't give pauses back.
+- Added the events `game_paused` / `game_unpaused` (team1 / team2 / none, pause type technical / admin / backup), `round_start`, `player_death`, `bomb_planted`, `bomb_defused`, `backup_loaded` and `player_disconnect`, in Get5's format, so G5API records pauses, the kill feed and bomb plants, and removes them again for rounds undone by a round restore. The round and kill events are sent only while the match is live (coach deaths are not sent); `player_disconnect` is sent when a player (not a bot) leaves while a match is loaded. ArenaPro never sent `player_disconnect` before.
 - A series won by forfeit (the time to start running out, or `get5_endmatch team1|team2`) reports the winner with the series score needed to win (e.g. 1-0 in a BO1, 2-x in a BO3), in `series_end` and the database. With an unchanged score such as 0-0, G5V showed the forfeit as a tie.
 - Fixed bomb plants and defuses always being 0 in the player stats sent with `round_end` (and so on G5V). They are now counted while the match is live, stored in round backups (a round restore rolls them back) and reset each map.
 - Fixed loading a match on the map the server is already on, and matches with a map veto (which do not change map when loaded): players already on the server are now moved to their match team. Before, they stayed on whatever side they were on, so the ready-up counted the wrong players. Loading a match also clears ready flags left from before (e.g. `.ready` typed in a pug warmup) and unpauses the game if it is paused.
@@ -27,10 +27,10 @@
 #### October 1, 2026
 
 - **Requires CounterStrikeSharp v369 or newer** (.NET 10). Built against, and bundled with, CounterStrikeSharp v376.
-- The release no longer contains `cfg/MatchZy/admins.json`, `database.json`, `savednades.json` and `whitelist.cfg`. MatchZy creates them when they are first needed, so extracting an update no longer overwrites admins, MySQL settings, saved lineups or the whitelist (the shipped `admins.json` also made the plugin author an admin on new installs).
-- Security: a match config's `cvars` can only set real convars and MatchZy/Get5 settings with plain values. Console commands, action commands (such as `matchzy_loadmatch_url`), `rcon_password` and `matchzy_everyone_is_admin` are ignored and logged. Team names from backups are sanitized.
+- The release no longer contains `cfg/ArenaPro/admins.json`, `database.json`, `savednades.json` and `whitelist.cfg`. ArenaPro creates them when they are first needed, so extracting an update no longer overwrites admins, MySQL settings, saved lineups or the whitelist (the shipped `admins.json` also made the plugin author an admin on new installs).
+- Security: a match config's `cvars` can only set real convars and ArenaPro/Get5 settings with plain values. Console commands, action commands (such as `arenapro_loadmatch_url`), `rcon_password` and `arenapro_everyone_is_admin` are ignored and logged. Team names from backups are sanitized.
 - Security: auth headers, URL credentials/query strings and downloaded match configs/backups are no longer written to the logs.
-- MatchZy `admins.json` values can now list flags (e.g. `"@css/config @css/map"`) to limit an admin. An empty value still means full admin. **Changed:** an entry with a flag, such as `"@css/config"`, used to be a full admin and is now limited to that flag.
+- ArenaPro `admins.json` values can now list flags (e.g. `"@css/config @css/map"`) to limit an admin. An empty value still means full admin. **Changed:** an entry with a flag, such as `"@css/config"`, used to be a full admin and is now limited to that flag.
 - `!rcon` / `css_rcon` uses are logged (secret values are hidden).
 - `.rmap` needs `@css/map`.
 - Fixed a drawn map breaking a series (the next map lookup ran past the map list, so the series never ended). Drawn maps count as played, and a series is clinched once the trailing team can no longer catch up.
@@ -47,35 +47,35 @@
 - Fixed the veto hanging when a captain leaves or changes team: a teammate takes over, or the veto is aborted when the team is empty.
 - **Changed:** `map_picked` / `side_picked` `map_number` is 0-based like the other events.
 - Fixed the remote log URL from config.cfg being dropped when a match was loaded. Remote log settings from a match config's `cvars` now only apply to that match.
-- Fixed `matchzy_removeplayer` only searching team1's roster.
+- Fixed `arenapro_removeplayer` only searching team1's roster.
 - Fixed knife maps starting with the sides left over from the previous map.
 - Fixed disconnect cleanup being skipped for spectators, and the pause state not being cleared when a match is reset.
 - Database: each write uses its own connection instead of one shared connection used by overlapping writes (which lost data at the end of a map). Writes run in the order they happen in the game, so the map CSV always includes the last round. SQLite waits up to 30s for a lock and uses WAL mode.
 - Database: a player row the database rejects no longer stops the rest of the team from being written.
 - Database: a match config `matchid` that was already used reopens that match (end time and winner cleared) instead of failing, which left the map row missing and, on MySQL, made every player stats row fail.
-- Demos and round backups are written with absolute `csgo/` paths, since relative paths resolve under `csgo/addons/metamod` when Metamod is installed (PR #411 by @ehwhattaugonnado). A warning is logged if a demo file is not created, and `matchzy_demo_path ""` no longer errors.
+- Demos and round backups are written with absolute `csgo/` paths, since relative paths resolve under `csgo/addons/metamod` when Metamod is installed (PR #411 by @ehwhattaugonnado). A warning is logged if a demo file is not created, and `arenapro_demo_path ""` no longer errors.
 - Demos: recording starts at the first round after the going-live restart; started before it (as before), the recording could be lost. `tv_record_immediate 1` is set when the convar exists.
-- Demos: fixed no demo being recorded for the rest of the session after a map change made outside MatchZy (another plugin or `changelevel`), which left MatchZy thinking a recording was still running.
+- Demos: fixed no demo being recorded for the rest of the session after a map change made outside ArenaPro (another plugin or `changelevel`), which left ArenaPro thinking a recording was still running.
 - Demo upload streams the file instead of loading it into memory (files over 2 GB failed), with a 30 minute timeout instead of 100 seconds.
 - Fixed a possible server crash when a player who is not in a loaded match joins a team (they were moved to team "None"); they are now moved to spectator. Team moves during match setup and veto check that the player is still connected, and players moved to spectator are killed first.
 - Round restore: coaches are kept after a restore.
-- Round restore: the round data is written to MatchZy's own file before loading, so a leftover round file from another match with the same id is never loaded instead. A backup whose round data was cut off (copied while the server was writing it) falls back to the server's own file for that round, or is refused with a message.
+- Round restore: the round data is written to ArenaPro's own file before loading, so a leftover round file from another match with the same id is never loaded instead. A backup whose round data was cut off (copied while the server was writing it) falls back to the server's own file for that round, or is refused with a message.
 - Round restore: "Backup restored successfully" and the pause after a restore now happen when the round is actually loaded (they came first when the match had to go live first). A restore requested during warmup says it is queued instead of "loaded successfully".
 - Round backups: if the server's round file is still being written when the backup is made, it is read again 2 seconds later, and the backup is uploaded once complete.
 - Chat commands that take arguments (`.map`, `.team1`, `.rcon`, `.restore`, `.ln`, ...) match the exact command word, so e.g. `.mapx` or `.info` no longer run `.map` or `.in`. When `.` is also a CounterStrikeSharp chat trigger, commands are no longer run twice.
-- MatchZy settings set in a match config's `cvars` (e.g. `matchzy_kick_when_no_match_loaded`, demo and backup upload settings) are restored at series end like other cvars; they used to stay on the server.
-- On/off MatchZy settings accept `1` / `0` as well as `true` / `false` (`1` could not turn a setting on), and setting values in quotes work (the quotes made match config `cvars` for MatchZy settings fail). An empty `matchzy_admin_chat_prefix` resets the admin prefix instead of the normal one.
+- ArenaPro settings set in a match config's `cvars` (e.g. `arenapro_kick_when_no_match_loaded`, demo and backup upload settings) are restored at series end like other cvars; they used to stay on the server.
+- On/off ArenaPro settings accept `1` / `0` as well as `true` / `false` (`1` could not turn a setting on), and setting values in quotes work (the quotes made match config `cvars` for ArenaPro settings fail). An empty `arenapro_admin_chat_prefix` resets the admin prefix instead of the normal one.
 - `get5_status` reports each team's side as `ct` / `t`, whether that team is ready, and its number of connected players (it reported `terrorist`, one ready flag for everyone and -1).
 - Practice: saved lineups are written with a `.` decimal separator on every server locale (and older files with `,` still load). `.importnade` refuses codes with invalid numbers, and a lineup with an invalid position no longer errors on load.
 - Team names with spaces are shown in full on the scoreboard (`mp_teamname` was not quoted).
 - Events are sent through one shared HTTP client (60s timeout).Only failed events are logged with their payload.
 - Practice: switching team with `.t` / `.ct` / `.spec` no longer adds a death (and a lost point) on the scoreboard.
-- MySQL: `matchzy_stats_maps.winner` is widened to 255 characters (also on existing tables); with 16, a longer team name made the map end write fail. The series score is still written if the map row update fails.
+- MySQL: `arenapro_stats_maps.winner` is widened to 255 characters (also on existing tables); with 16, a longer team name made the map end write fail. The series score is still written if the map row update fails.
 - A restore that is refused (incomplete round data) no longer changes the running match, and a refused queued restore no longer leaves the server in warmup with everyone ready.
 - `.forceend` / `get5_endmatch` / `.restart` right after a series ended no longer overwrite its winner, and between maps of a series they no longer report an unplayed map.
 - Practice: `.loadnade` works for lineups added with `.importnade` (they have no grenade type).
 - Fixed match config cvars (and the coach's spectator settings) being restored as `True`/`False` or with locale-specific decimals; they are now restored as `1`/`0` and invariant numbers. Fixed 64-bit float convars being read as 32-bit, and setting a bool convar to `0` directly failing.
-- Practice: fixed `.rethrow` / `.throwindex` for smokes, HE grenades, molotovs and decoys ("Invalid function pointer"). Their signatures are now in `addons/counterstrikesharp/gamedata/matchzy.json` (updated for the current CS2 build), and if one cannot be resolved the grenade is created through the entity API instead.
+- Practice: fixed `.rethrow` / `.throwindex` for smokes, HE grenades, molotovs and decoys ("Invalid function pointer"). Their signatures are now in `addons/counterstrikesharp/gamedata/arenapro.json` (updated for the current CS2 build), and if one cannot be resolved the grenade is created through the entity API instead.
 - Practice: rethrown smokes now fly (they dropped at the spawn point) and are no longer recorded into the grenade history again. Rethrows use the recorded spin instead of the linear velocity.
 - Practice: grenades are recorded with their launch velocity (it could be read as 0 right after the throw), and the server log says why when a thrown grenade is not recorded.
 - Practice: fixed a possible server crash on `.t` / `.ct` / `.spec` and `.fas`: the player is now killed first and moved to the new team on the next frame. Using `.t` / `.ct` on the team you are already on no longer switches (a dead player is respawned). Joining a team from spectator still needs the team menu.
@@ -119,7 +119,7 @@
 #### September 03, 2025
 
 - Fixed coach bomb bug and updated CSS version.
-- Added `matchzy_demo_recording_enabled` convar to toggle demo recording.
+- Added `arenapro_demo_recording_enabled` convar to toggle demo recording.
 - Fixed the Map Winner Logic in MapWinner event
 - Fixed first Map Name in database stats
 
@@ -155,7 +155,7 @@
 
 #### January 1, 2025
 
-- Fixed issue with !pause command where non-admin players were not able to take pauses when `matchzy_tech_pause_flag ""` was set.
+- Fixed issue with !pause command where non-admin players were not able to take pauses when `arenapro_tech_pause_flag ""` was set.
 
 # 0.8.7
 
@@ -163,7 +163,7 @@
 
 - Fixed backup / restore on Windows.
 - Dryrun will now have random competitive spawns rather than same spawns every time.
-- Made `.pause` / `.tech` toggleable. Use `matchzy_enable_tech_pause` convar to toggle.
+- Made `.pause` / `.tech` toggleable. Use `arenapro_enable_tech_pause` convar to toggle.
 - Updated pt-PT translation.
 - Fixed live_override
 
@@ -171,7 +171,7 @@
 
 #### September 13, 2024
 
-- Improvements in coach, now coaches will spawn on the fixed defined spawn to avoid spawning and getting stuck with the players. Spawns will be defined in `addons/counterstrikesharp/plugins/MatchZy/spawns/coach/<map_name>.json`. Each map will have its json file, in which there will be 2 keys, "3" and "2". 3 -> CT, 2 -> T and the values will be an array of Vector and QAngle objects.
+- Improvements in coach, now coaches will spawn on the fixed defined spawn to avoid spawning and getting stuck with the players. Spawns will be defined in `addons/counterstrikesharp/plugins/ArenaPro/spawns/coach/<map_name>.json`. Each map will have its json file, in which there will be 2 keys, "3" and "2". 3 -> CT, 2 -> T and the values will be an array of Vector and QAngle objects.
 - Added `.showspawns` and `.hidespawns` command for Practice mode to toggle highlighting of competitive spawns. (Image attached)
 - Removed auto-join of players in match setup which was causing players to spawn under the ground.
 - Added `.rr` alias for `.restart` command.
@@ -180,9 +180,9 @@
 
 #### August 27, 2024
 
-- Added `matchzy_match_start_message` convar to configure message to show when the match starts. Use $$$ to break message into multiple lines.
+- Added `arenapro_match_start_message` convar to configure message to show when the match starts. Use $$$ to break message into multiple lines.
 - Some improvements and guard checks in coach system
-- Fixed `matchzy_hostname_format` not getting disabled on setting its value to ""
+- Fixed `arenapro_hostname_format` not getting disabled on setting its value to ""
 - Fixed winner side in `round_end` event
 
 # 0.8.4
@@ -210,14 +210,14 @@
 - Coaches will now be invisible, they will drop the bomb on the spawn if they get it and will die 1 second before freezetime ends.
 - If a match is loaded, player will directly join their respective team, skipping the join team menu.
 - Fixed a bug where loading a saved nade would make the player stuck.
-- Added `matchzy_stop_command_no_damage` convar to determine whether the stop command becomes unavailable if a player damages a player from the opposing team.
+- Added `arenapro_stop_command_no_damage` convar to determine whether the stop command becomes unavailable if a player damages a player from the opposing team.
 - `.map` command can now be used without "de_" prefix for maps. (Example: .map dust2)
 
 # 0.8.1
 
 #### August 17, 2024
 
-- Added matchzy_enable_damage_report convar to toggle damage report after every round.
+- Added arenapro_enable_damage_report convar to toggle damage report after every round.
 - Fixed bad demo name formatting.
 - Updated Uzbek translations.
 
@@ -225,9 +225,9 @@
 
 #### August 17, 2024
 
-- Improved backup and restore system. (Added matchzy_loadbackup and matchzy_loadbackup_url commands, now round backups will be stored in .json file in csgo/MatchZyDataBackup/ directory which will have valve backup and other match config data.)
-- Added matchzy_listbackups which lists all the backups for the provided matchid. By default lists backups of the current match.
-- Added matchzy_hostname_format for hostname formatting.
+- Improved backup and restore system. (Added arenapro_loadbackup and arenapro_loadbackup_url commands, now round backups will be stored in .json file in csgo/ArenaProDataBackup/ directory which will have valve backup and other match config data.)
+- Added arenapro_listbackups which lists all the backups for the provided matchid. By default lists backups of the current match.
+- Added arenapro_hostname_format for hostname formatting.
 - Improved player color smokes in practice mode
 - Fixed .last grenade's player rotation
 - Added switching of maps without adding de_ prefix (using .map command)
@@ -251,7 +251,7 @@
 #### June 27, 2024
 
 - Removed unused cvars from cfgs which were causing the server to crash with the new CS# versions.
-- Added MatchZyOnDemoUploadEnded Event ater demo is uploaded
+- Added ArenaProOnDemoUploadEnded Event ater demo is uploaded
 - Fixed SendEventAsync Post failing when header is not empty with empty value
 - Fixed decoy message localization id
 - Made MatchID as int
@@ -262,7 +262,7 @@
 
 - Improved `.help` command with better readability and updated commands
 - Fixed overtime getting automatically enabled even if turned off in `live.cfg`
-- Added `matchzy_show_credits_on_match_start` config convar to toggle 'MatchZy Plugin by WD-' message on match start.
+- Added `arenapro_show_credits_on_match_start` config convar to toggle 'ArenaPro Plugin by WD-' message on match start.
 - Added gradient while printing `KNIFE!` and `LIVE!` message.
 - Added `.pip` alias for `.traj` command to toggle `sv_grenade_trajectory_prac_pipreview` in practice mode.
 
@@ -270,7 +270,7 @@
 
 #### May 19, 2024
 
-- Added `matchzy_smoke_color_enabled` config convar for practice mode which changes the smoke's color to player's team color (player's color seen in the radar)
+- Added `arenapro_smoke_color_enabled` config convar for practice mode which changes the smoke's color to player's team color (player's color seen in the radar)
 - Added `.bestspawn` command which teleports you to your team's closest spawn from your current position
 - Added `.worstspawn` command which teleports you to your team's furthest spawn from your current position
 - Added `.bestctspawn` command which teleports you to CT team's closest spawn from your current position
@@ -316,14 +316,14 @@
 
 - Added remaining strings available for translation.
 - Fixed force-unpause command not working in knife round.
-- Fixed `cfg` folder not available in Windows build of MatchZy with CSSharp.
+- Fixed `cfg` folder not available in Windows build of ArenaPro with CSSharp.
 
 # 0.7.5
 
 #### April 27, 2024
 
 - Upgraded CounterStrikeSharp to v217
-- Fixed CFG execution on Map Start (After the latest update, CFGs were getting overriden by gamemodes cfg. Hence, added a timer to delay MatchZy's CFG execution on MapStart)
+- Fixed CFG execution on Map Start (After the latest update, CFGs were getting overriden by gamemodes cfg. Hence, added a timer to delay ArenaPro's CFG execution on MapStart)
 - Fixed BO2 setup, now Get5 server will be freed once the BO2 match is over
 
 # 0.7.4
@@ -369,7 +369,7 @@
 
 **Translation**
 
-- Added translation/multi-lingual support in MatchZy. Currently only match related strings are added in the translation. There will be a folder called `lang` in which translation JSONs will be present. Currently we have the translations for English and Russian (thanks to @innuendo-code). To add more languages, create a JSON file with the language locale code (like `en.json` or `fr.json`, etc). Contribution for translations are much appreciated! :D
+- Added translation/multi-lingual support in ArenaPro. Currently only match related strings are added in the translation. There will be a folder called `lang` in which translation JSONs will be present. Currently we have the translations for English and Russian (thanks to @innuendo-code). To add more languages, create a JSON file with the language locale code (like `en.json` or `fr.json`, etc). Contribution for translations are much appreciated! :D
 
 **Practice Mode/Match Mode**
 
@@ -381,7 +381,7 @@
 
 **Admin**
 
-- Added a convar `matchzy_everyone_is_admin`, if set to `true`, all the players will be granted admin privileges for MatchZy commands. 
+- Added a convar `arenapro_everyone_is_admin`, if set to `true`, all the players will be granted admin privileges for ArenaPro commands. 
 
 **CSSharp**
 
@@ -417,10 +417,10 @@
 
 #### Dec 27, 2023
 
-- Added DryRun mode for Practice Mode. Use `.dryrun` while in practice mode to activate dryrun! Also added `dryrun.cfg` in `cfg/MatchZy/dryrun.cfg` which can be modified as per your requirements
+- Added DryRun mode for Practice Mode. Use `.dryrun` while in practice mode to activate dryrun! Also added `dryrun.cfg` in `cfg/ArenaPro/dryrun.cfg` which can be modified as per your requirements
 - Added `.noflash` command in Practice Mode which will make the user immune to flashbangs. Use `.noflash` again to disable noflash.
 - Added `.break` command in Practice Mode which will break all the breakable entities like glass windows, wooden doors, vents, etc
-- Added `matchzy_demo_name_format` which will allow to set demo name as per the requirement. Default: `{TIME}_{MATCH_ID}_{MAP}_{TEAM1}_{TEAM2}` [Read More](https://shobhit-pathak.github.io/MatchZy/configuration/#matchzy_demo_name_format)
+- Added `arenapro_demo_name_format` which will allow to set demo name as per the requirement. Default: `{TIME}_{MATCH_ID}_{MAP}_{TEAM1}_{TEAM2}` [Read More](https://shobhit-pathak.github.io/MatchZy/configuration/#matchzy_demo_name_format)
 - Fixed players able to use `.tac` even after tactical timeouts were exhausted.
 
 # 0.6.0-alpha
@@ -428,7 +428,7 @@
 #### Dec 14, 2023
 
 - Added support for Get5 Web panel! (G5V and G5API) (Read more at: https://shobhit-pathak.github.io/MatchZy/get5/)
-What can Get5 Web Panel + MatchZy can do?
+What can Get5 Web Panel + ArenaPro can do?
 
 1. Create teams and setup matches from web panel
 2. Support for BO1, BO3, BO5, etc with Veto and Knife Round
@@ -445,20 +445,20 @@ What can Get5 Web Panel + MatchZy can do?
 - Added `.boost`, `.crouchboost`, `.crouchbot` commands in Practice Mode to spawn Bot/Crouched bot and boost on it.
 - Added `.ct`, `.t`, and `.spec` command in Practice Mode to switch the player in requested team
 - Added `.fas` and `.watchme` command in Practice Mode which forces all players into spectator except the player who called this command
-- Added `matchzy_autostart_mode` command for default launch mode of the plugin (0 for neither/sleep mode, 1 for match mode, 2 for practice mode. Default: 1)
-- Added `matchzy_save_nades_as_global_enabled` config convar to save nades globally
-- Added `matchzy_use_pause_command_for_tactical_pause` config convar to use `!pause` command as tactical pause
+- Added `arenapro_autostart_mode` command for default launch mode of the plugin (0 for neither/sleep mode, 1 for match mode, 2 for practice mode. Default: 1)
+- Added `arenapro_save_nades_as_global_enabled` config convar to save nades globally
+- Added `arenapro_use_pause_command_for_tactical_pause` config convar to use `!pause` command as tactical pause
 - Renamed `.knife` command to `.roundknife` and added `.rk` alias to resolve conflict with `.knife` command of other plugins
 - Fixed tactical timeout force-unpausing the match on timeout end
-- Fixed `matchzy_minimum_ready_required 0` not working properly on server startup
+- Fixed `arenapro_minimum_ready_required 0` not working properly on server startup
 - Made `spectator` key in match setup config optional field
 
 # 0.5.0-alpha
 
 #### Dec 6, 2023
 
-- Matches can now be setup using JSON file! This includes locking players to their correct team and side, setting the map(s) and configuring the game rules. Added `matchzy_loadmatch <filepath>` and `matchzy_loadmatch_url "<url>"` commands (read more at https://shobhit-pathak.github.io/MatchZy/match_setup/)
-- Demos can now be uploaded to a URL once the map and recording ends. Command to setup the upload URL: `matchzy_demo_upload_url "<url>"` (read more at https://shobhit-pathak.github.io/MatchZy/gotv/#automatic-upload)
+- Matches can now be setup using JSON file! This includes locking players to their correct team and side, setting the map(s) and configuring the game rules. Added `arenapro_loadmatch <filepath>` and `arenapro_loadmatch_url "<url>"` commands (read more at https://shobhit-pathak.github.io/MatchZy/match_setup/)
+- Demos can now be uploaded to a URL once the map and recording ends. Command to setup the upload URL: `arenapro_demo_upload_url "<url>"` (read more at https://shobhit-pathak.github.io/MatchZy/gotv/#automatic-upload)
 - Removed map reload on map end to avoid any issues
 - Fixed issues while restoring round during halftime
 - Fixed lag on round end which was due to pushing stats into the database. Now that operation is async!
@@ -480,8 +480,8 @@ Flag-wise permissions:
   - `@css/chat`: Grants access to send admin chat messages using `!asay <message>`
 
 - Added `.forcepause` and `.forceunpause` commands for admins so that they can use `.pause` and `.unpause` as a player while playing (Use `.fp` and `.fup` for shorter commands)
-- Added `.playout` commands to toggle Playout! (If playout is enabled, all rounds would be played irrespective of winner. Useful in scrims!). Also added `matchzy_playout_enabled_default` command to enable/disable playout by default. Default: `matchzy_playout_enabled_default false`
--  Added `matchzy_admin_chat_prefix` command to configure admin chat prefix when using `.asay <message>`. Default: `matchzy_admin_chat_prefix [{Red}ADMIN{Default}]`
+- Added `.playout` commands to toggle Playout! (If playout is enabled, all rounds would be played irrespective of winner. Useful in scrims!). Also added `arenapro_playout_enabled_default` command to enable/disable playout by default. Default: `arenapro_playout_enabled_default false`
+-  Added `arenapro_admin_chat_prefix` command to configure admin chat prefix when using `.asay <message>`. Default: `arenapro_admin_chat_prefix [{Red}ADMIN{Default}]`
 - Added `.help` command to list all the available commands during that match phase
 - Rounded off blind duration in practice mode to 2 decimal places.
 - Added damage report for bot in practice mode (for every hit, similar to Get5 practice mode)
@@ -493,7 +493,7 @@ Flag-wise permissions:
 
 #### Nov 21, 2023
 
-- MatchZy now supports CSSharp's admin system!
+- ArenaPro now supports CSSharp's admin system!
 You can create a new entry in the `/addons/counterstrikesharp/configs/admins.json` file with `@css/generic` generic flag like mentioned in the below example:
 ```
 {
@@ -512,7 +512,7 @@ You can create a new entry in the `/addons/counterstrikesharp/configs/admins.jso
 }
 ```
 
-To maintain backwards compatibility, we still support creating admins using older method (by adding entries in `csgo/cfg/MatchZy/admins.json`), so you can choose the most convenient method according to your preference.
+To maintain backwards compatibility, we still support creating admins using older method (by adding entries in `csgo/cfg/ArenaPro/admins.json`), so you can choose the most convenient method according to your preference.
 
 # 0.4.1-alpha
 
@@ -526,7 +526,7 @@ To maintain backwards compatibility, we still support creating admins using olde
 #### Nov 17, 2023
 
 - Coach system! `.coach <side>` Starts coaching the specified side. Example: `.coach t` to start coaching terrorist side!
-- MySQL Database is now supported! Now same DB can be used with multiple servers! Configure `csgo/cfg/MatchZy/database.json` according to your need!
+- MySQL Database is now supported! Now same DB can be used with multiple servers! Configure `csgo/cfg/ArenaPro/database.json` according to your need!
 - `.spawn` command now uses competitive spawns!
 - Many commands added in Practice mode: `.clear`, `.fastforward`, `.god`, `.savenade <name> <optional description>`, `.loadnade <name>`, `.deletenade <name>`, `.importnade <code>`, `.listnades <optional filter>` (Refer to [Readme](https://github.com/shobhit-pathak/MatchZy#practice-mode-commands) for their descriptions!)
 - Added text message for showing blind duration by a flashbang in practice session!
@@ -541,8 +541,8 @@ To maintain backwards compatibility, we still support creating admins using olde
 - Team names can now be configured using `!team1 <teamname>` and `!team2 <teamname>` command. The same will be stored in Database and CSV.
 - If team names are not configured, it will be configured automatically by picking a player's name randomly from both the teams (For example, if there is a player `WD-`, their teamname will be set to `team_WD-`)
 - Damage report in chat will be shown on round end (similar to Faceit!)
-- Chat timer delay can now be configured using `matchzy_chat_messages_timer_delay`. Example: `matchzy_chat_messages_timer_delay 12` 
-- Players can be whitelisted by adding their steam64id in `cfg/MatchZy/whitelist.cfg`. Whitelisting is a toggleable feature and can be enabled using `.whitelist`. To enable it by default, set `matchzy_whitelist_enabled_default true` in `cfg/MatchZy/config.cfg`
+- Chat timer delay can now be configured using `arenapro_chat_messages_timer_delay`. Example: `arenapro_chat_messages_timer_delay 12` 
+- Players can be whitelisted by adding their steam64id in `cfg/ArenaPro/whitelist.cfg`. Whitelisting is a toggleable feature and can be enabled using `.whitelist`. To enable it by default, set `arenapro_whitelist_enabled_default true` in `cfg/ArenaPro/config.cfg`
 
 ![image](https://github.com/shobhit-pathak/MatchZy/assets/140690706/85b64823-419c-41d2-850d-d8f88fa4a4ca)
 
@@ -551,6 +551,6 @@ To maintain backwards compatibility, we still support creating admins using olde
 #### Nov 5, 2023
 
 - Practice mode added ( with `.bot`, `.spawn`, `.ctspawn`, `.tspawn`, `.nobots` and `.exitprac` commands!)
-- Chat prefixes can now be configured using `matchzy_chat_prefix`. Example: `matchzy_chat_prefix [{Green}MatchZy{Default}]` (More details related to colors is present in readme and `config.cfg`)
+- Chat prefixes can now be configured using `arenapro_chat_prefix`. Example: `arenapro_chat_prefix [{Green}ArenaPro{Default}]` (More details related to colors is present in readme and `config.cfg`)
 - Added RCON command via chat! Now admins can use `!rcon <command>` in chat to trigger a command to the server!
 - Fixed some bugs related to Demo recording and match pause when match was restarted using `.restart`

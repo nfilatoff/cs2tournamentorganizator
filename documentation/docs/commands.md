@@ -4,9 +4,9 @@ Most of the commands can also be used using ! prefix instead of . (like !ready)
 - `.ready` Marks the player ready (Alias: `.r`)
 - `.unready` Marks the player unready (Alias: `.ur`, `.notready`)
 - `.forceready` Force-readies the player's team (Only works when using Match setup using JSON/Get5)
-- `.pause` Pauses the match in freezetime (Tactical or normal pause, depends on `matchzy_use_pause_command_for_tactical_pause`).
-- `.tech` Pauses the match in freezetime (technical pause, limited by `matchzy_max_tech_pauses`).
-- `.unpause` Request for unpausing the match. Both teams need to type .unpause to unpause the match. In a technical pause, the pausing team can cancel it before it takes effect, and any one team can unpause once `matchzy_tech_pause_time` has passed.
+- `.pause` Pauses the match in freezetime (Tactical or normal pause, depends on `arenapro_use_pause_command_for_tactical_pause`).
+- `.tech` Pauses the match in freezetime (technical pause, limited by `arenapro_max_tech_pauses`).
+- `.unpause` Request for unpausing the match. Both teams need to type .unpause to unpause the match. In a technical pause, the pausing team can cancel it before it takes effect, and any one team can unpause once `arenapro_tech_pause_time` has passed.
 - `.stay` Stays on the same side (For knife winner, after the knife round)
 - `.switch`/`.swap` Switches the side (For knife winner, after the knife round)
 - `.stop` Restore the backup of the current round (Both teams need to type .stop to restore the current round)
@@ -72,9 +72,9 @@ Most of the commands can also be used using ! prefix instead of . (like !ready)
 - `.skipveto` / `.sv` Skips the current veto phase.
 - `.roundknife` / `.rk` Toggles the knife round. If disabled, match will directly go from Warmup phase to Live phase.
 - `.playout` Toggles playout (If playout is enabled, all rounds would be played irrespective of winner. Useful in scrims!)
-- `.whitelist` Toggles whitelisting of players. To whitelist a player, add the steam64id in `cfg/MatchZy/whitelist.cfg`
+- `.whitelist` Toggles whitelisting of players. To whitelist a player, add the steam64id in `cfg/ArenaPro/whitelist.cfg`
 - `.readyrequired <number>` Sets the number of ready players required to start the match. If set to 0, all connected players will have to ready-up to start the match.
-- `.addreadytime <seconds>` Gives the teams more time to ready up when `matchzy_time_to_start` is set (console: `matchzy_add_ready_time` / `get5_add_ready_time`).
+- `.addreadytime <seconds>` Gives the teams more time to ready up when `arenapro_time_to_start` is set (console: `arenapro_add_ready_time` / `get5_add_ready_time`).
 - `.settings` Displays the current setting, like whether knife is enabled or not, value of readyrequired  players, etc.
 - `.map <mapname>` Changes the map
 - `.asay <message>` Say as an admin in all chat

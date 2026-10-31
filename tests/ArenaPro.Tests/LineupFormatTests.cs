@@ -1,7 +1,7 @@
 using System.Globalization;
-using MatchZy;
+using ArenaPro;
 
-namespace MatchZy.Tests;
+namespace ArenaPro.Tests;
 
 public class LineupFormatTests
 {

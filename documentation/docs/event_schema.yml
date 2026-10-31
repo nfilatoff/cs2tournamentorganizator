@@ -1,25 +1,25 @@
 ---
 openapi: "3.1.0"
 info:
-  title: "MatchZy Event Documentation"
+  title: "ArenaPro Event Documentation"
   version: ""
   description: |
-    This is the documentation of all JSON events and native plugin forwards for MatchZy. All HTTP events get
+    This is the documentation of all JSON events and native plugin forwards for ArenaPro. All HTTP events get
     sent as POST requests to the root of the URL you provided for
-    [`matchzy_remote_log_url`](configuration#matchzy_remote_log_url) in your MatchZy configuration. You should inspect the value
+    [`arenapro_remote_log_url`](configuration#arenapro_remote_log_url) in your ArenaPro configuration. You should inspect the value
     of the `event` property to determine the type of event. You cannot select which events to receive, but you can
     instead discard the ones you don't need.
 
-    You are expected to return a 200-range HTTP code to all request, or MatchZy will consider them failed. The HTTP timeout
+    You are expected to return a 200-range HTTP code to all request, or ArenaPro will consider them failed. The HTTP timeout
     is 15 seconds and there are no automatic retries.
     Note: This documentation is heavily inspired by Get5. Currently only those events are supported which are required for proper functioning of G5V/G5API. Though these events should be enough for now to get
     most of the match and player related data.
 webhooks:
-  "MatchZyOnSeriesInit":
+  "ArenaProOnSeriesInit":
     post:
       tags:
         - Series Flow
-      summary: MatchZyOnSeriesInit
+      summary: ArenaProOnSeriesInit
       description: |
         Fired when a series is started after loading a match config.
       requestBody:
@@ -27,9 +27,9 @@ webhooks:
         content:
           application/json:
             schema:
-              title: MatchZySeriesStartedEvent
+              title: ArenaProSeriesStartedEvent
               allOf:
-                - "$ref": "#/components/schemas/MatchZyMatchEvent"
+                - "$ref": "#/components/schemas/ArenaProMatchEvent"
                 - type: object
                   properties:
                     event:
@@ -40,14 +40,14 @@ webhooks:
                       minimum: 1
                       description: The number of maps in the series, i.e. 3 for a Bo3.
                     team1:
-                      "$ref": "#/components/schemas/MatchZyTeamWrapper"
+                      "$ref": "#/components/schemas/ArenaProTeamWrapper"
                     team2:
-                      "$ref": "#/components/schemas/MatchZyTeamWrapper"
-  "MatchZyOnMapResult":
+                      "$ref": "#/components/schemas/ArenaProTeamWrapper"
+  "ArenaProOnMapResult":
     post:
       tags:
         - Series Flow
-      summary: MatchZyOnMapResult
+      summary: ArenaProOnMapResult
       description: |
         Fired when the map ends.
       requestBody:
@@ -57,23 +57,23 @@ webhooks:
             schema:
               title: MapResultEvent
               allOf:
-                - "$ref": "#/components/schemas/MatchZyMapEvent"
+                - "$ref": "#/components/schemas/ArenaProMapEvent"
                 - type: object
                   properties:
                     event:
                       enum:
                         - map_result
                     team1:
-                      $ref: "#/components/schemas/MatchZyStatsTeam"
+                      $ref: "#/components/schemas/ArenaProStatsTeam"
                     team2:
-                      $ref: "#/components/schemas/MatchZyStatsTeam"
+                      $ref: "#/components/schemas/ArenaProStatsTeam"
                     winner:
                       $ref: "#/components/schemas/Winner"
-  "MatchZyOnSeriesResult":
+  "ArenaProOnSeriesResult":
     post:
       tags:
         - Series Flow
-      summary: MatchZyOnSeriesResult
+      summary: ArenaProOnSeriesResult
       description: |
         Fired when a series ends.
       requestBody:
@@ -81,9 +81,9 @@ webhooks:
         content:
           application/json:
             schema:
-              title: MatchZySeriesResultEvent
+              title: ArenaProSeriesResultEvent
               allOf:
-                - "$ref": "#/components/schemas/MatchZyMatchEvent"
+                - "$ref": "#/components/schemas/ArenaProMatchEvent"
                 - type: object
                   properties:
                     event:
@@ -105,13 +105,13 @@ webhooks:
                       minimum: 0
                       example: 45
                       description: |
-                        The number of seconds until MatchZy restores any changed ConVars and resets its game state to
+                        The number of seconds until ArenaPro restores any changed ConVars and resets its game state to
                         `none` after the series has ended.
-  "MatchZyOnSidePicked":
+  "ArenaProOnSidePicked":
     post:
       tags:
         - Series Flow
-      summary: MatchZyOnSidePicked
+      summary: ArenaProOnSidePicked
       description: |
         Fired when a side is picked by a team.
       requestBody:
@@ -119,9 +119,9 @@ webhooks:
         content:
           application/json:
             schema:
-              title: MatchZySidePickedEvent
+              title: ArenaProSidePickedEvent
               allOf:
-                - "$ref": "#/components/schemas/MatchZyMapSelectionEvent"
+                - "$ref": "#/components/schemas/ArenaProMapSelectionEvent"
                 - type: object
                   properties:
                     event:
@@ -133,11 +133,11 @@ webhooks:
                       type: integer
                       minimum: 0
                       description: The map number the team chose a side for.
-  "MatchZyOnMapPicked":
+  "ArenaProOnMapPicked":
     post:
       tags:
         - Series Flow
-      summary: MatchZyOnMapPicked
+      summary: ArenaProOnMapPicked
       description: |
         Fired when a team picks a map.
       requestBody:
@@ -145,9 +145,9 @@ webhooks:
         content:
           application/json:
             schema:
-              title: MatchZyMapPickedEvent
+              title: ArenaProMapPickedEvent
               allOf:
-                - "$ref": "#/components/schemas/MatchZyMapSelectionEvent"
+                - "$ref": "#/components/schemas/ArenaProMapSelectionEvent"
                 - type: object
                   properties:
                     event:
@@ -157,11 +157,11 @@ webhooks:
                       type: integer
                       minimum: 0
                       description: The map number of the chosen map.
-  "MatchZyOnMapVetoed":
+  "ArenaProOnMapVetoed":
     post:
       tags:
         - Series Flow
-      summary: MatchZyOnMapVetoed
+      summary: ArenaProOnMapVetoed
       description: |
         Fired when a team vetos a map.
       requestBody:
@@ -169,20 +169,20 @@ webhooks:
         content:
           application/json:
             schema:
-              title: MatchZyMapPickedEvent
+              title: ArenaProMapPickedEvent
               allOf:
-                - "$ref": "#/components/schemas/MatchZyMapSelectionEvent"
+                - "$ref": "#/components/schemas/ArenaProMapSelectionEvent"
                 - type: object
                   properties:
                     event:
                       enum:
                         - map_vetoed
 
-  "MatchZyOnGoingLive":
+  "ArenaProOnGoingLive":
     post:
       tags:
         - Map Flow
-      summary: MatchZyOnGoingLive
+      summary: ArenaProOnGoingLive
       description: |
         Fired when a map is going live.
       requestBody:
@@ -192,17 +192,17 @@ webhooks:
             schema:
               title: GoingLiveEvent
               allOf:
-                - "$ref": "#/components/schemas/MatchZyMapEvent"
+                - "$ref": "#/components/schemas/ArenaProMapEvent"
                 - type: object
                   properties:
                     event:
                       enum:
                         - going_live
-  "MatchZyOnRoundEnd":
+  "ArenaProOnRoundEnd":
     post:
       tags:
         - Live
-      summary: MatchZyOnRoundEnd
+      summary: ArenaProOnRoundEnd
       description: |
         Fired when a round ends - when the result is in; not when the round stops. Game activity can occur after this.
       requestBody:
@@ -210,9 +210,9 @@ webhooks:
         content:
           application/json:
             schema:
-              title: MatchZyRoundEndedEvent
+              title: ArenaProRoundEndedEvent
               allOf:
-                - "$ref": "#/components/schemas/MatchZyTimedRoundEvent"
+                - "$ref": "#/components/schemas/ArenaProTimedRoundEvent"
                 - type: object
                   properties:
                     event:
@@ -225,25 +225,25 @@ webhooks:
                     winner:
                       $ref: "#/components/schemas/Winner"
                     team1:
-                      title: MatchZyStatsTeam
+                      title: ArenaProStatsTeam
                       description: The stats for team 1.
                       allOf:
-                        - $ref: "#/components/schemas/MatchZyStatsTeam"
+                        - $ref: "#/components/schemas/ArenaProStatsTeam"
                     team2:
-                      title: MatchZyStatsTeam
+                      title: ArenaProStatsTeam
                       description: The stats for team 2.
                       allOf:
-                        - $ref: "#/components/schemas/MatchZyStatsTeam"
-  "MatchZyOnDemoUploadEnded":
+                        - $ref: "#/components/schemas/ArenaProStatsTeam"
+  "ArenaProOnDemoUploadEnded":
     post:
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              title: MatchZyDemoUploadEndedEvent
+              title: ArenaProDemoUploadEndedEvent
               allOf:
-                - "$ref": "#/components/schemas/MatchZyDemoFileEvent"
+                - "$ref": "#/components/schemas/ArenaProDemoFileEvent"
                 - type: object
                   properties:
                     event:
@@ -252,11 +252,11 @@ webhooks:
                     success:
                       type: boolean
                       description: Whether the upload was successful.
-  "MatchZyOnPauseBegan":
+  "ArenaProOnPauseBegan":
     post:
       tags:
         - Live
-      summary: MatchZyOnPauseBegan
+      summary: ArenaProOnPauseBegan
       description: |
         Fired when the match is paused: by a team (`.tech`, or `.pause` unless it is used for tactical pauses), by an admin
         (`.forcepause`) or after a round restore.
@@ -265,9 +265,9 @@ webhooks:
         content:
           application/json:
             schema:
-              title: MatchZyPauseEvent
+              title: ArenaProPauseEvent
               allOf:
-                - "$ref": "#/components/schemas/MatchZyMapEvent"
+                - "$ref": "#/components/schemas/ArenaProMapEvent"
                 - type: object
                   properties:
                     event:
@@ -286,11 +286,11 @@ webhooks:
                         - technical
                         - admin
                         - backup
-  "MatchZyOnMatchUnpaused":
+  "ArenaProOnMatchUnpaused":
     post:
       tags:
         - Live
-      summary: MatchZyOnMatchUnpaused
+      summary: ArenaProOnMatchUnpaused
       description: |
         Fired when the match is unpaused. `team` and `pause_type` are those of the pause that ended.
       requestBody:
@@ -298,9 +298,9 @@ webhooks:
         content:
           application/json:
             schema:
-              title: MatchZyPauseEvent
+              title: ArenaProPauseEvent
               allOf:
-                - "$ref": "#/components/schemas/MatchZyMapEvent"
+                - "$ref": "#/components/schemas/ArenaProMapEvent"
                 - type: object
                   properties:
                     event:
@@ -319,11 +319,11 @@ webhooks:
                         - admin
                         - backup
 
-  "MatchZyOnRoundStart":
+  "ArenaProOnRoundStart":
     post:
       tags:
         - Live
-      summary: MatchZyOnRoundStart
+      summary: ArenaProOnRoundStart
       description: |
         Fired when a round starts (when freeze time begins) while the match is live. After a round restore it is sent
         right after `backup_loaded`, with the restored round.
@@ -332,19 +332,19 @@ webhooks:
         content:
           application/json:
             schema:
-              title: MatchZyRoundStartedEvent
+              title: ArenaProRoundStartedEvent
               allOf:
-                - "$ref": "#/components/schemas/MatchZyRoundEvent"
+                - "$ref": "#/components/schemas/ArenaProRoundEvent"
                 - type: object
                   properties:
                     event:
                       enum:
                         - round_start
-  "MatchZyOnPlayerDeath":
+  "ArenaProOnPlayerDeath":
     post:
       tags:
         - Live
-      summary: MatchZyOnPlayerDeath
+      summary: ArenaProOnPlayerDeath
       description: |
         Fired when a player dies while the match is live (coaches are not included). `player` is the victim.
       requestBody:
@@ -352,16 +352,16 @@ webhooks:
         content:
           application/json:
             schema:
-              title: MatchZyPlayerDeathEvent
+              title: ArenaProPlayerDeathEvent
               allOf:
-                - "$ref": "#/components/schemas/MatchZyPlayerTimedRoundEvent"
+                - "$ref": "#/components/schemas/ArenaProPlayerTimedRoundEvent"
                 - type: object
                   properties:
                     event:
                       enum:
                         - player_death
                     weapon:
-                      $ref: "#/components/schemas/MatchZyWeapon"
+                      $ref: "#/components/schemas/ArenaProWeapon"
                     bomb:
                       type: boolean
                       description: Whether the player died from the bomb explosion.
@@ -386,14 +386,14 @@ webhooks:
                     attacker:
                       description: The attacker, `null` if there is none.
                       allOf:
-                        - $ref: "#/components/schemas/MatchZyPlayer"
+                        - $ref: "#/components/schemas/ArenaProPlayer"
                     assist:
-                      $ref: "#/components/schemas/MatchZyAssist"
-  "MatchZyOnBombPlanted":
+                      $ref: "#/components/schemas/ArenaProAssist"
+  "ArenaProOnBombPlanted":
     post:
       tags:
         - Live
-      summary: MatchZyOnBombPlanted
+      summary: ArenaProOnBombPlanted
       description: |
         Fired when the bomb is planted. `player` is the planter.
       requestBody:
@@ -401,19 +401,19 @@ webhooks:
         content:
           application/json:
             schema:
-              title: MatchZyBombPlantedEvent
+              title: ArenaProBombPlantedEvent
               allOf:
-                - "$ref": "#/components/schemas/MatchZyPlayerBombEvent"
+                - "$ref": "#/components/schemas/ArenaProPlayerBombEvent"
                 - type: object
                   properties:
                     event:
                       enum:
                         - bomb_planted
-  "MatchZyOnBombDefused":
+  "ArenaProOnBombDefused":
     post:
       tags:
         - Live
-      summary: MatchZyOnBombDefused
+      summary: ArenaProOnBombDefused
       description: |
         Fired when the bomb is defused. `player` is the defuser.
       requestBody:
@@ -421,9 +421,9 @@ webhooks:
         content:
           application/json:
             schema:
-              title: MatchZyBombDefusedEvent
+              title: ArenaProBombDefusedEvent
               allOf:
-                - "$ref": "#/components/schemas/MatchZyPlayerBombEvent"
+                - "$ref": "#/components/schemas/ArenaProPlayerBombEvent"
                 - type: object
                   properties:
                     event:
@@ -434,11 +434,11 @@ webhooks:
                       minimum: 0
                       example: 12438
                       description: Milliseconds left on the bomb timer when it was defused.
-  "MatchZyOnPlayerDisconnected":
+  "ArenaProOnPlayerDisconnected":
     post:
       tags:
         - Client Actions
-      summary: MatchZyOnPlayerDisconnected
+      summary: ArenaProOnPlayerDisconnected
       description: |
         Fired when a player (not a bot) disconnects while a match is loaded.
       requestBody:
@@ -446,21 +446,21 @@ webhooks:
         content:
           application/json:
             schema:
-              title: MatchZyPlayerDisconnectedEvent
+              title: ArenaProPlayerDisconnectedEvent
               allOf:
-                - "$ref": "#/components/schemas/MatchZyMatchEvent"
+                - "$ref": "#/components/schemas/ArenaProMatchEvent"
                 - type: object
                   properties:
                     event:
                       enum:
                         - player_disconnect
                     player:
-                      $ref: "#/components/schemas/MatchZyPlayer"
-  "MatchZyOnBackupRestore":
+                      $ref: "#/components/schemas/ArenaProPlayer"
+  "ArenaProOnBackupRestore":
     post:
       tags:
         - Series Flow
-      summary: MatchZyOnBackupRestore
+      summary: ArenaProOnBackupRestore
       description: |
         Fired when a round is restored from a backup. `round_number` is the round restored to.
       requestBody:
@@ -468,9 +468,9 @@ webhooks:
         content:
           application/json:
             schema:
-              title: MatchZyBackupRestoredEvent
+              title: ArenaProBackupRestoredEvent
               allOf:
-                - "$ref": "#/components/schemas/MatchZyRoundEvent"
+                - "$ref": "#/components/schemas/ArenaProRoundEvent"
                 - type: object
                   properties:
                     event:
@@ -482,31 +482,31 @@ webhooks:
 
 components:
   schemas:
-    MatchZyEvent:
+    ArenaProEvent:
       type: object
       properties:
         event:
           type: string
           description: The name of the event.
-    MatchZyMatchEvent:
+    ArenaProMatchEvent:
       allOf:
-        - "$ref": "#/components/schemas/MatchZyEvent"
+        - "$ref": "#/components/schemas/ArenaProEvent"
         - type: object
           properties:
             matchid:
               type: integer
               description: The ID of the match.
               example: 14272
-    MatchZyMatchTeamEvent:
+    ArenaProMatchTeamEvent:
       allOf:
-        - "$ref": "#/components/schemas/MatchZyMatchEvent"
+        - "$ref": "#/components/schemas/ArenaProMatchEvent"
         - type: object
           properties:
             team:
               $ref: "#/components/schemas/Team"
-    MatchZyMapEvent:
+    ArenaProMapEvent:
       allOf:
-        - "$ref": "#/components/schemas/MatchZyMatchEvent"
+        - "$ref": "#/components/schemas/ArenaProMatchEvent"
         - type: object
           properties:
             map_number:
@@ -514,9 +514,9 @@ components:
               minimum: 0
               example: 0
               description: The map number in the series, starting at 0.
-    MatchZyMapSelectionEvent:
+    ArenaProMapSelectionEvent:
       allOf:
-        - "$ref": "#/components/schemas/MatchZyMatchTeamEvent"
+        - "$ref": "#/components/schemas/ArenaProMatchTeamEvent"
         - type: object
           properties:
             map_name:
@@ -525,16 +525,16 @@ components:
               description:
                 The name of the map related to the event (map picked/banned
                 etc.).
-    MatchZyMapTeamEvent:
+    ArenaProMapTeamEvent:
       allOf:
-        - "$ref": "#/components/schemas/MatchZyMapEvent"
+        - "$ref": "#/components/schemas/ArenaProMapEvent"
         - type: object
           properties:
             team:
               $ref: "#/components/schemas/Team"
-    MatchZyRoundEvent:
+    ArenaProRoundEvent:
       allOf:
-        - "$ref": "#/components/schemas/MatchZyMapEvent"
+        - "$ref": "#/components/schemas/ArenaProMapEvent"
         - type: object
           properties:
             round_number:
@@ -542,9 +542,9 @@ components:
               minimum: 0
               example: 13
               description: The round number of the map, starting at 0.
-    MatchZyTimedRoundEvent:
+    ArenaProTimedRoundEvent:
       allOf:
-        - "$ref": "#/components/schemas/MatchZyRoundEvent"
+        - "$ref": "#/components/schemas/ArenaProRoundEvent"
         - type: object
           properties:
             round_time:
@@ -552,7 +552,7 @@ components:
               description: The number of milliseconds into the round the event occurred.
               minimum: 0
               example: 51434
-    MatchZyPlayer:
+    ArenaProPlayer:
       type: object
       description: A player.
       properties:
@@ -571,7 +571,7 @@ components:
           $ref: "#/components/schemas/Side"
         is_bot:
           type: boolean
-    MatchZyWeapon:
+    ArenaProWeapon:
       type: object
       properties:
         name:
@@ -582,27 +582,27 @@ components:
           type: integer
           example: 27
           description: SourceMod's weapon ID (CSWeaponID), as in Get5. 0 for weapons without one, fire and the bomb.
-    MatchZyAssist:
+    ArenaProAssist:
       type: object
       nullable: true
       description: The assist to a kill, `null` if there is none.
       properties:
         player:
-          $ref: "#/components/schemas/MatchZyPlayer"
+          $ref: "#/components/schemas/ArenaProPlayer"
         friendly_fire:
           type: boolean
         flash_assist:
           type: boolean
-    MatchZyPlayerTimedRoundEvent:
+    ArenaProPlayerTimedRoundEvent:
       allOf:
-        - "$ref": "#/components/schemas/MatchZyTimedRoundEvent"
+        - "$ref": "#/components/schemas/ArenaProTimedRoundEvent"
         - type: object
           properties:
             player:
-              $ref: "#/components/schemas/MatchZyPlayer"
-    MatchZyPlayerBombEvent:
+              $ref: "#/components/schemas/ArenaProPlayer"
+    ArenaProPlayerBombEvent:
       allOf:
-        - "$ref": "#/components/schemas/MatchZyPlayerTimedRoundEvent"
+        - "$ref": "#/components/schemas/ArenaProPlayerTimedRoundEvent"
         - type: object
           properties:
             site:
@@ -636,7 +636,7 @@ components:
         - ct
         - t
         - spec
-    MatchZyTeamWrapper:
+    ArenaProTeamWrapper:
       type: object
       description: Describes a team (`Team1` or `Team2`).
       properties:
@@ -649,10 +649,10 @@ components:
           type: string
           description: The name of the team.
           example: Natus Vincere
-    MatchZyStatsTeam:
+    ArenaProStatsTeam:
       description: Describes a team with its score and player stats.
       allOf:
-        - $ref: "#/components/schemas/MatchZyTeamWrapper"
+        - $ref: "#/components/schemas/ArenaProTeamWrapper"
         - type: object
           properties:
             series_score:
@@ -874,9 +874,9 @@ components:
           minimum: 0
           description: "The number of times the player was elected the round MVP."
           example: 4
-    MatchZyDemoFileEvent:
+    ArenaProDemoFileEvent:
       allOf:
-        - "$ref": "#/components/schemas/MatchZyMapEvent"
+        - "$ref": "#/components/schemas/ArenaProMapEvent"
         - type: object
           properties:
             filename:
@@ -884,7 +884,7 @@ components:
               example: "1324_map_0_de_nuke.dem"
               description: |
                 The name of the file containing the CSTV recording of the map. The format is determined by the
-                `matchzy_demo_name_format` parameter.
+                `arenapro_demo_name_format` parameter.
 tags:
   - name: All Events
     description: Forward fired for all events.

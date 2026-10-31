@@ -21,7 +21,7 @@
 
   <!-- Plugin code without CounterStrikeSharp dependencies, compiled directly into the tests -->
   <ItemGroup>
-    <Compile Include="..\..\MatchZySecurity.cs" Link="Plugin\MatchZySecurity.cs" />
+    <Compile Include="..\..\ArenaProSecurity.cs" Link="Plugin\ArenaProSecurity.cs" />
     <Compile Include="..\..\MatchConfigJson.cs" Link="Plugin\MatchConfigJson.cs" />
     <Compile Include="..\..\SeriesLogic.cs" Link="Plugin\SeriesLogic.cs" />
     <Compile Include="..\..\BotClaimLogic.cs" Link="Plugin\BotClaimLogic.cs" />

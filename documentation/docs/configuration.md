@@ -1,9 +1,9 @@
 # Configuration
 
-All the configuration files related to MatchZy can be found in `csgo/cfg/MatchZy` (If you have extracted the contents properly, `MatchZy` folder should be there inside the cfg folder).
+All the configuration files related to ArenaPro can be found in `csgo/cfg/ArenaPro` (If you have extracted the contents properly, `ArenaPro` folder should be there inside the cfg folder).
 
 ### Creating Admins
-There are two ways to create an admin for MatchZy; you can choose the most convenient one according to your preference.
+There are two ways to create an admin for ArenaPro; you can choose the most convenient one according to your preference.
 
 1. **Using CSSharp's Admin system:**
 
@@ -36,9 +36,9 @@ There are two ways to create an admin for MatchZy; you can choose the most conve
     - `@css/chat`: Grants access to send admin chat messages using `!asay <message>`
 
 
-2. **Using MatchZy's Admin system:**
+2. **Using ArenaPro's Admin system:**
 
-    Inside `csgo/cfg/MatchZy`, a file named `admins.json` should be present. If it is not there, it will be automatically created when the plugin is loaded. You can add Steam64 id of admins in that JSON file like mentioned in the below example:
+    Inside `csgo/cfg/ArenaPro`, a file named `admins.json` should be present. If it is not there, it will be automatically created when the plugin is loaded. You can add Steam64 id of admins in that JSON file like mentioned in the below example:
 
     ```json
     {
@@ -48,142 +48,142 @@ There are two ways to create an admin for MatchZy; you can choose the most conve
     }
     ```
 
-    An empty value (or any text without flags, such as a name) gives access to all MatchZy admin commands, including `!rcon`. To limit an admin, list the flags from above in the value, separated by spaces or commas; `@css/root` grants everything. A flag must look like `@domain/name` (e.g. `@css/config`); a value with a mistyped flag counts as having no flags, and a warning is written to the log when the admins are loaded.
+    An empty value (or any text without flags, such as a name) gives access to all ArenaPro admin commands, including `!rcon`. To limit an admin, list the flags from above in the value, separated by spaces or commas; `@css/root` grants everything. A flag must look like `@domain/name` (e.g. `@css/config`); a value with a mistyped flag counts as having no flags, and a warning is written to the log when the admins are loaded.
 
-    Note that `!rcon` gives full server console access, so only give admins without flags (or `matchzy_everyone_is_admin`) to people you trust with the server. An admin with flags needs `@css/rcon` or `@css/root` for it.
+    Note that `!rcon` gives full server console access, so only give admins without flags (or `arenapro_everyone_is_admin`) to people you trust with the server. An admin with flags needs `@css/rcon` or `@css/root` for it.
 
-### Configuring MatchZy Settings (ConVars)
-Again, inside `csgo/cfg/MatchZy`, a file named `config.cfg` should be present. This file is executed whenever the plugin is loaded. If you make any changes in this file (or in `config_override.cfg`, see [Override CFGs](#override-cfgs)) and want to reload the config, simply execute `exec MatchZy/config.cfg; execifexists MatchZy/config_override.cfg` command on the server.
+### Configuring ArenaPro Settings (ConVars)
+Again, inside `csgo/cfg/ArenaPro`, a file named `config.cfg` should be present. This file is executed whenever the plugin is loaded. If you make any changes in this file (or in `config_override.cfg`, see [Override CFGs](#override-cfgs)) and want to reload the config, simply execute `exec ArenaPro/config.cfg; execifexists ArenaPro/config_override.cfg` command on the server.
 
-####`matchzy_knife_enabled_default`
+####`arenapro_knife_enabled_default`
 :   Whether knife round is enabled by default or not. This is the default value, but knife can be toggled by [admins](#creating-admins) using .roundknife command.<br>**`Default: true`**
 
-####`matchzy_minimum_ready_required`
+####`arenapro_minimum_ready_required`
 :   Minimum ready players required to start the match. If set to 0, all connected players have to ready-up to start the match.<br>**`Default: 2`**
 
-####`matchzy_time_to_start`
-:   Time (in seconds) teams have to ready up for the knife round / going live in a loaded match (Get5's `get5_time_to_start`, which also works). Reminders are printed every minute, every 30 seconds in the last 5 minutes and at 10 seconds. When the time runs out, a team that is not ready forfeits the series (the ready team wins, reported with the series score needed to win, e.g. 1-0 in a BO1); if neither team is ready, the series ends in a tie (`series_end` with winner `none`). Each map of a series gets the full time. Admins can give more time with `.addreadytime <seconds>` / `matchzy_add_ready_time` / `get5_add_ready_time`. Set to 0 for no limit.<br>**`Default: 0`**
+####`arenapro_time_to_start`
+:   Time (in seconds) teams have to ready up for the knife round / going live in a loaded match (Get5's `get5_time_to_start`, which also works). Reminders are printed every minute, every 30 seconds in the last 5 minutes and at 10 seconds. When the time runs out, a team that is not ready forfeits the series (the ready team wins, reported with the series score needed to win, e.g. 1-0 in a BO1); if neither team is ready, the series ends in a tie (`series_end` with winner `none`). Each map of a series gets the full time. Admins can give more time with `.addreadytime <seconds>` / `arenapro_add_ready_time` / `get5_add_ready_time`. Set to 0 for no limit.<br>**`Default: 0`**
 
-####`matchzy_time_to_start_veto`
-:   Same as [`matchzy_time_to_start`](#matchzy_time_to_start), for readying up for map selection (Get5's `get5_time_to_start_veto`). Set to 0 for no limit.<br>**`Default: 0`**
+####`arenapro_time_to_start_veto`
+:   Same as [`arenapro_time_to_start`](#arenapro_time_to_start), for readying up for map selection (Get5's `get5_time_to_start_veto`). Set to 0 for no limit.<br>**`Default: 0`**
 
-####`matchzy_ready_mode`
-:   How teams get ready in a loaded match. `0`: players type `.ready`. `1`: joining is ready: a team is ready once `min_players_to_ready` of its players (coaches do not count) have joined their side, and the match (or the map selection, or a pending backup restore) starts on its own [`matchzy_join_start_delay`](#matchzy_join_start_delay) seconds after everyone has joined. A player leaving during that countdown stops it. `.ready` / `.unready` are not needed and say so. Works together with [`matchzy_time_to_start`](#matchzy_time_to_start): teams that have not joined in time forfeit, or the series ends in a tie.<br>**`Default: 0`**
+####`arenapro_ready_mode`
+:   How teams get ready in a loaded match. `0`: players type `.ready`. `1`: joining is ready: a team is ready once `min_players_to_ready` of its players (coaches do not count) have joined their side, and the match (or the map selection, or a pending backup restore) starts on its own [`arenapro_join_start_delay`](#arenapro_join_start_delay) seconds after everyone has joined. A player leaving during that countdown stops it. `.ready` / `.unready` are not needed and say so. Works together with [`arenapro_time_to_start`](#arenapro_time_to_start): teams that have not joined in time forfeit, or the series ends in a tie.<br>**`Default: 0`**
 
-####`matchzy_join_start_delay`
-:   With `matchzy_ready_mode 1`: seconds between all players having joined and the match starting. Set to 0 to start right away.<br>**`Default: 10`**
+####`arenapro_join_start_delay`
+:   With `arenapro_ready_mode 1`: seconds between all players having joined and the match starting. Set to 0 to start right away.<br>**`Default: 10`**
 
-####`matchzy_stop_command_available`
+####`arenapro_stop_command_available`
 :   Whether !stop/.stop command to restore the backup of the current round is enabled by default or not.<br>**`Default: false`**
 
-####`matchzy_stop_command_no_damage`
+####`arenapro_stop_command_no_damage`
 :   Whether the stop command becomes unavailable if a player damages a player from the opposing team.<br>**`Default: false`**
 
-####`matchzy_pause_after_restore`
+####`arenapro_pause_after_restore`
 :   Whether to pause the match after round restore or not. Players can unpause the match using !unpause/.unpause. (Both the teams will have to use unpause command) or admins can use `.fup` to force-unpause the game<br>**`Default: true`**
 
-####`matchzy_whitelist_enabled_default`
+####`arenapro_whitelist_enabled_default`
 :   Whether [whitelist](#whitelisting-players) is enabled by default or not. This is the default value, but whitelist can be toggled by admin using ``.whitelist`` command<br>**`Default: false`**
 
-####`matchzy_kick_when_no_match_loaded`
-:   Whether to kick all clients and prevent anyone from joining the server if no match is loaded. This means if server is in match mode, a match needs to be set-up using `matchzy_loadmatch`/`matchzy_loadmatch_url` to load and configure a match.<br>**`Default: false`**
+####`arenapro_kick_when_no_match_loaded`
+:   Whether to kick all clients and prevent anyone from joining the server if no match is loaded. This means if server is in match mode, a match needs to be set-up using `arenapro_loadmatch`/`arenapro_loadmatch_url` to load and configure a match.<br>**`Default: false`**
 
-####`matchzy_demo_path`
-:   Path of folder in which demos will be saved. If defined, it must not start with a slash and must end with a slash. Set to empty string to use the csgo root. Example: `matchzy_demo_path MatchZy/`<br>**`Default: MatchZy/`**
+####`arenapro_demo_path`
+:   Path of folder in which demos will be saved. If defined, it must not start with a slash and must end with a slash. Set to empty string to use the csgo root. Example: `arenapro_demo_path ArenaPro/`<br>**`Default: ArenaPro/`**
 
-####`matchzy_demo_name_format`
+####`arenapro_demo_name_format`
 :   Format of demo filname. You may use {TIME}, {MATCH_ID}, {MAP}, {MAPNUMBER}, {TEAM1} and {TEAM2}. Demo files will be named according to the format specified. Do not include .dem format, it will be added automatically. Make sure to keep {TIME} in the format to create a unique demo file everytime.<br>**`Default: "{TIME}_{MATCH_ID}_{MAP}_{TEAM1}_vs_{TEAM2}"`**
 
-####`matchzy_demo_upload_url`
+####`arenapro_demo_upload_url`
 :   If defined, recorded demo will be [uploaded](../gotv#automatic-upload) to this URL once the map ends. Make sure that the URL is wrapped in double quotes (""). 
-Example: `matchzy_demo_upload_url "https://your-website.com/upload-endpoint"` <br>**`Default: ""`**
+Example: `arenapro_demo_upload_url "https://your-website.com/upload-endpoint"` <br>**`Default: ""`**
 
-####`matchzy_kick_when_no_match_loaded`
-:   Whether to kick all clients and prevent anyone from joining the server if no match is loaded. This means if server is in match mode, a match needs to be set-up using `matchzy_loadmatch`/`matchzy_loadmatch_url` to load and configure a match.<br>**`Default: false`**
+####`arenapro_kick_when_no_match_loaded`
+:   Whether to kick all clients and prevent anyone from joining the server if no match is loaded. This means if server is in match mode, a match needs to be set-up using `arenapro_loadmatch`/`arenapro_loadmatch_url` to load and configure a match.<br>**`Default: false`**
 
-####`matchzy_chat_prefix`
-:   Chat prefix to show whenever a MatchZy message is sent to players. Available Colors: {Default}, {Darkred}, {Green}, {LightYellow}, {LightBlue}, {Olive}, {Lime}, {Red}, {Purple}, {Grey}, {Yellow}, {Gold}, {Silver}, {Blue}, {DarkBlue}, {BlueGrey}, {Magenta} and {LightRed}. Make sure to end your prefix with {Default} to avoid coloring the messages in your prefix color.<br>**`Default: [{Green}MatchZy{Default}]`**
+####`arenapro_chat_prefix`
+:   Chat prefix to show whenever a ArenaPro message is sent to players. Available Colors: {Default}, {Darkred}, {Green}, {LightYellow}, {LightBlue}, {Olive}, {Lime}, {Red}, {Purple}, {Grey}, {Yellow}, {Gold}, {Silver}, {Blue}, {DarkBlue}, {BlueGrey}, {Magenta} and {LightRed}. Make sure to end your prefix with {Default} to avoid coloring the messages in your prefix color.<br>**`Default: [{Green}ArenaPro{Default}]`**
 
-####`matchzy_admin_chat_prefix`
+####`arenapro_admin_chat_prefix`
 :   Chat prefix to show whenever an admin sends message using `.asay <message>`. Avaiable Colors are mentioned above.<br>**`Default: [{Red}ADMIN{Default}]`**
 
-####`matchzy_chat_messages_timer_delay`
-:   Number of seconds of delay before sending reminder messages from MatchZy (like unready message, paused message, etc). Note: Changing this timer wont affect the active timer, so if you change this setting in warmup, you will have to restart warmup to make the change effective.<br>**`Default: 13[{Red}ADMIN{Default}]`**
+####`arenapro_chat_messages_timer_delay`
+:   Number of seconds of delay before sending reminder messages from ArenaPro (like unready message, paused message, etc). Note: Changing this timer wont affect the active timer, so if you change this setting in warmup, you will have to restart warmup to make the change effective.<br>**`Default: 13[{Red}ADMIN{Default}]`**
 
-####`matchzy_playout_enabled_default`
+####`arenapro_playout_enabled_default`
 :   Whether playout (play max rounds) is enabled. This is the default value, but playout can be toggled by admin using `.playout` command.<br>**`Default: false`**
 
-####`matchzy_reset_cvars_on_series_end`
+####`arenapro_reset_cvars_on_series_end`
 :   Whether parameters from the cvars section of a match configuration are restored to their original values when a series ends.<br>**`Default: true`**
 
-####`matchzy_use_pause_command_for_tactical_pause`
+####`arenapro_use_pause_command_for_tactical_pause`
 :   Whether to use !pause/.pause command for tactical pause or normal pause (unpauses only when both teams use unpause command, for admin force-unpauses the game).<br>**`Default: false`**
 
-####`matchzy_max_tech_pauses`
-:   Number of technical pauses (`.tech`, and `.pause` unless [`matchzy_use_pause_command_for_tactical_pause`](#matchzy_use_pause_command_for_tactical_pause) is set) each team can call per map (Get5's `get5_max_tech_pauses`, which also works). A pause is counted once it takes effect in freeze time; until then the pausing team can cancel it with `.unpause`. Set to 0 for unlimited. Replaces `matchzy_max_tech_pauses_allowed`, which never had an effect and has been removed.<br>**`Default: 0`**
+####`arenapro_max_tech_pauses`
+:   Number of technical pauses (`.tech`, and `.pause` unless [`arenapro_use_pause_command_for_tactical_pause`](#arenapro_use_pause_command_for_tactical_pause) is set) each team can call per map (Get5's `get5_max_tech_pauses`, which also works). A pause is counted once it takes effect in freeze time; until then the pausing team can cancel it with `.unpause`. Set to 0 for unlimited. Replaces `arenapro_max_tech_pauses_allowed`, which never had an effect and has been removed.<br>**`Default: 0`**
 
-####`matchzy_tech_pause_time`
-:   Seconds a technical pause has to last before any one team can `.unpause` it; until then both teams have to (Get5's `get5_tech_pause_time`, which also works). The pause does not end on its own. A countdown is shown to all players. Set to 0 so that both teams always have to unpause. Replaces `matchzy_tech_pause_duration`, which never had an effect and has been removed.<br>**`Default: 0`**
+####`arenapro_tech_pause_time`
+:   Seconds a technical pause has to last before any one team can `.unpause` it; until then both teams have to (Get5's `get5_tech_pause_time`, which also works). The pause does not end on its own. A countdown is shown to all players. Set to 0 so that both teams always have to unpause. Replaces `arenapro_tech_pause_duration`, which never had an effect and has been removed.<br>**`Default: 0`**
 
-####`matchzy_autostart_mode`
+####`arenapro_autostart_mode`
 :   Whether the plugin will load the match mode, the practice moder or neither by startup. 0 for neither, 1 for match mode, 2 for practice mode.<br>**`Default: 1`**
 
-####`matchzy_save_nades_as_global_enabled`
+####`arenapro_save_nades_as_global_enabled`
 :   Whether nades should be saved globally instead of being privated to players by default or not.<br>**`Default: false`**
 
-####`matchzy_allow_force_ready`
+####`arenapro_allow_force_ready`
 :   Whether force ready using !forceready is enabled or not (Currently works in Match Setup only).<br>**`Default: true`**
 
-####`matchzy_max_saved_last_grenades`
+####`arenapro_max_saved_last_grenades`
 :   Maximum number of grenade history that may be saved per-map, per-client. Set to 0 to disable the limit and allow unlimited grenades to be stored.<br>**`Default: 512`**
 
-####`matchzy_smoke_color_enabled`
+####`arenapro_smoke_color_enabled`
 :   If enabled, the smoke's color will be changed to player's team color (player's color seen in the radar) .<br>**`Default: false`**
 
-####`matchzy_everyone_is_admin`
-:   If set to true, everyone will be granted admin permissions for MatchZy.<br>**`Default: false`**
+####`arenapro_everyone_is_admin`
+:   If set to true, everyone will be granted admin permissions for ArenaPro.<br>**`Default: false`**
 
-####`matchzy_show_credits_on_match_start`
-:   Whether to show 'MatchZy Plugin by WD-' message on match start.<br>**`Default: true`**
+####`arenapro_show_credits_on_match_start`
+:   Whether to show 'ArenaPro Plugin by WD-' message on match start.<br>**`Default: true`**
 
-####`matchzy_hostname_format`
-:   The server hostname to use. Set to "" to disable/use existing. Available variables: {TIME}, {MATCH_ID}, {MAP}, {MAPNUMBER}, {TEAM1}, {TEAM2}, {TEAM1_SCORE}, {TEAM2_SCORE}<br>**`Default: MatchZy | {TEAM1} vs {TEAM2}`**
+####`arenapro_hostname_format`
+:   The server hostname to use. Set to "" to disable/use existing. Available variables: {TIME}, {MATCH_ID}, {MAP}, {MAPNUMBER}, {TEAM1}, {TEAM2}, {TEAM1_SCORE}, {TEAM2_SCORE}<br>**`Default: ArenaPro | {TEAM1} vs {TEAM2}`**
 
-####`matchzy_match_start_message`
-:   Message to show when the match starts. Use $$$ to break message into multiple lines. Set to "" to disable. Available Colors: {Default}, {Darkred}, {Green}, {LightYellow}, {LightBlue}, {Olive}, {Lime}, {Red}, {Purple}, {Grey}, {Yellow}, {Gold}, {Silver}, {Blue}, {DarkBlue}. Example usage: matchzy_match_start_message {Green} Welcome to the server! {Default} $$$ Agent models are not allowed and may lead to {Red}disqualification!{Default}
+####`arenapro_match_start_message`
+:   Message to show when the match starts. Use $$$ to break message into multiple lines. Set to "" to disable. Available Colors: {Default}, {Darkred}, {Green}, {LightYellow}, {LightBlue}, {Olive}, {Lime}, {Red}, {Purple}, {Grey}, {Yellow}, {Gold}, {Silver}, {Blue}, {DarkBlue}. Example usage: arenapro_match_start_message {Green} Welcome to the server! {Default} $$$ Agent models are not allowed and may lead to {Red}disqualification!{Default}
 <br>**`Default: ""`**
 
-####`matchzy_loadbackup`
-:   Loads a match backup from the given file. Relative to `csgo/MatchZyDataBackup/`.
+####`arenapro_loadbackup`
+:   Loads a match backup from the given file. Relative to `csgo/ArenaProDataBackup/`.
 
-####`matchzy_loadbackup_url`
+####`arenapro_loadbackup_url`
 :   Loads a match backup from a remote host by sending an HTTP(S) GET to the given URL. You may optionally provide an HTTP header and value pair using the header name and header value arguments. You should put all arguments inside quotation marks ("").
 
-####`matchzy_remote_backup_url`
-:   If defined, MatchZy will automatically send backups to this URL in an HTTP POST request. If no protocol is provided, http:// will be prepended to this value. Requires the SteamWorks extension. 
+####`arenapro_remote_backup_url`
+:   If defined, ArenaPro will automatically send backups to this URL in an HTTP POST request. If no protocol is provided, http:// will be prepended to this value. Requires the SteamWorks extension. 
 
-####`matchzy_remote_backup_header_key`
-:   If this and matchzy_remote_backup_header_value are defined, this header name and value will be used for your backup upload HTTP request. **`Default: "Authorization"`**
+####`arenapro_remote_backup_header_key`
+:   If this and arenapro_remote_backup_header_value are defined, this header name and value will be used for your backup upload HTTP request. **`Default: "Authorization"`**
 
-####`matchzy_remote_backup_header_value`
-:   If this and matchzy_remote_backup_header_key are defined, this header name and value will be used for your backup upload HTTP request. **`Default: ""`**
+####`arenapro_remote_backup_header_value`
+:   If this and arenapro_remote_backup_header_key are defined, this header name and value will be used for your backup upload HTTP request. **`Default: ""`**
 
-####`matchzy_enable_damage_report`
+####`arenapro_enable_damage_report`
 :   Whether to show damage report after each round or not. **`Default: "true"`**
 
-####`matchzy_addplayer <steam64> <team1|team2|spec> [name]`
+####`arenapro_addplayer <steam64> <team1|team2|spec> [name]`
 :   Adds a Steam64 to the provided team. The name parameter locks the player's name.
 
-####`matchzy_removeplayer <steam64>`
+####`arenapro_removeplayer <steam64>`
 :   Removes a Steam64 from all teams
 
 ### Configuring Warmup/Knife/Live/Prac CFGs
-Again, inside `csgo/cfg/MatchZy`, files named `warmup.cfg`, `knife.cfg`, `live.cfg` and `prac.cfg` should be present. These configs are executed when Warmup, Knife, Live and Practice Mode is started respectively.
+Again, inside `csgo/cfg/ArenaPro`, files named `warmup.cfg`, `knife.cfg`, `live.cfg` and `prac.cfg` should be present. These configs are executed when Warmup, Knife, Live and Practice Mode is started respectively.
 
-If these configs are not found in the expected location, MatchZy executes the default configs which are present in the code.
+If these configs are not found in the expected location, ArenaPro executes the default configs which are present in the code.
 
 ### Override CFGs
-Updating MatchZy overwrites the CFGs that come with it, so don't put your own settings in them. Create an override CFG in `csgo/cfg/MatchZy` instead: MatchZy executes `<name>_override.cfg` right after `<name>.cfg` (or after the default config in the code, if `<name>.cfg` is missing). MatchZy releases don't contain override CFGs, so updates never overwrite them. Only add the settings you want to change.
+Updating ArenaPro overwrites the CFGs that come with it, so don't put your own settings in them. Create an override CFG in `csgo/cfg/ArenaPro` instead: ArenaPro executes `<name>_override.cfg` right after `<name>.cfg` (or after the default config in the code, if `<name>.cfg` is missing). ArenaPro releases don't contain override CFGs, so updates never overwrite them. Only add the settings you want to change.
 
 | CFG | Override CFG | Executed |
 | --- | --- | --- |
@@ -196,7 +196,7 @@ Updating MatchZy overwrites the CFGs that come with it, so don't put your own se
 | `dryrun.cfg` | `dryrun_override.cfg` | Dry run (`.dryrun`) |
 | `sleep.cfg` | `sleep_override.cfg` | Sleep mode (`.sleep`) |
 
-Like `config.cfg`, `config_override.cfg` is only for MatchZy settings (`matchzy_*` and `get5_*`). It is executed only when the plugin is loaded, so the warmup, knife and live CFGs overwrite any game convars (such as `mp_*` or `sv_*`) set in it; put those in the override CFG of the phase they belong to.
+Like `config.cfg`, `config_override.cfg` is only for ArenaPro settings (`arenapro_*` and `get5_*`). It is executed only when the plugin is loaded, so the warmup, knife and live CFGs overwrite any game convars (such as `mp_*` or `sv_*`) set in it; put those in the override CFG of the phase they belong to.
 
 For example, a `live_override.cfg` that gives each team 4 tactical timeouts of 60 seconds instead of 3 of 30 seconds:
 
@@ -212,7 +212,7 @@ mp_overtime_enable 0
 ```
 
 ### Whitelisting players
-Again, inside `csgo/cfg/MatchZy`, there will be a file called `whitelist.cfg`. You can add Steam64 id of whitelisted players like mentioned in the below example:
+Again, inside `csgo/cfg/ArenaPro`, there will be a file called `whitelist.cfg`. You can add Steam64 id of whitelisted players like mentioned in the below example:
 
 ```
 76561198154367261
@@ -224,13 +224,13 @@ steamid3
 
 ### Database Stats
 
-MatchZy comes with a default database (SQLite), which configures itself automatically. MySQL Database can also be used with MatchZy!
-Currently we are using 2 tables, `matchzy_stats_matches` and `matchzy_stats_players`. As their names suggest, `matchzy_stats_matches` holds the data of every match, like matchid, team names, scores, etc.
-Whereas, `matchzy_stats_players` stores data/stats of every player who played in that match. It stores data like matchid, kills, deaths, assists, and other important stats!
+ArenaPro comes with a default database (SQLite), which configures itself automatically. MySQL Database can also be used with ArenaPro!
+Currently we are using 2 tables, `arenapro_stats_matches` and `arenapro_stats_players`. As their names suggest, `arenapro_stats_matches` holds the data of every match, like matchid, team names, scores, etc.
+Whereas, `arenapro_stats_players` stores data/stats of every player who played in that match. It stores data like matchid, kills, deaths, assists, and other important stats!
 
-### Using MySQL Database with MatchZy
+### Using MySQL Database with ArenaPro
 
-To use MySQL Database with MatchZy, open `csgo/cfg/MatchZy/database.json` file. It's content will be like this:
+To use MySQL Database with ArenaPro, open `csgo/cfg/ArenaPro/database.json` file. It's content will be like this:
 ```json
 {
     "DatabaseType": "SQLite",
@@ -246,18 +246,18 @@ MySQL Database is useful for those who wants to use a common database across mul
 
 ### CSV Stats
 Once a match is over, data is pulled from the database and a CSV file is written in the folder:
-`csgo/MatchZy_Stats`. This folder will contain CSV file for each match (file name pattern: `match_data_map{mapNumber}_{matchId}.csv`) and it will have the same data which is present in `matchzy_stats_players`.
+`csgo/ArenaPro_Stats`. This folder will contain CSV file for each match (file name pattern: `match_data_map{mapNumber}_{matchId}.csv`) and it will have the same data which is present in `arenapro_stats_players`.
 
 There is a scope of improvement here, like having the match score in the CSV file or atleast in the file name patter. I'll make this change soon!
 
 
 ## Events and HTTP Logging
 
-####`matchzy_remote_log_url`
-:   The URL to send all [events](../events_and_forwards) to (POST request). Set to empty string to disable. [OpenAPI Doc for the events](events.html)<br>**`Default: ""`**<br>Usage: `matchzy_remote_log_url "url"`<br>Alias: `get5_remote_log_url`
+####`arenapro_remote_log_url`
+:   The URL to send all [events](../events_and_forwards) to (POST request). Set to empty string to disable. [OpenAPI Doc for the events](events.html)<br>**`Default: ""`**<br>Usage: `arenapro_remote_log_url "url"`<br>Alias: `get5_remote_log_url`
 
-####`matchzy_remote_log_header_key`
-:   If this and matchzy_remote_log_header_value are defined, this header name and value will be added in your [HTTP Post requests'](../events_and_forwards) header.<br>**`Default: ""`**<br>Usage: `matchzy_remote_log_header_key "Authorization"`<br>Alias: `get5_remote_log_header_key`
+####`arenapro_remote_log_header_key`
+:   If this and arenapro_remote_log_header_value are defined, this header name and value will be added in your [HTTP Post requests'](../events_and_forwards) header.<br>**`Default: ""`**<br>Usage: `arenapro_remote_log_header_key "Authorization"`<br>Alias: `get5_remote_log_header_key`
 
-####`matchzy_remote_log_header_value`
-:   If this and matchzy_remote_log_header_key are defined, this header name and value will be added in your [HTTP Post requests'](../events_and_forwards) header.<br>**`Default: ""`**<br>Usage: `matchzy_remote_log_header_value "header_value"`<br>Alias: `get5_remote_log_header_value`
+####`arenapro_remote_log_header_value`
+:   If this and arenapro_remote_log_header_key are defined, this header name and value will be added in your [HTTP Post requests'](../events_and_forwards) header.<br>**`Default: ""`**<br>Usage: `arenapro_remote_log_header_value "header_value"`<br>Alias: `get5_remote_log_header_value`

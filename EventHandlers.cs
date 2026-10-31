@@ -3,8 +3,8 @@ using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Utils;
 
-namespace MatchZy;
-public partial class MatchZy
+namespace ArenaPro;
+public partial class ArenaPro
 {
     public HookResult EventPlayerConnectFullHandler(EventPlayerConnectFull @event, GameEventInfo info)
     {
@@ -92,15 +92,15 @@ public partial class MatchZy
             playerData.Remove(userId);
             pracUsedBots.Remove(userId);
 
-            if (matchzyTeam1.coach.Contains(player))
+            if (arenaproTeam1.coach.Contains(player))
             {
-                matchzyTeam1.coach.Remove(player);
+                arenaproTeam1.coach.Remove(player);
                 SetPlayerVisible(player);
                 player.Clan = "";
             }
-            else if (matchzyTeam2.coach.Contains(player))
+            else if (arenaproTeam2.coach.Contains(player))
             {
-                matchzyTeam2.coach.Remove(player);
+                arenaproTeam2.coach.Remove(player);
                 SetPlayerVisible(player);
                 player.Clan = "";
             }
@@ -336,7 +336,7 @@ public partial class MatchZy
 
             if (@event.Attacker == @event.Userid)
             {
-                if (matchzyTeam1.coach.Contains(@event.Attacker!) || matchzyTeam2.coach.Contains(@event.Attacker!))
+                if (arenaproTeam1.coach.Contains(@event.Attacker!) || arenaproTeam2.coach.Contains(@event.Attacker!))
                 {
                     info.DontBroadcast = true;
                 }
@@ -357,7 +357,7 @@ public partial class MatchZy
         if (!IsPlayerValid(player)) return HookResult.Continue;
         if(lastGrenadeThrownTime.TryGetValue(@event.Entityid, out var thrownTime)) 
         {
-            PrintToPlayerChat(player!, Localizer["matchzy.pracc.smoke", player!.PlayerName, $"{(DateTime.Now - thrownTime).TotalSeconds:0.00}"]);
+            PrintToPlayerChat(player!, Localizer["arenapro.pracc.smoke", player!.PlayerName, $"{(DateTime.Now - thrownTime).TotalSeconds:0.00}"]);
             lastGrenadeThrownTime.Remove(@event.Entityid);
         }
         return HookResult.Continue;
@@ -370,7 +370,7 @@ public partial class MatchZy
         if (!IsPlayerValid(player)) return HookResult.Continue;
         if(lastGrenadeThrownTime.TryGetValue(@event.Entityid, out var thrownTime)) 
         {
-            PrintToPlayerChat(player!, Localizer["matchzy.pracc.flash", player!.PlayerName, $"{(DateTime.Now - thrownTime).TotalSeconds:0.00}"]);
+            PrintToPlayerChat(player!, Localizer["arenapro.pracc.flash", player!.PlayerName, $"{(DateTime.Now - thrownTime).TotalSeconds:0.00}"]);
             lastGrenadeThrownTime.Remove(@event.Entityid);
         }
         return HookResult.Continue;
@@ -383,7 +383,7 @@ public partial class MatchZy
         if (!IsPlayerValid(player)) return HookResult.Continue;
         if(lastGrenadeThrownTime.TryGetValue(@event.Entityid, out var thrownTime)) 
         {
-            PrintToPlayerChat(player!, Localizer["matchzy.pracc.grenade", player!.PlayerName, $"{(DateTime.Now - thrownTime).TotalSeconds:0.00}"]);
+            PrintToPlayerChat(player!, Localizer["arenapro.pracc.grenade", player!.PlayerName, $"{(DateTime.Now - thrownTime).TotalSeconds:0.00}"]);
             lastGrenadeThrownTime.Remove(@event.Entityid);
         }
         return HookResult.Continue;
@@ -402,7 +402,7 @@ public partial class MatchZy
             lastGrenadeThrownTime.Remove(index);
             CCSPlayerController? player = Utilities.GetPlayerFromUserid(thrown.UserId);
             if (!IsPlayerValid(player)) return;
-            PrintToPlayerChat(player!, Localizer["matchzy.pracc.molotov", player!.PlayerName, $"{(DateTime.Now - thrown.ThrownTime).TotalSeconds:0.00}"]);
+            PrintToPlayerChat(player!, Localizer["arenapro.pracc.molotov", player!.PlayerName, $"{(DateTime.Now - thrown.ThrownTime).TotalSeconds:0.00}"]);
         }
         catch (Exception e)
         {
@@ -417,7 +417,7 @@ public partial class MatchZy
         if (!IsPlayerValid(player)) return HookResult.Continue;
         if(lastGrenadeThrownTime.TryGetValue(@event.Entityid, out var thrownTime)) 
         {
-            PrintToPlayerChat(player!, Localizer["matchzy.pracc.decoy", player!.PlayerName, $"{(DateTime.Now - thrownTime).TotalSeconds:0.00}"]);
+            PrintToPlayerChat(player!, Localizer["arenapro.pracc.decoy", player!.PlayerName, $"{(DateTime.Now - thrownTime).TotalSeconds:0.00}"]);
             lastGrenadeThrownTime.Remove(@event.Entityid);
         }
         return HookResult.Continue;

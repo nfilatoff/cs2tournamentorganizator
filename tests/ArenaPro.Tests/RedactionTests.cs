@@ -1,6 +1,6 @@
-using MatchZy;
+using ArenaPro;
 
-namespace MatchZy.Tests;
+namespace ArenaPro.Tests;
 
 public class RedactionTests
 {
@@ -11,28 +11,28 @@ public class RedactionTests
     [InlineData("https://bucket.s3.amazonaws.com/demo.dem?X-Amz-Signature=abc&X-Amz-Credential=def", "https://bucket.s3.amazonaws.com/demo.dem?<redacted>")]
     [InlineData("not a url", "<invalid url>")]
     [InlineData("", "")]
-    public void RedactUrl(string url, string expected) => Assert.Equal(expected, MatchZySecurity.RedactUrl(url));
+    public void RedactUrl(string url, string expected) => Assert.Equal(expected, ArenaProSecurity.RedactUrl(url));
 
     [Theory]
     [InlineData("", "")]
     [InlineData("Bearer abc", "<redacted>")]
-    public void RedactSecret(string value, string expected) => Assert.Equal(expected, MatchZySecurity.RedactSecret(value));
+    public void RedactSecret(string value, string expected) => Assert.Equal(expected, ArenaProSecurity.RedactSecret(value));
 
     [Theory]
     [InlineData("rcon_password hunter2", "rcon_password <redacted>")]
     [InlineData("sv_password scrim", "sv_password <redacted>")]
-    [InlineData("matchzy_remote_log_header_value Bearer abc", "matchzy_remote_log_header_value <redacted>")]
+    [InlineData("arenapro_remote_log_header_value Bearer abc", "arenapro_remote_log_header_value <redacted>")]
     [InlineData("  mp_restartgame 1 ", "mp_restartgame 1")]
     [InlineData("status", "status")]
     [InlineData("rcon_password", "rcon_password")]
-    public void RedactConsoleCommand(string command, string expected) => Assert.Equal(expected, MatchZySecurity.RedactConsoleCommand(command));
+    public void RedactConsoleCommand(string command, string expected) => Assert.Equal(expected, ArenaProSecurity.RedactConsoleCommand(command));
 
     [Theory]
-    [InlineData("matchzy_remote_log_header_value", true)]
+    [InlineData("arenapro_remote_log_header_value", true)]
     [InlineData("get5_demo_upload_header_value", true)]
     [InlineData("sv_password", true)]
     [InlineData("rcon_password", true)]
-    [InlineData("matchzy_remote_log_url", false)]
+    [InlineData("arenapro_remote_log_url", false)]
     [InlineData("hostname", false)]
-    public void IsSecretCvar(string name, bool expected) => Assert.Equal(expected, MatchZySecurity.IsSecretCvar(name));
+    public void IsSecretCvar(string name, bool expected) => Assert.Equal(expected, ArenaProSecurity.IsSecretCvar(name));
 }

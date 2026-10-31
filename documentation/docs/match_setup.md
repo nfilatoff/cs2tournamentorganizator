@@ -1,15 +1,15 @@
 ## What is it?
 
-A match configuration file contains everything that MatchZy and your server needs to host a series. This includes locking
+A match configuration file contains everything that ArenaPro and your server needs to host a series. This includes locking
 players to their correct team and side, setting the map(s) and configuring the game rules.
 
-**Note:** MatchZy can still be used for pug/scrim/practice without setting up matches (if `matchzy_kick_when_no_match_loaded` if set to `false`). Match setup is only required when you want to host a series and lock players in their correct team and side.
+**Note:** ArenaPro can still be used for pug/scrim/practice without setting up matches (if `arenapro_kick_when_no_match_loaded` if set to `false`). Match setup is only required when you want to host a series and lock players in their correct team and side.
 
-In this documentation, we'll see how we can setup a match in MatchZy using a JSON file (structure of the JSON file is given below).
+In this documentation, we'll see how we can setup a match in ArenaPro using a JSON file (structure of the JSON file is given below).
 There are 2 commands available which can be used to load a match:
 
-1. `matchzy_loadmatch <filepath>`: Loads a JSON match configuration file relative to the `csgo` directory.
-2. `matchzy_loadmatch_url <url> [header name] [header value]`: Loads a remote (JSON-formatted) match configuration by sending an HTTP(S) `GET` to the given URL. You may optionally provide an HTTP header and value pair using the `header name` and `header value` arguments. You should put all arguments inside quotation marks (`""`). (`""`).
+1. `arenapro_loadmatch <filepath>`: Loads a JSON match configuration file relative to the `csgo` directory.
+2. `arenapro_loadmatch_url <url> [header name] [header value]`: Loads a remote (JSON-formatted) match configuration by sending an HTTP(S) `GET` to the given URL. You may optionally provide an HTTP header and value pair using the `header name` and `header value` arguments. You should put all arguments inside quotation marks (`""`). (`""`).
 
 ## Example
 
@@ -59,7 +59,7 @@ There are 2 commands available which can be used to load a match:
   "clinch_series": true,
   "players_per_team": 5,
   "cvars": {
-    "hostname": "MatchZy: Astralis vs NaVi #27",
+    "hostname": "ArenaPro: Astralis vs NaVi #27",
     "mp_friendlyfire": "0"
   }
 }
@@ -67,8 +67,8 @@ There are 2 commands available which can be used to load a match:
 
 This file can be loaded using :
 
-1. `matchzy_loadmatch astralis_vs_navi_27.json` (if you have `astralis_vs_navi_27.json` in your `csgo` directory)
-2. `matchzy_loadmatch_url "https://<url>/astralis_vs_navi_27.json"`
+1. `arenapro_loadmatch astralis_vs_navi_27.json` (if you have `astralis_vs_navi_27.json` in your `csgo` directory)
+2. `arenapro_loadmatch_url "https://<url>/astralis_vs_navi_27.json"`
 
 Other optional fields (Get5 compatible):
 
@@ -78,7 +78,7 @@ Other optional fields (Get5 compatible):
 - `"players"` can also be an array of SteamID64s, e.g. `"players": ["76561198264582285", "76561197960265728"]`.
 - `true`/`false` fields also accept `1`/`0`.
 
-Entries in `"cvars"` must be a real convar (like `mp_friendlyfire`) or a MatchZy/Get5 setting (like `matchzy_remote_log_url`), and the value cannot contain `"`, `;` or line breaks. Console commands (e.g. `quit`, `exec`), MatchZy/Get5 commands that perform an action (such as `matchzy_loadmatch_url` or `get5_endmatch`), `rcon_password` and `matchzy_everyone_is_admin` are ignored and logged. `matchzy_demo_path` and `matchzy_demo_name_format` must be relative paths without `..`.
+Entries in `"cvars"` must be a real convar (like `mp_friendlyfire`) or a ArenaPro/Get5 setting (like `arenapro_remote_log_url`), and the value cannot contain `"`, `;` or line breaks. Console commands (e.g. `quit`, `exec`), ArenaPro/Get5 commands that perform an action (such as `arenapro_loadmatch_url` or `get5_endmatch`), `rcon_password` and `arenapro_everyone_is_admin` are ignored and logged. `arenapro_demo_path` and `arenapro_demo_name_format` must be relative paths without `..`.
 
 
 ## Current Limitations?

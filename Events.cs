@@ -1,9 +1,9 @@
 using System.Text.Json.Serialization;
 
-namespace MatchZy;
-public class MatchZyEvent
+namespace ArenaPro;
+public class ArenaProEvent
 {
-    public MatchZyEvent(string eventName)
+    public ArenaProEvent(string eventName)
     {
         EventName = eventName;
     }
@@ -12,89 +12,89 @@ public class MatchZyEvent
     public string EventName { get; }
 }
 
-public class MatchZyMatchEvent : MatchZyEvent
+public class ArenaProMatchEvent : ArenaProEvent
 {
     [JsonPropertyName("matchid")]
     public required long MatchId { get; init; }
 
-    protected MatchZyMatchEvent(string eventName) : base(eventName)
+    protected ArenaProMatchEvent(string eventName) : base(eventName)
     {
     }
 }
 
-public class MatchZyMatchTeamEvent : MatchZyMatchEvent
+public class ArenaProMatchTeamEvent : ArenaProMatchEvent
 {
     [JsonPropertyName("team")]
     public required string Team { get; init; }
 
-    protected MatchZyMatchTeamEvent(string eventName) : base(eventName)
+    protected ArenaProMatchTeamEvent(string eventName) : base(eventName)
     {
     }
 }
 
-public class MatchZyMapEvent : MatchZyMatchEvent
+public class ArenaProMapEvent : ArenaProMatchEvent
 {
     [JsonPropertyName("map_number")]
     public required int MapNumber { get; init; }
 
-    protected MatchZyMapEvent(string eventName) : base(eventName)
+    protected ArenaProMapEvent(string eventName) : base(eventName)
     {
     }
 }
 
-public class MatchZyMapTeamEvent : MatchZyMapEvent
+public class ArenaProMapTeamEvent : ArenaProMapEvent
 {
     [JsonPropertyName("team_int")]
     public required int TeamNumber { get; init; }
 
-    protected MatchZyMapTeamEvent(string eventName) : base(eventName)
+    protected ArenaProMapTeamEvent(string eventName) : base(eventName)
     {
     }
 }
 
-public class MatchZyRoundEvent : MatchZyMapEvent
+public class ArenaProRoundEvent : ArenaProMapEvent
 {
     [JsonPropertyName("round_number")]
     public required int RoundNumber { get; init; }
 
-    protected MatchZyRoundEvent(string eventName) : base(eventName)
+    protected ArenaProRoundEvent(string eventName) : base(eventName)
     {
     }
 }
 
-public class MatchZyTimedRoundEvent : MatchZyRoundEvent
+public class ArenaProTimedRoundEvent : ArenaProRoundEvent
 {
     [JsonPropertyName("round_time")]
     public required int RoundTime { get; init; }
 
-    protected MatchZyTimedRoundEvent(string eventName) : base(eventName)
+    protected ArenaProTimedRoundEvent(string eventName) : base(eventName)
     {
     }
 }
 
-public class MatchZyPlayerRoundEvent : MatchZyRoundEvent
+public class ArenaProPlayerRoundEvent : ArenaProRoundEvent
 {
 
     [JsonPropertyName("player")]
-    public required MatchZyPlayer Player { get; init; }
+    public required ArenaProPlayer Player { get; init; }
 
-    protected MatchZyPlayerRoundEvent(string eventName) : base(eventName)
+    protected ArenaProPlayerRoundEvent(string eventName) : base(eventName)
     {
     }
 }
 
-public class MatchZyPlayerTimedRoundEvent : MatchZyTimedRoundEvent
+public class ArenaProPlayerTimedRoundEvent : ArenaProTimedRoundEvent
 {
     [JsonPropertyName("player")]
-    public required MatchZyPlayer Player { get; init; }
+    public required ArenaProPlayer Player { get; init; }
 
-    protected MatchZyPlayerTimedRoundEvent(string eventName) : base(eventName)
+    protected ArenaProPlayerTimedRoundEvent(string eventName) : base(eventName)
     {
     }
 }
 
 // Get5Player: a player in the live events.
-public class MatchZyPlayer
+public class ArenaProPlayer
 {
     // SteamID64, or BOT-<user_id> for bots.
     [JsonPropertyName("steamid")]
@@ -115,7 +115,7 @@ public class MatchZyPlayer
 }
 
 // Get5Weapon: the game's weapon name and SourceMod's weapon id (0 when it has none).
-public class MatchZyWeapon
+public class ArenaProWeapon
 {
     [JsonPropertyName("name")]
     public required string Name { get; init; }
@@ -125,10 +125,10 @@ public class MatchZyWeapon
 }
 
 // Get5AssisterObject
-public class MatchZyAssist
+public class ArenaProAssist
 {
     [JsonPropertyName("player")]
-    public required MatchZyPlayer Player { get; init; }
+    public required ArenaProPlayer Player { get; init; }
 
     [JsonPropertyName("friendly_fire")]
     public required bool FriendlyFire { get; init; }
@@ -138,10 +138,10 @@ public class MatchZyAssist
 }
 
 // Get5PlayerDeathEvent. player is the victim; attacker and assist are null when there is none.
-public class MatchZyPlayerDeathEvent : MatchZyPlayerTimedRoundEvent
+public class ArenaProPlayerDeathEvent : ArenaProPlayerTimedRoundEvent
 {
     [JsonPropertyName("weapon")]
-    public required MatchZyWeapon Weapon { get; init; }
+    public required ArenaProWeapon Weapon { get; init; }
 
     [JsonPropertyName("bomb")]
     public required bool Bomb { get; init; }
@@ -169,86 +169,86 @@ public class MatchZyPlayerDeathEvent : MatchZyPlayerTimedRoundEvent
     public required bool FriendlyFire { get; init; }
 
     [JsonPropertyName("attacker")]
-    public MatchZyPlayer? Attacker { get; init; }
+    public ArenaProPlayer? Attacker { get; init; }
 
     [JsonPropertyName("assist")]
-    public MatchZyAssist? Assist { get; init; }
+    public ArenaProAssist? Assist { get; init; }
 
-    public MatchZyPlayerDeathEvent() : base("player_death")
+    public ArenaProPlayerDeathEvent() : base("player_death")
     {
     }
 }
 
 // Get5PlayerBombEvent: bomb_planted / bomb_defused. site is "a", "b" or null.
-public class MatchZyBombEvent : MatchZyPlayerTimedRoundEvent
+public class ArenaProBombEvent : ArenaProPlayerTimedRoundEvent
 {
     [JsonPropertyName("site")]
     public string? Site { get; init; }
 
-    public MatchZyBombEvent(string eventName) : base(eventName)
+    public ArenaProBombEvent(string eventName) : base(eventName)
     {
     }
 }
 
-public class MatchZyBombDefusedEvent : MatchZyBombEvent
+public class ArenaProBombDefusedEvent : ArenaProBombEvent
 {
     // Milliseconds left on the bomb timer.
     [JsonPropertyName("bomb_time_remaining")]
     public required int BombTimeRemaining { get; init; }
 
-    public MatchZyBombDefusedEvent() : base("bomb_defused")
+    public ArenaProBombDefusedEvent() : base("bomb_defused")
     {
     }
 }
 
 // round_start: when freeze time begins.
-public class MatchZyRoundStartedEvent : MatchZyRoundEvent
+public class ArenaProRoundStartedEvent : ArenaProRoundEvent
 {
-    public MatchZyRoundStartedEvent() : base("round_start")
+    public ArenaProRoundStartedEvent() : base("round_start")
     {
     }
 }
 
 // backup_loaded: round_number is the round restored to.
-public class MatchZyBackupRestoredEvent : MatchZyRoundEvent
+public class ArenaProBackupRestoredEvent : ArenaProRoundEvent
 {
     [JsonPropertyName("filename")]
     public required string FileName { get; init; }
 
-    public MatchZyBackupRestoredEvent() : base("backup_loaded")
+    public ArenaProBackupRestoredEvent() : base("backup_loaded")
     {
     }
 }
 
 // Get5PlayerDisconnectedEvent
-public class MatchZyPlayerDisconnectedEvent : MatchZyMatchEvent
+public class ArenaProPlayerDisconnectedEvent : ArenaProMatchEvent
 {
     [JsonPropertyName("player")]
-    public required MatchZyPlayer Player { get; init; }
+    public required ArenaProPlayer Player { get; init; }
 
-    public MatchZyPlayerDisconnectedEvent() : base("player_disconnect")
+    public ArenaProPlayerDisconnectedEvent() : base("player_disconnect")
     {
     }
 }
 
-public class MatchZySeriesStartedEvent : MatchZyMatchEvent
+public class ArenaProSeriesStartedEvent : ArenaProMatchEvent
 {
     [JsonPropertyName("team1")]
-    public required MatchZyTeamWrapper Team1 { get; init; }
+    public required ArenaProTeamWrapper Team1 { get; init; }
 
     [JsonPropertyName("team2")]
-    public required MatchZyTeamWrapper Team2 { get; init; }
+    public required ArenaProTeamWrapper Team2 { get; init; }
 
     [JsonPropertyName("num_maps")]
     public required int NumberOfMaps { get; init; }
 
-    public MatchZySeriesStartedEvent() : base("series_start")
+    public ArenaProSeriesStartedEvent() : base("series_start")
     {
     }
 }
 
 // game_paused / game_unpaused, as in Get5.
-public class MatchZyPauseEvent : MatchZyMapEvent
+public class ArenaProPauseEvent : ArenaProMapEvent
 {
     [JsonPropertyName("team")]
     public required string Team { get; init; }
@@ -256,12 +256,12 @@ public class MatchZyPauseEvent : MatchZyMapEvent
     [JsonPropertyName("pause_type")]
     public required string PauseType { get; init; }
 
-    public MatchZyPauseEvent(string eventName) : base(eventName)
+    public ArenaProPauseEvent(string eventName) : base(eventName)
     {
     }
 }
 
-public class MatchZySeriesResultEvent : MatchZyMatchEvent
+public class ArenaProSeriesResultEvent : ArenaProMatchEvent
 {
     [JsonPropertyName("time_until_restore")]
     public required int TimeUntilRestore { get; init; }
@@ -275,19 +275,19 @@ public class MatchZySeriesResultEvent : MatchZyMatchEvent
     [JsonPropertyName("team2_series_score")]
     public required int Team2SeriesScore { get; init; }
 
-    public MatchZySeriesResultEvent() : base("series_end")
+    public ArenaProSeriesResultEvent() : base("series_end")
     {
     }
 }
 
-public class GoingLiveEvent : MatchZyMapEvent
+public class GoingLiveEvent : ArenaProMapEvent
 {
     public GoingLiveEvent() : base("going_live")
     {
     }
 }
 
-public class MatchZyRoundEndedEvent : MatchZyTimedRoundEvent
+public class ArenaProRoundEndedEvent : ArenaProTimedRoundEvent
 {
 
     [JsonPropertyName("reason")]
@@ -297,60 +297,60 @@ public class MatchZyRoundEndedEvent : MatchZyTimedRoundEvent
     public required Winner Winner { get; init; }
 
     [JsonPropertyName("team1")]
-    public required MatchZyStatsTeam StatsTeam1 { get; init; }
+    public required ArenaProStatsTeam StatsTeam1 { get; init; }
 
     [JsonPropertyName("team2")]
-    public required MatchZyStatsTeam StatsTeam2 { get; init; }
+    public required ArenaProStatsTeam StatsTeam2 { get; init; }
 
-    public MatchZyRoundEndedEvent() : base("round_end")
+    public ArenaProRoundEndedEvent() : base("round_end")
     {
     }
 }
 
-public class MapResultEvent : MatchZyMapEvent
+public class MapResultEvent : ArenaProMapEvent
 {
     [JsonPropertyName("winner")]
     public required Winner Winner { get; init; }
 
     [JsonPropertyName("team1")]
-    public required MatchZyStatsTeam StatsTeam1 { get; init; }
+    public required ArenaProStatsTeam StatsTeam1 { get; init; }
 
     [JsonPropertyName("team2")]
-    public required MatchZyStatsTeam StatsTeam2 { get; init; }
+    public required ArenaProStatsTeam StatsTeam2 { get; init; }
 
     public MapResultEvent() : base("map_result")
     {
     }
 }
 
-public class MatchZyMapSelectionEvent : MatchZyMatchTeamEvent
+public class ArenaProMapSelectionEvent : ArenaProMatchTeamEvent
 {
     [JsonPropertyName("map_name")]
     public required string MapName { get; init; }
 
-    protected MatchZyMapSelectionEvent(string eventName) : base(eventName)
+    protected ArenaProMapSelectionEvent(string eventName) : base(eventName)
     {
     }
 }
 
-public class MatchZyMapPickedEvent : MatchZyMapSelectionEvent
+public class ArenaProMapPickedEvent : ArenaProMapSelectionEvent
 {
     [JsonPropertyName("map_number")]
     public required int MapNumber { get; init; }
 
-    public MatchZyMapPickedEvent() : base("map_picked")
+    public ArenaProMapPickedEvent() : base("map_picked")
     {
     }
 }
 
-public class MatchZyMapVetoedEvent : MatchZyMapSelectionEvent
+public class ArenaProMapVetoedEvent : ArenaProMapSelectionEvent
 {
-    public MatchZyMapVetoedEvent() : base("map_vetoed")
+    public ArenaProMapVetoedEvent() : base("map_vetoed")
     {
     }
 }
 
-public class MatchZySidePickedEvent : MatchZyMapSelectionEvent
+public class ArenaProSidePickedEvent : ArenaProMapSelectionEvent
 {
     [JsonPropertyName("map_number")]
     public required int MapNumber { get; init; }
@@ -358,12 +358,12 @@ public class MatchZySidePickedEvent : MatchZyMapSelectionEvent
     [JsonPropertyName("side")]
     public required string Side { get; init; }
 
-    public MatchZySidePickedEvent() : base("side_picked")
+    public ArenaProSidePickedEvent() : base("side_picked")
     {
     }
 }
 
-public class MatchZyDemoUploadedEvent : MatchZyMatchEvent
+public class ArenaProDemoUploadedEvent : ArenaProMatchEvent
 {
     [JsonPropertyName("map_number")]
     public required int MapNumber { get; init; }
@@ -374,7 +374,7 @@ public class MatchZyDemoUploadedEvent : MatchZyMatchEvent
     [JsonPropertyName("success")]
     public bool Success { get; set; }
 
-    public MatchZyDemoUploadedEvent() : base("demo_upload_ended")
+    public ArenaProDemoUploadedEvent() : base("demo_upload_ended")
     {
     }
 }

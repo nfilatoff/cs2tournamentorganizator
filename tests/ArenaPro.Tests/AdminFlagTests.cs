@@ -1,11 +1,11 @@
-using MatchZy;
+using ArenaPro;
 
-namespace MatchZy.Tests;
+namespace ArenaPro.Tests;
 
 public class AdminFlagTests
 {
     private static bool Grants(string role, params string[] required) =>
-        MatchZySecurity.AdminFlagsGrant(MatchZySecurity.GetAdminFlags(role), required.Concat(new[] { "@css/root" }));
+        ArenaProSecurity.AdminFlagsGrant(ArenaProSecurity.GetAdminFlags(role), required.Concat(new[] { "@css/root" }));
 
     [Theory]
     [InlineData("")]
@@ -15,19 +15,19 @@ public class AdminFlagTests
     [InlineData("@owner")]      // label, not a flag
     [InlineData("css/config")]  // missing '@'
     [InlineData("#css/admins")] // CSSharp group, not supported here
-    public void NoFlags(string? role) => Assert.Empty(MatchZySecurity.GetAdminFlags(role));
+    public void NoFlags(string? role) => Assert.Empty(ArenaProSecurity.GetAdminFlags(role));
 
     [Fact]
     public void ParsesSeparators()
     {
         Assert.Equal(new[] { "@css/config", "@css/map", "@css/chat", "@custom/prac" },
-            MatchZySecurity.GetAdminFlags("@css/config,@css/map @CSS/Chat;\t@custom/prac"));
+            ArenaProSecurity.GetAdminFlags("@css/config,@css/map @CSS/Chat;\t@custom/prac"));
     }
 
     [Fact]
     public void IgnoresNonFlagTokens()
     {
-        Assert.Equal(new[] { "@css/config" }, MatchZySecurity.GetAdminFlags("Shobhit @css/config @owner"));
+        Assert.Equal(new[] { "@css/config" }, ArenaProSecurity.GetAdminFlags("Shobhit @css/config @owner"));
     }
 
     [Theory]

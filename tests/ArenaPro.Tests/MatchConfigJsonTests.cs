@@ -1,7 +1,7 @@
-using MatchZy;
+using ArenaPro;
 using Newtonsoft.Json.Linq;
 
-namespace MatchZy.Tests;
+namespace ArenaPro.Tests;
 
 public class MatchConfigJsonTests
 {
