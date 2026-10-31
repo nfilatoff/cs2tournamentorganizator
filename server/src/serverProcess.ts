@@ -84,6 +84,22 @@ export function mapArgs(startMap: string): string[] {
   return ws ? ['+host_workshop_map', ws[1]!] : ['+map', startMap];
 }
 
+// cs2.exe — оконное приложение: свою консоль он открывает, но лог пишет в унаследованные stdout/stderr.
+// Поэтому на Windows сервер запускается из .cmd в отдельном окне консоли: cmd ждёт cs2.exe (в скрипте cmd
+// ждёт и оконные программы), а cs2.exe наследует от него консоль, и в окне виден весь вывод сервера.
+export function launcherText(root: string, title: string, args: string[]): string {
+  // В .cmd знак процента раскрывается как переменная
+  const q = (a: string) => (/[\s&|<>^()]/.test(a) ? `"${a}"` : a).replace(/%/g, '%%');
+  return [
+    '@echo off',
+    'rem Создано панелью турниров: запуск сервера CS2 с выводом в это окно.',
+    'chcp 65001 >nul',
+    `title ${title.replace(/[&|<>^%"]/g, '')}`,
+    `cd /d "${root}"`,
+    [`"${exeIn(root)}"`, ...args.map(q)].join(' '),
+  ].join('\r\n') + '\r\n';
+}
+
 function launchArgs(s: ManagedRow, cfg: string): string[] {
   const gm = GAME_MODES[s.game_mode] ?? GAME_MODES.competitive;
   const args = ['-dedicated', '-console', '-condebug', '-usercon', '-insecure', '-port', String(s.port), '-maxplayers', String(s.max_players)];
@@ -134,13 +150,19 @@ export async function startServer(id: number): Promise<void> {
 
   const cfg = writeCfg(root, s);
   const args = launchArgs(s, cfg);
-  // На Windows `start /wait` создаёт для cs2.exe настоящее окно консоли со своими потоками вывода
-  // (при stdio: 'ignore' окно открывалось пустым); cmd живёт, пока работает сервер, и даёт pid для учёта.
-  const child = process.platform === 'win32'
-    ? spawn('cmd.exe', ['/d', '/c', 'start', `CS2 server ${id}`, '/wait', '/D', root, exeIn(root), ...args], {
-        cwd: root, stdio: 'ignore', windowsHide: true,
-      })
-    : spawn(exeIn(root), args, { cwd: root, detached: true, stdio: 'ignore' });
+  let child: ChildProcess;
+  if (process.platform === 'win32') {
+    // `start /wait` открывает для .cmd новое окно консоли (см. launcherText); внешний cmd живёт, пока работает
+    // сервер, и даёт pid для учёта и остановки всего дерева процессов.
+    const dir = join(root, 'game', 'csgo', 'cfg', CFG_DIR);
+    const launcher = `server-${id}.cmd`;
+    writeFileSync(join(dir, launcher), launcherText(root, `CS2 ${s.name} :${s.port}`, args), 'utf8');
+    child = spawn('cmd.exe', ['/d', '/c', 'start', `CS2 server ${id}`, '/wait', '/D', dir, launcher], {
+      cwd: dir, stdio: 'ignore', windowsHide: true,
+    });
+  } else {
+    child = spawn(exeIn(root), args, { cwd: root, detached: true, stdio: 'ignore' });
+  }
   await new Promise<void>((ok, fail) => {
     child.once('spawn', ok);
     child.once('error', (e) => fail(new AppError('serverStartFailed', { message: e.message })));
