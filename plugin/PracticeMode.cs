@@ -690,7 +690,7 @@ namespace ArenaPro
                                     }
 
                                     // Extract description, if available
-                                    string lineupDesc = lineupInfo.ContainsKey("Desc") ? lineupInfo["Desc"] : null;
+                                    string? lineupDesc = lineupInfo.ContainsKey("Desc") ? lineupInfo["Desc"] : null;
 
                                     // Print messages
                                     // ReplyToUserCommand(player, $"Lineup {ChatColors.Green}{nearestName}{ChatColors.Default} loaded successfully!");
@@ -1067,8 +1067,7 @@ namespace ArenaPro
                     return;
                 }
 
-                ConVar? quota = ConVar.Find("bot_quota");
-                Log($"[ClaimBot] Attempt {attempt}: {untrackedBots.Count} new bot(s), bot_quota {(quota != null ? GetConvarStringValue(quota) : "?")}, tracked {pracUsedBots.Count}");
+                Log($"[ClaimBot] Attempt {attempt}: {untrackedBots.Count} new bot(s), bot_quota {(ConVarExists("bot_quota") ? GetConvarStringValue("bot_quota") : "?")}, tracked {pracUsedBots.Count}");
 
                 foreach (var extra in untrackedBots)
                 {
@@ -1947,11 +1946,11 @@ namespace ArenaPro
         {
             if (!isPractice || !IsPlayerValid(player)) return;
 
-            int solidValue = ConVar.Find("mp_solid_teammates")!.GetPrimitiveValue<int>();
+            int solidValue = ConVar<int>.Find("mp_solid_teammates")!.Value;
 
             int newSolidValue = (solidValue == 0 || solidValue == 1) ? 2 : 1;
 
-            ConVar.Find("mp_solid_teammates")!.SetValue(newSolidValue);
+            ConVar<int>.Find("mp_solid_teammates")!.Value = newSolidValue;
 
             PrintToAllChat($"mp_solid_teammates is now set to {newSolidValue}");
         }
@@ -1961,7 +1960,7 @@ namespace ArenaPro
         {
             if (!isPractice || !IsPlayerValid(player)) return;
 
-            int impactValue = ConVar.Find("sv_showimpacts")!.GetPrimitiveValue<int>();
+            int impactValue = ConVar<int>.Find("sv_showimpacts")!.Value;
 
             int newImpactValue = 1 - impactValue;
 
@@ -1976,7 +1975,7 @@ namespace ArenaPro
         {
             if (!isPractice || !IsPlayerValid(player)) return;
 
-            bool trajValue = ConVar.Find("sv_grenade_trajectory_prac_pipreview")!.GetPrimitiveValue<bool>();
+            bool trajValue = ConVar<bool>.Find("sv_grenade_trajectory_prac_pipreview")!.Value;
 
             Server.ExecuteCommand($"sv_grenade_trajectory_prac_pipreview {!trajValue}");
 

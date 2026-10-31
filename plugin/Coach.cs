@@ -89,7 +89,7 @@ public partial class ArenaPro
             return;
         }
 
-        int freezeTime = ConVar.Find("mp_freezetime")!.GetPrimitiveValue<int>();
+        int freezeTime = ConVar<int>.Find("mp_freezetime")!.Value;
         freezeTime = freezeTime > 2 ? freezeTime: 2;
         coachKillTimer ??= AddTimer(freezeTime - 1f, KillCoaches);
 
@@ -202,7 +202,7 @@ public partial class ArenaPro
                 && p.TeamNum == (int)CsTeam.Terrorist
                 && p.PawnIsAlive
             );
-        if (!IsPlayerValid(target)) return; // should never trigger
+        if (target == null || !IsPlayerValid(target)) return; // should never trigger
 
         // transfer bomb
         Log($"[EventPlayerGivenC4 INFO] Transferred bomb from {coach.PlayerName} (Coach) to {target.PlayerName}.");
@@ -253,10 +253,10 @@ public partial class ArenaPro
         if (isPaused || IsTacticalTimeoutActive()) return;
         HashSet<CCSPlayerController> coaches = GetAllCoaches();
         if (IsWingmanMode() || coaches.Count == 0) return;
-        string suicidePenalty = GetConvarStringValue(ConVar.Find("mp_suicide_penalty"));
-        string specFreezeTime = GetConvarStringValue(ConVar.Find("spec_freeze_time"));
-        string specFreezeTimeLock = GetConvarStringValue(ConVar.Find("spec_freeze_time_lock"));
-        string specFreezeDeathanim = GetConvarStringValue(ConVar.Find("spec_freeze_deathanim_time"));
+        string suicidePenalty = GetConvarStringValue("mp_suicide_penalty");
+        string specFreezeTime = GetConvarStringValue("spec_freeze_time");
+        string specFreezeTimeLock = GetConvarStringValue("spec_freeze_time_lock");
+        string specFreezeDeathanim = GetConvarStringValue("spec_freeze_deathanim_time");
         Server.ExecuteCommand("mp_suicide_penalty 0;spec_freeze_time 0; spec_freeze_time_lock 0; spec_freeze_deathanim_time 0;");
 
         foreach (var coach in coaches)

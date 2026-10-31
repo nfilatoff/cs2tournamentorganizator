@@ -936,7 +936,7 @@ namespace ArenaPro
 
             // This ensures that the mp_match_restart_delay is not shorter than what is required for the GOTV recording to finish.
             // Ref: Get5
-            int restartDelay = ConVar.Find("mp_match_restart_delay")!.GetPrimitiveValue<int>();
+            int restartDelay = ConVar<int>.Find("mp_match_restart_delay")!.Value;
             int tvDelay = GetTvDelay();
             int requiredDelay = tvDelay + 15;
             int tvFlushDelay = requiredDelay;
@@ -947,7 +947,7 @@ namespace ArenaPro
             if (requiredDelay > restartDelay)
             {
                 Log($"Extended mp_match_restart_delay from {restartDelay} to {requiredDelay} to ensure GOTV broadcast can finish.");
-                ConVar.Find("mp_match_restart_delay")!.SetValue(requiredDelay);
+                ConVar<int>.Find("mp_match_restart_delay")!.Value = requiredDelay;
                 restartDelay = requiredDelay;
             }
             int currentMapNumber = matchConfig.CurrentMapNumber;
@@ -1216,10 +1216,10 @@ namespace ArenaPro
             var gameRules = Utilities.FindAllEntitiesByDesignerName<CCSGameRulesProxy>("cs_gamerules").First().GameRules!;
             int roundsPlayed = gameRules.TotalRoundsPlayed;
 
-            int roundsPerHalf = ConVar.Find("mp_maxrounds")!.GetPrimitiveValue<int>() / 2;
-            int roundsPerOTHalf = ConVar.Find("mp_overtime_maxrounds")!.GetPrimitiveValue<int>() / 2;
+            int roundsPerHalf = ConVar<int>.Find("mp_maxrounds")!.Value / 2;
+            int roundsPerOTHalf = ConVar<int>.Find("mp_overtime_maxrounds")!.Value / 2;
 
-            bool halftimeEnabled = ConVar.Find("mp_halftime")!.GetPrimitiveValue<bool>();
+            bool halftimeEnabled = ConVar<bool>.Find("mp_halftime")!.Value;
 
             if (halftimeEnabled)
             {
@@ -1583,10 +1583,17 @@ namespace ArenaPro
             return false;
         }
 
-        public string GetConvarStringValue(ConVar? cvar)
+        // Convars looked up by name at run time (match config cvars, settings read back by name) have a type that is only
+        // known from the convar itself, so ConVar<T> cannot be used. These helpers are the only place that still uses
+        // the non-generic ConVar, which CounterStrikeSharp marks obsolete. Convars with a fixed name use ConVar<T>.Find.
+#pragma warning disable CS0618
+        public bool ConVarExists(string name) => ConVar.Find(name) != null;
+
+        public string GetConvarStringValue(string name)
         {
             try
             {
+                var cvar = ConVar.Find(name);
                 if (cvar == null) return "";
                 string convarValue = cvar.Type switch
                 {
@@ -1613,8 +1620,9 @@ namespace ArenaPro
 
         }
 
-        public void SetConvarValue(ConVar? cvar, string value)
+        public void SetConvarValue(string name, string value)
         {
+            var cvar = ConVar.Find(name);
             if (cvar == null) return;
             Dictionary<ConVarType, Action<string>> conversionMap = new()
             {
@@ -1642,6 +1650,8 @@ namespace ArenaPro
                 }
             }
         }
+#pragma warning restore CS0618
+#pragma warning restore CS0618
 
         private HashSet<string>? arenaProFakeConVarNames;
 
@@ -1653,7 +1663,7 @@ namespace ArenaPro
 
         public bool IsAllowedMatchCvar(string name, string value, out string reason)
         {
-            return ArenaProSecurity.IsAllowedMatchCvar(name, value, cvarName => ConVar.Find(cvarName) != null, GetArenaProFakeConVarNames(), out reason);
+            return ArenaProSecurity.IsAllowedMatchCvar(name, value, ConVarExists, GetArenaProFakeConVarNames(), out reason);
         }
 
         public void ExecuteChangedConvars()
@@ -1713,7 +1723,7 @@ namespace ArenaPro
                 {
                     // A value that cannot be quoted safely is set directly instead of through the console.
                     Log($"[ResetChangedConvars] Setting {key} to {loggedValue} directly");
-                    SetConvarValue(ConVar.Find(key), value);
+                    SetConvarValue(key, value);
                 }
             }
         }
@@ -1958,28 +1968,28 @@ namespace ArenaPro
 
         public int GetGameMode()
         {
-            var convar = ConVar.Find("game_mode");
+            var convar = ConVar<int>.Find("game_mode");
             if (convar != null)
             {
-                return convar.GetPrimitiveValue<int>();
+                return convar.Value;
             }
             return -1;
         }
 
         public int GetGameType()
         {
-            var convar = ConVar.Find("game_type");
+            var convar = ConVar<int>.Find("game_type");
             if (convar != null)
             {
-                return convar.GetPrimitiveValue<int>();
+                return convar.Value;
             }
             return -1;
         }
 
         public void SetCorrectGameMode()
         {
-            ConVar.Find("game_mode")!.SetValue(matchConfig.Wingman ? 2 : 1);
-            ConVar.Find("game_type")!.SetValue(0); // Classic GameType
+            ConVar<int>.Find("game_mode")!.Value = matchConfig.Wingman ? 2 : 1;
+            ConVar<int>.Find("game_type")!.Value = 0; // Classic GameType
         }
 
         public bool IsMapReloadRequiredForGameMode(bool wingman)

@@ -101,8 +101,7 @@ namespace ArenaPro
         private string? GetCurrentSettingValue(string name)
         {
             if (GetPluginSettings().TryGetValue(name, out var setting)) return setting.Get();
-            ConVar? cvar = ConVar.Find(name);
-            if (cvar != null) return GetConvarStringValue(cvar);
+            if (ConVarExists(name)) return GetConvarStringValue(name);
             return GetFakeConVarValue(name);
         }
 
