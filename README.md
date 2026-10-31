@@ -253,6 +253,27 @@ npm.cmd run plugin:test    # тесты ArenaPro; нужен .NET SDK
 npm.cmd run plugin:build   # пакет ArenaPro в plugin-dist/
 ```
 
+### Панель из репозитория на компьютере разработчика
+
+На компьютере, где ведётся разработка, панель работает прямо из репозитория, а отдельная папка (например, `D:\cs2-server`) нужна только для серверной CS2. Копия проекта в `<папка установки>\panel`, которую создаёт `install-cs2.ps1`, предназначена для компьютера в клубе.
+
+Настройки этого компьютера хранятся в `panel.local.json` в корне репозитория (файл не попадает в git):
+
+```json
+{
+  "Port": 3100,
+  "PublicUrl": "http://192.168.0.4:3100",
+  "DataDir": "server\\data-live",
+  "Cs2Path": "D:\\cs2-server\\cs2"
+}
+```
+
+`.\start-panel.ps1` пересобирает панель и запускает её с этими настройками. Параметры командной строки (`-Port`, `-PublicUrl`, `-DataDir`, `-Cs2Path`) важнее файла, `-NoBuild` пропускает сборку. После изменений плагина остановите игровой сервер и установите новую сборку:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\build-plugin.ps1 -DeployTo 'D:\cs2-server\cs2\game\csgo'
+```
+
 Структура репозитория:
 
 | Путь | Содержимое |
