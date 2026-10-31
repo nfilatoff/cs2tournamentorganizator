@@ -11,6 +11,8 @@ import { hashPassword } from './auth.js';
 import { authRoutes } from './routes/auth.js';
 import { serverRoutes } from './routes/servers.js';
 import { mapRoutes } from './routes/maps.js';
+import { teamRoutes } from './routes/teams.js';
+import { tournamentRoutes } from './routes/tournaments.js';
 
 async function ensureAdmin(): Promise<void> {
   const { n } = db.prepare('SELECT COUNT(*) AS n FROM admins').get() as { n: number };
@@ -29,6 +31,8 @@ await app.register(cookie);
 await app.register(authRoutes);
 await app.register(serverRoutes);
 await app.register(mapRoutes);
+await app.register(teamRoutes);
+await app.register(tournamentRoutes);
 
 app.get('/api/health', async () => ({ ok: true }));
 

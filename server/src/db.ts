@@ -38,6 +38,72 @@ CREATE TABLE IF NOT EXISTS game_servers (
   UNIQUE (host, port)
 );
 
+CREATE TABLE IF NOT EXISTS teams (
+  id INTEGER PRIMARY KEY,
+  name TEXT NOT NULL UNIQUE COLLATE NOCASE,
+  join_code TEXT NOT NULL UNIQUE,
+  captain_id INTEGER NOT NULL REFERENCES players(id),
+  created_at INTEGER NOT NULL DEFAULT (unixepoch())
+);
+
+CREATE TABLE IF NOT EXISTS team_members (
+  team_id INTEGER NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+  player_id INTEGER NOT NULL REFERENCES players(id),
+  joined_at INTEGER NOT NULL DEFAULT (unixepoch()),
+  PRIMARY KEY (team_id, player_id)
+);
+
+CREATE TABLE IF NOT EXISTS tournaments (
+  id INTEGER PRIMARY KEY,
+  name TEXT NOT NULL,
+  format TEXT NOT NULL CHECK (format IN ('single', 'double')),
+  team_size INTEGER NOT NULL,
+  max_teams INTEGER NOT NULL,
+  default_best_of INTEGER NOT NULL DEFAULT 1,
+  -- JSON: { "W1": 3, "L2": 1, "GF": 5 }; ключ = сетка + номер раунда с конца
+  bo_config TEXT NOT NULL DEFAULT '{}',
+  grand_final_reset INTEGER NOT NULL DEFAULT 1,
+  status TEXT NOT NULL DEFAULT 'registration' CHECK (status IN ('registration', 'running', 'finished')),
+  champion_team_id INTEGER REFERENCES teams(id),
+  created_at INTEGER NOT NULL DEFAULT (unixepoch())
+);
+
+CREATE TABLE IF NOT EXISTS tournament_maps (
+  tournament_id INTEGER NOT NULL REFERENCES tournaments(id) ON DELETE CASCADE,
+  map_id INTEGER NOT NULL REFERENCES maps(id),
+  position INTEGER NOT NULL,
+  PRIMARY KEY (tournament_id, map_id)
+);
+
+CREATE TABLE IF NOT EXISTS tournament_teams (
+  tournament_id INTEGER NOT NULL REFERENCES tournaments(id) ON DELETE CASCADE,
+  team_id INTEGER NOT NULL REFERENCES teams(id),
+  seed INTEGER,
+  -- JSON: ID игроков, которые играют на турнире
+  roster TEXT NOT NULL,
+  registered_at INTEGER NOT NULL DEFAULT (unixepoch()),
+  PRIMARY KEY (tournament_id, team_id)
+);
+
+CREATE TABLE IF NOT EXISTS matches (
+  id INTEGER PRIMARY KEY,
+  tournament_id INTEGER NOT NULL REFERENCES tournaments(id) ON DELETE CASCADE,
+  code TEXT NOT NULL,
+  bracket TEXT NOT NULL,
+  round INTEGER NOT NULL,
+  position INTEGER NOT NULL,
+  src_a TEXT NOT NULL,
+  src_b TEXT NOT NULL,
+  entry_a TEXT NOT NULL,
+  entry_b TEXT NOT NULL,
+  winner TEXT,
+  status TEXT NOT NULL,
+  best_of INTEGER NOT NULL,
+  score_a INTEGER NOT NULL DEFAULT 0,
+  score_b INTEGER NOT NULL DEFAULT 0,
+  UNIQUE (tournament_id, code)
+);
+
 CREATE TABLE IF NOT EXISTS maps (
   id INTEGER PRIMARY KEY,
   name TEXT NOT NULL,
@@ -49,3 +115,15 @@ CREATE TABLE IF NOT EXISTS maps (
   created_at INTEGER NOT NULL DEFAULT (unixepoch())
 );
 `);
+
+export function tx<T>(fn: () => T): T {
+  db.exec('BEGIN');
+  try {
+    const result = fn();
+    db.exec('COMMIT');
+    return result;
+  } catch (e) {
+    db.exec('ROLLBACK');
+    throw e;
+  }
+}

@@ -61,8 +61,12 @@ export async function mapRoutes(app: FastifyInstance): Promise<void> {
   });
 
   app.delete<{ Params: { id: string } }>('/api/maps/:id', async (req, reply) => {
-    const res = db.prepare('DELETE FROM maps WHERE id = ?').run(Number(req.params.id));
-    if (res.changes === 0) return reply.code(404).send({ error: 'Карта не найдена' });
+    try {
+      const res = db.prepare('DELETE FROM maps WHERE id = ?').run(Number(req.params.id));
+      if (res.changes === 0) return reply.code(404).send({ error: 'Карта не найдена' });
+    } catch {
+      return reply.code(409).send({ error: 'Карта входит в пул турнира' });
+    }
     return { ok: true };
   });
 }

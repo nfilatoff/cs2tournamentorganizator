@@ -28,3 +28,29 @@ export interface MapItem {
   mapFile: string | null;
   imageUrl: string | null;
 }
+
+export interface Member { id: number; name: string; steamId: string; avatarUrl: string | null }
+export interface Team { id: number; name: string; joinCode: string; captainId: number; members: Member[] }
+
+export interface TournamentSummary {
+  id: number; name: string; format: 'single' | 'double'; teamSize: number; maxTeams: number;
+  status: 'registration' | 'running' | 'finished'; teamCount: number;
+}
+
+export type EntryDto = { type: 'team'; id: number; name: string } | { type: 'tbd' } | { type: 'bye' };
+
+export interface MatchDto {
+  code: string; bracket: 'W' | 'L' | 'GF'; round: number; position: number; roundLabel: string;
+  a: EntryDto; b: EntryDto; status: 'pending' | 'ready' | 'live' | 'done' | 'bye' | 'skipped';
+  winner: 'a' | 'b' | null; bestOf: number; scoreA: number; scoreB: number;
+}
+
+export interface TournamentDetails extends Omit<TournamentSummary, 'teamCount'> {
+  defaultBestOf: number;
+  boConfig: Record<string, number>;
+  grandFinalReset: boolean;
+  champion: { id: number; name: string } | null;
+  teams: { id: number; name: string; seed: number | null; roster: number[] }[];
+  maps: MapItem[];
+  matches: MatchDto[];
+}

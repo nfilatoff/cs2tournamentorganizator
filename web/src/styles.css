@@ -31,3 +31,26 @@ th { color: var(--muted); font-weight: 500; font-size: 13px; }
 .muted { color: var(--muted); }
 .thumb { width: 64px; height: 36px; object-fit: cover; border-radius: 4px; background: var(--bg); }
 .center { max-width: 360px; margin: 80px auto; }
+h2 { font-size: 17px; margin: 0 0 8px; }
+select { background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; font: inherit; }
+code { background: var(--bg); padding: 2px 6px; border-radius: 4px; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+.between { display: flex; justify-content: space-between; align-items: center; }
+main { max-width: 1200px; }
+.maps { display: flex; flex-wrap: wrap; gap: 8px; }
+.mapchip { display: flex; flex-direction: row; align-items: center; gap: 8px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; color: var(--text); cursor: pointer; }
+.mapchip.on { border-color: var(--accent); }
+.mapchip input { display: none; }
+.champion { border-color: var(--accent); font-size: 18px; }
+.bracket { display: flex; gap: 24px; overflow-x: auto; padding-bottom: 8px; }
+.col { display: flex; flex-direction: column; justify-content: space-around; gap: 12px; min-width: 210px; }
+.roundname { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+.match { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.match.ready { border-color: var(--accent); }
+.match.done { opacity: .85; }
+.mhead { display: flex; justify-content: space-between; padding: 2px 8px; font-size: 11px; color: var(--muted); background: var(--panel); }
+.slot { display: flex; justify-content: space-between; padding: 6px 8px; border-top: 1px solid var(--line); }
+.slot.won { font-weight: 700; color: var(--accent); }
+.slot.empty { color: var(--muted); font-style: italic; }
+.result { display: flex; align-items: center; gap: 4px; padding: 6px 8px; border-top: 1px solid var(--line); }
+.result input { width: 52px; padding: 4px 6px; }
