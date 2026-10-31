@@ -6,6 +6,7 @@ import { BracketTree } from '../components/BracketTree';
 import type { MatchActions } from '../components/MatchCard';
 import { GroupAssignment, GroupsView, PlayoffPanel } from '../components/GroupsView';
 import { NewTeamForm } from '../components/NewTeamForm';
+import { PausesEditor } from '../components/PauseFields';
 
 export function TournamentView({ me }: { me: Me }) {
   const { t, err } = useI18n();
@@ -180,6 +181,14 @@ export function TournamentView({ me }: { me: Me }) {
             onChange={(e) => act(() => api(`/api/tournaments/${tr.id}/auto-dispatch`, { method: 'POST', body: { enabled: e.target.checked } }))} />
           {t('view.autoDispatch')}
         </label>
+      )}
+
+      {admin && tr.status !== 'finished' && (
+        <PausesEditor value={tr.pauses}
+          onSave={(pauses) => act(() => api(`/api/tournaments/${tr.id}/pauses`, { method: 'PUT', body: pauses }))} />
+      )}
+      {!admin && (
+        <p className="muted">{t('pauses.summary', { tactical: tr.pauses.tactical, time: tr.pauses.tacticalTime, technical: tr.pauses.technical || '∞' })}</p>
       )}
 
       {tr.status === 'registration' && (preview.groupAssignment || preview.matches.length > 0) && (

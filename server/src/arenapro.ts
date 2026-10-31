@@ -68,6 +68,21 @@ export interface MatchConfigInput {
   teamA: { id: number; name: string; players: RosterPlayer[] };
   teamB: { id: number; name: string; players: RosterPlayer[] };
   maps: MapRef[];
+  pauses: { tactical: number; tacticalTime: number; technical: number };
+}
+
+// Лимиты пауз турнира. Значения из конфига матча перекрывают live.cfg на время серии.
+function pauseCvars(p: MatchConfigInput['pauses']): Record<string, string> {
+  const cvars: Record<string, string> = {
+    mp_team_timeout_max: String(p.tactical),
+    mp_team_timeout_time: String(p.tacticalTime),
+    arenapro_max_tech_pauses: String(p.technical),
+  };
+  // Без тактических пауз в овертайме они тоже не добавляются
+  if (p.tactical === 0) {
+    Object.assign(cvars, { mp_team_timeout_ot_max: '0', mp_team_timeout_ot_add_each: '0', mp_team_timeout_ot_add_once: '0' });
+  }
+  return cvars;
 }
 
 export function buildMatchConfig(i: MatchConfigInput) {
@@ -85,6 +100,7 @@ export function buildMatchConfig(i: MatchConfigInput) {
     wingman: i.teamSize === 2,
     min_players_to_ready: i.teamSize,
     cvars: {
+      ...pauseCvars(i.pauses),
       arenapro_remote_log_url: `${config.publicUrl}/api/arenapro/events`,
       arenapro_remote_log_header_key: 'Authorization',
       arenapro_remote_log_header_value: `Bearer ${eventToken()}`,

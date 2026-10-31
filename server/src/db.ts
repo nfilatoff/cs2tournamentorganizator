@@ -207,3 +207,22 @@ addColumn('players', 'custom_name', 'TEXT');
 addColumn('players', 'admin_name', 'TEXT');
 addColumn('players', 'source', "TEXT NOT NULL DEFAULT 'steam'");
 db.exec("UPDATE players SET steam_name = name WHERE steam_name IS NULL AND source = 'steam'");
+
+// Паузы: тактические таймауты (по умолчанию как в live.cfg) и технические паузы (0 = без ограничений) на карту
+addColumn('tournaments', 'tactical_pauses', 'INTEGER NOT NULL DEFAULT 3');
+addColumn('tournaments', 'tactical_pause_time', 'INTEGER NOT NULL DEFAULT 30');
+addColumn('tournaments', 'tech_pauses', 'INTEGER NOT NULL DEFAULT 0');
+
+// Серверы, которые панель запускает сама на этом компьютере (см. serverProcess.ts)
+addColumn('game_servers', 'managed', 'INTEGER NOT NULL DEFAULT 0');
+addColumn('game_servers', 'start_map', "TEXT NOT NULL DEFAULT 'de_inferno'");
+addColumn('game_servers', 'game_mode', "TEXT NOT NULL DEFAULT 'competitive'");
+addColumn('game_servers', 'max_players', 'INTEGER NOT NULL DEFAULT 12');
+addColumn('game_servers', 'hostname', 'TEXT');
+addColumn('game_servers', 'sv_password', 'TEXT');
+addColumn('game_servers', 'lan', 'INTEGER NOT NULL DEFAULT 1');
+addColumn('game_servers', 'gslt', 'TEXT');
+addColumn('game_servers', 'tv_enable', 'INTEGER NOT NULL DEFAULT 1');
+addColumn('game_servers', 'tv_port', 'INTEGER');
+addColumn('game_servers', 'autostart', 'INTEGER NOT NULL DEFAULT 0');
+addColumn('game_servers', 'extra_cfg', 'TEXT');

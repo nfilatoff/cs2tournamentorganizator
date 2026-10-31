@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { api, type MapItem, type TournamentDetails } from '../api';
+import { api, type MapItem, type PauseLimits, type TournamentDetails } from '../api';
+import { PauseFields } from '../components/PauseFields';
 import { useI18n } from '../i18n';
 import { roundLabel } from '../rounds';
 
@@ -20,6 +21,7 @@ export function TournamentForm() {
   const [reset, setReset] = useState(false);
   const [autoDispatch, setAutoDispatch] = useState(true);
   const [vetoEnabled, setVetoEnabled] = useState(true);
+  const [pauses, setPauses] = useState<PauseLimits>({ tactical: 3, tacticalTime: 30, technical: 0 });
   const [maps, setMaps] = useState<MapItem[]>([]);
   const [picked, setPicked] = useState<number[]>([]);
   const [rounds, setRounds] = useState<RoundDef[]>([]);
@@ -68,7 +70,7 @@ export function TournamentForm() {
       const created = await api<TournamentDetails>('/api/tournaments', {
         method: 'POST',
         body: {
-          name, format, teamSize, maxTeams, defaultBestOf: defaultBo, boConfig: cfg, grandFinalReset: reset, autoDispatch, vetoEnabled, mapIds: picked,
+          name, format, teamSize, maxTeams, defaultBestOf: defaultBo, boConfig: cfg, grandFinalReset: reset, autoDispatch, vetoEnabled, pauses, mapIds: picked,
           stageMode: withGroups ? 'groups' : 'playoff',
           ...(withGroups ? {
             groupFormat, groupsCount: groupsN, advance, groupBestOf: groupBo, hasPlayoff,
@@ -192,6 +194,12 @@ export function TournamentForm() {
           {t('form.vetoEnabled')}
         </label>
         <p className="muted">{t('form.vetoHint')}</p>
+      </div>
+
+      <div className="card">
+        <h2>{t('pauses.title')}</h2>
+        <PauseFields value={pauses} onChange={setPauses} />
+        <p className="muted">{t('pauses.hint')}</p>
       </div>
 
       <div className="card">

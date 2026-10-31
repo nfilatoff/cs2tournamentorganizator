@@ -96,6 +96,7 @@ export async function arenaproRoutes(app: FastifyInstance): Promise<void> {
       teamA: { id: a.id!, name: teamName(a.id!), players: rosterOf(t.id, a.id!) },
       teamB: { id: b.id!, name: teamName(b.id!), players: rosterOf(t.id, b.id!) },
       maps: JSON.parse(row.maps_json) as MapRef[],
+      pauses: { tactical: t.tactical_pauses, tacticalTime: t.tactical_pause_time, technical: t.tech_pauses },
     });
   });
 

@@ -19,8 +19,10 @@ import { adminTeamRoutes } from './routes/adminTeams.js';
 import { vetoRoutes } from './routes/veto.js';
 import { homeRoutes } from './routes/home.js';
 import { profileRoutes } from './routes/profile.js';
+import { mapImageRoutes } from './mapImages.js';
 import { seedDefaultMapsIfEmpty } from './defaultMaps.js';
 import { dispatchAll, startDispatchTimer } from './dispatcher.js';
+import { autostartServers } from './serverProcess.js';
 
 async function ensureAdmin(): Promise<void> {
   const { n } = db.prepare('SELECT COUNT(*) AS n FROM admins').get() as { n: number };
@@ -39,6 +41,7 @@ await app.register(cookie);
 await app.register(authRoutes);
 await app.register(serverRoutes);
 await app.register(mapRoutes);
+await app.register(mapImageRoutes);
 await app.register(teamRoutes);
 await app.register(adminTeamRoutes);
 await app.register(tournamentRoutes);
@@ -63,4 +66,4 @@ await ensureAdmin();
 seedDefaultMapsIfEmpty();
 await app.listen({ port: config.port, host: config.host });
 startDispatchTimer();
-void dispatchAll();
+void autostartServers((msg) => app.log.info(msg)).then(() => dispatchAll());

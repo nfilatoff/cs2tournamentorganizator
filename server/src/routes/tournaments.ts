@@ -22,6 +22,13 @@ import {
 const BEST_OF = z.union([z.literal(1), z.literal(3), z.literal(5)]);
 const MAX_MAPS = 7;
 
+// Паузы на карту для каждой команды; technical = 0 — без ограничений
+const pausesBody = z.object({
+  tactical: z.number().int().min(0).max(10),
+  tacticalTime: z.number().int().min(10).max(300),
+  technical: z.number().int().min(0).max(10),
+});
+
 const tournamentBody = z.object({
   name: z.string().trim().min(2).max(80),
   format: z.enum(['single', 'double']),
@@ -40,6 +47,7 @@ const tournamentBody = z.object({
   groupBestOf: BEST_OF.default(1),
   hasPlayoff: z.boolean().default(true),
   vetoEnabled: z.boolean().default(true),
+  pauses: pausesBody.default({ tactical: 3, tacticalTime: 30, technical: 0 }),
 });
 
 // Проверка настроек группового этапа при создании и изменении турнира
@@ -139,12 +147,13 @@ export async function tournamentRoutes(app: FastifyInstance): Promise<void> {
     const id = tx(() => {
       const res = db.prepare(`INSERT INTO tournaments
         (name, format, team_size, max_teams, default_best_of, bo_config, grand_final_reset, auto_dispatch,
-        stage_mode, group_format, groups_count, advance, swiss_rounds, group_best_of, has_playoff, phase, veto_enabled)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+        stage_mode, group_format, groups_count, advance, swiss_rounds, group_best_of, has_playoff, phase, veto_enabled,
+        tactical_pauses, tactical_pause_time, tech_pauses)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
         .run(d.name, d.format, d.teamSize, d.maxTeams, d.defaultBestOf, JSON.stringify(d.boConfig), d.grandFinalReset ? 1 : 0, d.autoDispatch ? 1 : 0,
           d.stageMode, d.stageMode === 'groups' ? d.groupFormat ?? null : null, d.stageMode === 'groups' ? d.groupsCount : 1,
           d.advance, d.swissRounds ?? null, d.groupBestOf, d.hasPlayoff ? 1 : 0, d.stageMode === 'groups' ? 'groups' : 'playoff',
-          d.vetoEnabled ? 1 : 0);
+          d.vetoEnabled ? 1 : 0, d.pauses.tactical, d.pauses.tacticalTime, d.pauses.technical);
       const tid = Number(res.lastInsertRowid);
       if (!setMaps(tid, d.mapIds)) throw new Error('map');
       return tid;
@@ -173,10 +182,12 @@ export async function tournamentRoutes(app: FastifyInstance): Promise<void> {
     tx(() => {
       db.prepare(`UPDATE tournaments SET name = ?, format = ?, team_size = ?, max_teams = ?, default_best_of = ?,
         bo_config = ?, grand_final_reset = ?, auto_dispatch = ?, stage_mode = ?, group_format = ?, groups_count = ?, advance = ?,
-        swiss_rounds = ?, group_best_of = ?, has_playoff = ?, phase = ?, veto_enabled = ? WHERE id = ?`)
+        swiss_rounds = ?, group_best_of = ?, has_playoff = ?, phase = ?, veto_enabled = ?,
+        tactical_pauses = ?, tactical_pause_time = ?, tech_pauses = ? WHERE id = ?`)
         .run(d.name, d.format, d.teamSize, d.maxTeams, d.defaultBestOf, JSON.stringify(d.boConfig), d.grandFinalReset ? 1 : 0, d.autoDispatch ? 1 : 0,
           d.stageMode, d.stageMode === 'groups' ? d.groupFormat ?? null : null, d.stageMode === 'groups' ? d.groupsCount : 1,
-          d.advance, d.swissRounds ?? null, d.groupBestOf, d.hasPlayoff ? 1 : 0, d.stageMode === 'groups' ? 'groups' : 'playoff', d.vetoEnabled ? 1 : 0, t.id);
+          d.advance, d.swissRounds ?? null, d.groupBestOf, d.hasPlayoff ? 1 : 0, d.stageMode === 'groups' ? 'groups' : 'playoff', d.vetoEnabled ? 1 : 0,
+          d.pauses.tactical, d.pauses.tacticalTime, d.pauses.technical, t.id);
       if (!setMaps(t.id, d.mapIds)) throw new Error('map');
     });
     return details(getTournament(t.id)!);
@@ -395,6 +406,17 @@ export async function tournamentRoutes(app: FastifyInstance): Promise<void> {
     await endMatchOnServer(server);
     release(t.id, row.id, encode(E('noteRestarted')));
     void dispatchAll();
+    return details(getTournament(t.id)!);
+  });
+
+  // Лимиты пауз можно менять и во время турнира: применяются к матчам, загруженным на сервер после изменения
+  app.put<{ Params: { id: string } }>('/api/tournaments/:id/pauses', ctrl, async (req, reply) => {
+    const t = await requireTournament(req, reply);
+    if (!t) return;
+    const body = pausesBody.safeParse(req.body);
+    if (!body.success) return reply.code(400).send(E('badRequest'));
+    db.prepare('UPDATE tournaments SET tactical_pauses = ?, tactical_pause_time = ?, tech_pauses = ? WHERE id = ?')
+      .run(body.data.tactical, body.data.tacticalTime, body.data.technical, t.id);
     return details(getTournament(t.id)!);
   });
 

@@ -92,3 +92,19 @@ ul.attention li:last-child { border-bottom: 0; }
 details.teamrow { border-bottom: 1px solid var(--line); padding: 8px 0; }
 details.teamrow:last-child { border-bottom: 0; }
 details summary { cursor: pointer; }
+.mapgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.mapcard { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.mapcard img, .mapcard .noimg { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; background: var(--bg); }
+.mapcard .mapinfo { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 10px; }
+.mapcard .vname { font-weight: 600; }
+.mapcard .muted { font-size: 12px; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; }
+.row + .row { margin-top: 8px; }
+textarea { background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; font: 13px/1.4 ui-monospace, Consolas, monospace; resize: vertical; }
+label.check { flex-direction: row; align-items: center; gap: 6px; margin: 8px 0; color: var(--text); }
+.small { font-size: 12px; }
+td.actions { text-align: right; }
+td.actions button { margin: 2px 0 2px 4px; }
+button:disabled { opacity: .5; cursor: default; }
+.srvedit h2 { margin-top: 12px; }
+.srvedit > button { margin-top: 12px; }

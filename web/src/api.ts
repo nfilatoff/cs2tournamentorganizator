@@ -23,7 +23,16 @@ export type Me =
     steamName: string | null; customName: string | null; adminName: string | null;
   };
 
-export interface GameServer { id: number; name: string; host: string; port: number }
+export type GameMode = 'competitive' | 'wingman' | 'casual' | 'deathmatch';
+export interface ServerSettings {
+  managed: boolean; startMap: string; gameMode: GameMode; maxPlayers: number; hostname: string; svPassword: string;
+  lan: boolean; gslt: string; tvEnable: boolean; tvPort: number | null; autostart: boolean; extraCfg: string;
+}
+export interface GameServer {
+  id: number; name: string; host: string; port: number; managed: boolean; settings: ServerSettings; tvPort: number;
+  process: { running: boolean; pid: number | null; startedAt: number | null; lastExit: { code: number | null; at: number } | null };
+}
+export interface LauncherInfo { cs2Path: string; detected: string | null; exe: string | null; defaultHost: string; nextPort: number }
 export interface MapItem {
   id: number;
   name: string;
@@ -69,6 +78,7 @@ export interface TournamentDetails extends Omit<TournamentSummary, 'teamCount'> 
   grandFinalReset: boolean;
   autoDispatch: boolean;
   vetoEnabled: boolean;
+  pauses: PauseLimits;
   groupConfig: GroupConfig;
   groups: GroupsInfo | null;
   champion: { id: number; name: string } | null;
@@ -76,6 +86,8 @@ export interface TournamentDetails extends Omit<TournamentSummary, 'teamCount'> 
   maps: MapItem[];
   matches: MatchDto[];
 }
+
+export interface PauseLimits { tactical: number; tacticalTime: number; technical: number }
 
 export interface ServerStatus {
   online: boolean;

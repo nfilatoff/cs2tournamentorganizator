@@ -5,6 +5,7 @@ import { db } from '../db.js';
 import { requireAdmin } from '../auth.js';
 import { fetchWorkshopItem, parseWorkshopId } from '../steam.js';
 import { addDefaultMaps } from '../defaultMaps.js';
+import { mapImageUrl } from '../mapImages.js';
 
 interface Row { id: number; name: string; workshop_id: string | null; map_file: string | null; image_url: string | null }
 
@@ -13,7 +14,7 @@ const toDto = (r: Row) => ({
   name: r.name,
   workshopId: r.workshop_id,
   mapFile: r.map_file,
-  imageUrl: r.image_url,
+  imageUrl: mapImageUrl(r),
 });
 
 const addBody = z.union([

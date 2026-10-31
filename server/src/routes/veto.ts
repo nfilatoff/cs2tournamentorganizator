@@ -7,6 +7,7 @@ import { tournamentMapPool } from '../arenapro.js';
 import { dispatchAll } from '../dispatcher.js';
 import { getMatchRowByCode, getTournament, teamName, type MatchRow, type TournamentRow } from '../tournamentStore.js';
 import { loadVeto, saveVeto, vetoApplies } from '../vetoStore.js';
+import { mapImageUrl } from '../mapImages.js';
 import {
   applyAction, autoComplete, isDone, nextAction, remaining, vetoResult, vetoTemplate, type Team, type VetoState,
 } from '../veto.js';
@@ -35,8 +36,8 @@ function actingRole(req: FastifyRequest, row: MatchRow): 'a' | 'b' | 'admin' | n
 function dto(req: FastifyRequest, t: TournamentRow, row: MatchRow, state: VetoState) {
   const pool = tournamentMapPool(t.id);
   const byId = new Map(pool.map((m) => [m.id, m]));
-  const images = new Map((db.prepare(`SELECT m.id, m.image_url FROM tournament_maps tm JOIN maps m ON m.id = tm.map_id
-    WHERE tm.tournament_id = ?`).all(t.id) as unknown as { id: number; image_url: string | null }[]).map((r) => [r.id, r.image_url]));
+  const images = new Map((db.prepare(`SELECT m.id, m.image_url, m.map_file FROM tournament_maps tm JOIN maps m ON m.id = tm.map_id
+    WHERE tm.tournament_id = ?`).all(t.id) as unknown as { id: number; image_url: string | null; map_file: string | null }[]).map((r) => [r.id, mapImageUrl(r)]));
   const next = nextAction(state);
   const role = actingRole(req, row);
   const a = teamIdOf(row.entry_a);

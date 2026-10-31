@@ -78,22 +78,24 @@ export function Maps() {
         <button type="submit">{t('maps.addStandard')}</button>
       </form>
       {error && <p className="error">{error}</p>}
-      <div className="card">
-        <table>
-          <thead><tr><th /><th>{t('maps.mapName')}</th><th>{t('maps.source')}</th><th /></tr></thead>
-          <tbody>
+      {maps.length === 0
+        ? <div className="card muted">{t('maps.empty')}</div>
+        : (
+          <div className="mapgrid">
             {maps.map((m) => (
-              <tr key={m.id}>
-                <td>{m.imageUrl ? <img className="thumb" src={m.imageUrl} alt="" /> : <div className="thumb" />}</td>
-                <td>{m.name}</td>
-                <td className="muted">{m.workshopId ? `Workshop ${m.workshopId}` : m.mapFile}</td>
-                <td style={{ textAlign: 'right' }}><button className="danger" onClick={() => remove(m.id)}>{t('common.delete')}</button></td>
-              </tr>
+              <div key={m.id} className="mapcard">
+                {m.imageUrl ? <img src={m.imageUrl} alt="" loading="lazy" /> : <div className="noimg" />}
+                <div className="mapinfo">
+                  <div>
+                    <div className="vname">{m.name}</div>
+                    <div className="muted">{m.workshopId ? `Workshop ${m.workshopId}` : m.mapFile}</div>
+                  </div>
+                  <button className="danger" onClick={() => remove(m.id)}>{t('common.delete')}</button>
+                </div>
+              </div>
             ))}
-            {maps.length === 0 && <tr><td colSpan={4} className="muted">{t('maps.empty')}</td></tr>}
-          </tbody>
-        </table>
-      </div>
+          </div>
+        )}
     </>
   );
 }
