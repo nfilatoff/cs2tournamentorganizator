@@ -416,8 +416,8 @@ function Test-CssInstalled([string]$GameDir) {
     }
     if (-not (Test-Path -LiteralPath (Join-Path $GameDir 'addons\metamod\counterstrikesharp.vdf'))) { return $false }
     $core = @(Get-ChildItem -Path (Join-Path $css 'dotnet\shared\Microsoft.NETCore.App\10.*\System.Private.CoreLib.dll') -ErrorAction SilentlyContinue)
-    $host = @(Get-ChildItem -Path (Join-Path $css 'dotnet\host\fxr\10.*\hostfxr.dll') -ErrorAction SilentlyContinue)
-    if (-not $core.Count -or -not $host.Count) { return $false }
+    $hostFxr = @(Get-ChildItem -Path (Join-Path $css 'dotnet\host\fxr\10.*\hostfxr.dll') -ErrorAction SilentlyContinue)
+    if (-not $core.Count -or -not $hostFxr.Count) { return $false }
     try {
         $version = [Diagnostics.FileVersionInfo]::GetVersionInfo((Join-Path $css 'api\CounterStrikeSharp.API.dll')).FileVersion
         return [version]$version -ge [version]'1.0.379'

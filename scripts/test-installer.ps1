@@ -8,6 +8,12 @@ $tokens = $null
 $errors = $null
 $ast = [Management.Automation.Language.Parser]::ParseFile($installer, [ref]$tokens, [ref]$errors)
 if ($errors.Count) { throw ($errors | Out-String) }
+# PowerShell variable names ignore case: assigning $host, $pid, $input... fails at run time, only on the code path reached
+# ($null = ... is the usual way to discard output and is allowed).
+$reserved = @('host', 'pid', 'pshome', 'shellid', 'home', 'input', 'args', 'error', 'true', 'false', 'this', 'executioncontext')
+$misused = @($ast.FindAll({ param($node) $node -is [Management.Automation.Language.AssignmentStatementAst] -and $node.Left -is [Management.Automation.Language.VariableExpressionAst] }, $true) |
+    Where-Object { $_.Left.VariablePath.UserPath.ToLowerInvariant() -in $reserved } | ForEach-Object { "line $($_.Extent.StartLineNumber): $($_.Extent.Text)" })
+if ($misused.Count) { throw "Installer assigns automatic PowerShell variables: $($misused -join '; ')" }
 foreach ($definition in $ast.FindAll({ param($node) $node -is [Management.Automation.Language.FunctionDefinitionAst] }, $false)) {
     . ([scriptblock]::Create($definition.Extent.Text))
 }
