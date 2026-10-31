@@ -827,12 +827,17 @@ try {
         $steamLog = Join-Path $InstallRoot 'logs\steamcmd.log'
         Push-Location $steamRoot
         try {
+            # A fresh SteamCMD updates itself on its first start and then exits with a non-zero code (often 7) even after a
+            # successful run. Let it update on its own first; its exit code here does not matter.
+            & (Join-Path $steamRoot 'steamcmd.exe') '+quit' 2>&1 | Tee-Object -FilePath (Join-Path $InstallRoot 'logs\steamcmd-update.log') | Out-Null
             & (Join-Path $steamRoot 'steamcmd.exe') '+runscript' $steamScript 2>&1 | Tee-Object -FilePath $steamLog
             $steamExit = $LASTEXITCODE
         } finally { Pop-Location }
-        if ($steamExit -ne 0 -or -not (Select-String -LiteralPath $steamLog -Pattern "Success! App '730' fully installed" -Quiet) -or -not (Test-Cs2ServerInstalled $serverRoot)) {
-            throw 'SteamCMD did not confirm successful CS2 installation. See logs\steamcmd.log. The server has not been configured. Run the installer again to resume.'
+        # The success line and the installed app manifest decide; the exit code alone is not reliable (see above).
+        if (-not (Select-String -LiteralPath $steamLog -Pattern "Success! App '730' fully installed" -Quiet) -or -not (Test-Cs2ServerInstalled $serverRoot)) {
+            throw "SteamCMD did not confirm successful CS2 installation (exit code $steamExit). See logs\steamcmd.log. The server has not been configured. Run the installer again to resume."
         }
+        if ($steamExit -ne 0) { Write-Host "  SteamCMD exited with code $steamExit, but confirmed the installation; continuing." }
         Assert-FreeSpace $driveRoot (8GB)
         # Validation can restore the original gameinfo.gi; Metamod is re-enabled below in any case.
     } else { Write-Host '  CS2 server is already installed (use -UpdateGame to update/validate it).' }
