@@ -10,3 +10,4 @@ plugin-dist
 credentials.txt
 installation.json
 .installer-test-*
+.plugin-build-*

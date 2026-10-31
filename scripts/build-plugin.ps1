@@ -4,31 +4,49 @@
 # Stop the game server before deploying: a running server locks ArenaPro.dll.
 # Keep this file ASCII-only: Windows PowerShell 5.1 reads it in the ANSI code page.
 param(
-    [string]$DeployTo = ''
+    [string]$DeployTo = '',
+    # Reuse an already restored dependency graph (useful for offline builds).
+    [switch]$NoRestore
 )
 
 $ErrorActionPreference = 'Stop'
-$root = Split-Path $PSScriptRoot -Parent
+$root = [IO.Path]::GetFullPath((Split-Path $PSScriptRoot -Parent))
 $out = Join-Path $root 'plugin-dist'
+$stage = Join-Path $root ('.plugin-build-' + [guid]::NewGuid().ToString('N'))
 
-if (Test-Path $out) { Remove-Item $out -Recurse -Force }
-
-dotnet publish "$root\plugin\ArenaPro.csproj" -c Release -o "$out\addons\counterstrikesharp\plugins\ArenaPro"
-if ($LASTEXITCODE -ne 0) { throw 'dotnet publish failed' }
-
-Copy-Item "$root\plugin\cfg" "$out\cfg" -Recurse
-
-# The plugin creates these server data files itself; shipping them would overwrite local settings on update.
-foreach ($f in 'admins.json', 'database.json', 'savednades.json', 'whitelist.cfg') {
-    Remove-Item "$out\cfg\ArenaPro\$f" -ErrorAction SilentlyContinue
+foreach ($directory in @($out, $stage)) {
+    if (-not [IO.Path]::GetFullPath($directory).StartsWith($root + '\', [StringComparison]::OrdinalIgnoreCase)) { throw 'Unsafe package output path.' }
+    if ((Test-Path -LiteralPath $directory) -and ((Get-Item -LiteralPath $directory -Force).Attributes -band [IO.FileAttributes]::ReparsePoint)) { throw 'Package output must not be a junction or symlink.' }
 }
 
-New-Item -ItemType Directory -Force "$out\addons\counterstrikesharp\gamedata" | Out-Null
-Copy-Item "$root\plugin\gamedata\arenapro.json" "$out\addons\counterstrikesharp\gamedata\"
+try {
+    $publishArgs = @('publish', "$root\plugin\ArenaPro.csproj", '-c', 'Release', '-o', "$stage\addons\counterstrikesharp\plugins\ArenaPro")
+    if ($NoRestore) { $publishArgs += '--no-restore' }
+    & dotnet @publishArgs
+    if ($LASTEXITCODE -ne 0) { throw 'dotnet publish failed; the previous plugin-dist package has been preserved.' }
+
+    Copy-Item -LiteralPath "$root\plugin\cfg" -Destination "$stage\cfg" -Recurse
+
+    # The plugin creates these server data files itself; do not overwrite local settings.
+    foreach ($f in 'admins.json', 'database.json', 'savednades.json', 'whitelist.cfg') {
+        Remove-Item -LiteralPath "$stage\cfg\ArenaPro\$f" -ErrorAction SilentlyContinue
+    }
+
+    New-Item -ItemType Directory -Force "$stage\addons\counterstrikesharp\gamedata" | Out-Null
+    Copy-Item -LiteralPath "$root\plugin\gamedata\arenapro.json" -Destination "$stage\addons\counterstrikesharp\gamedata\"
+
+    # Replace a previous package only after publish and packaging have succeeded.
+    if (Test-Path -LiteralPath $out) { Remove-Item -LiteralPath $out -Recurse -Force }
+    Move-Item -LiteralPath $stage -Destination $out
+} finally {
+    if (Test-Path -LiteralPath $stage) { Remove-Item -LiteralPath $stage -Recurse -Force }
+}
 
 Write-Host "Package: $out"
 
 if ($DeployTo) {
-    Copy-Item "$out\*" $DeployTo -Recurse -Force
+    foreach ($item in Get-ChildItem -LiteralPath $out) {
+        Copy-Item -LiteralPath $item.FullName -Destination $DeployTo -Recurse -Force
+    }
     Write-Host "Deployed to $DeployTo"
 }

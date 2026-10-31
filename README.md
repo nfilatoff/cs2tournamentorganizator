@@ -16,11 +16,11 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\install-cs2.ps1 -InstallRo
 
 ## Запуск панели
 
-Нужны Node.js 24 или новее и npm. Выполняйте команды из корня этого репозитория:
+Нужны Node.js 24 или новее и npm. В Windows PowerShell используйте `npm.cmd`: этот файл запускается и при стандартной политике, блокирующей `npm.ps1`. Выполняйте команды из корня этого репозитория:
 
 ```powershell
-npm install
-npm run build
+npm.cmd ci
+npm.cmd run build
 .\start-panel.ps1 -PublicUrl 'http://192.168.0.4:3000'
 ```
 
@@ -33,7 +33,7 @@ npm run build
 ```powershell
 $env:PORT = '3000'
 $env:PUBLIC_URL = 'http://192.168.0.4:3000'
-npm start
+npm.cmd start
 ```
 
 База по умолчанию находится в `server/data/app.db`. Для резервной копии остановите панель и скопируйте этот файл. Если задан `DATA_DIR`, база находится в нём.
@@ -53,11 +53,11 @@ npm start
 Из корня репозитория:
 
 ```powershell
-npm run admin -- list
-npm run admin -- set-password 'новый-пароль'
-npm run admin -- set-password 'новый-пароль' логин
-npm run admin -- set-username старый_логин новый_логин
-npm run admin -- create логин 'пароль-не-короче-8-символов'
+npm.cmd run admin -- list
+npm.cmd run admin -- set-password 'новый-пароль'
+npm.cmd run admin -- set-password 'новый-пароль' логин
+npm.cmd run admin -- set-username старый_логин новый_логин
+npm.cmd run admin -- create логин 'пароль-не-короче-8-символов'
 ```
 
 Команда `set-password` без логина работает, только если администратор один. Если панель использует нестандартный `DATA_DIR`, задайте тот же каталог перед запуском этих команд.
@@ -131,12 +131,16 @@ npm run admin -- create логин 'пароль-не-короче-8-симво�
 ## Разработка
 
 ```powershell
-npm run dev:server     # API с перезапуском при изменениях
-npm run dev:web        # Vite на порту 5173
-npm run build          # сборка панели
-npm test -w server     # тесты сеток, групп и вето
-npm run plugin:test    # тесты ArenaPro; нужен .NET SDK
-npm run plugin:build   # пакет ArenaPro в plugin-dist/
+npm.cmd run dev:server     # API с перезапуском при изменениях
+npm.cmd run dev:web        # Vite на порту 5173
+npm.cmd run build          # сборка панели
+npm.cmd test -w server     # тесты сеток, групп и вето
+npm.cmd run plugin:test    # тесты ArenaPro; нужен .NET SDK
+npm.cmd run plugin:build   # пакет ArenaPro в plugin-dist/
 ```
 
 Серверная часть находится в `server/src/`, интерфейс и переводы — в `web/src/`, исходники ArenaPro — в `plugin/`. Скрипт установки плагина — `scripts/build-plugin.ps1`.
+
+`global.json` выбирает стабильный .NET SDK 10 с установленным обновлением. В `package.json` закреплены исправленные версии `glob/minimatch`, пока `@fastify/static` использует более старую ветку, и разрешён установочный скрипт `esbuild@0.28.2`, необходимый сборке. При обновлении esbuild нужно пересмотреть это разрешение. Проверка зависимостей: `npm.cmd audit` и `dotnet list plugin/ArenaPro.csproj package --vulnerable --include-transitive`.
+
+Если NuGet-зависимости уже восстановлены, пакет плагина можно собрать без обращения к NuGet: `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-plugin.ps1 -NoRestore`. При ошибке сборки предыдущий пакет `plugin-dist` сохраняется.
