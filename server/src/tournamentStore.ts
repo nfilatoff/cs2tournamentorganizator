@@ -78,8 +78,16 @@ export function saveMatches(tid: number, ms: BMatch[]): void {
 
 // Сбрасывает данные матча на сервере (после результата, отмены или перезапуска).
 export function clearRuntime(matchId: number): void {
+  const prev = db.prepare('SELECT server_id FROM matches WHERE id = ?').get(matchId) as { server_id: number | null } | undefined;
   db.prepare(`UPDATE matches SET server_id = NULL, live = 0, paused = 0, cur_map_no = 0, cur_score_a = 0, cur_score_b = 0,
     series_a = 0, series_b = 0 WHERE id = ?`).run(matchId);
+  if (prev?.server_id != null) serverFreedHook?.(prev.server_id);
+}
+
+// Вызывается, когда матч освободил сервер. Подписывается serverProcess (сервер, запущенный под матч, выключается).
+let serverFreedHook: ((serverId: number) => void) | null = null;
+export function onServerFreed(hook: (serverId: number) => void): void {
+  serverFreedHook = hook;
 }
 
 export function boFn(t: TournamentRow) {

@@ -226,6 +226,8 @@ addColumn('game_servers', 'gslt', 'TEXT');
 addColumn('game_servers', 'tv_enable', 'INTEGER NOT NULL DEFAULT 1');
 addColumn('game_servers', 'tv_port', 'INTEGER');
 addColumn('game_servers', 'autostart', 'INTEGER NOT NULL DEFAULT 0');
+// Сервер запущен панелью под матч: после матча его останавливают. Запущенный вручную работает, пока его не остановят
+addColumn('game_servers', 'auto_started', 'INTEGER NOT NULL DEFAULT 0');
 addColumn('game_servers', 'extra_cfg', 'TEXT');
 
 // Когда матч отправлен на сервер (от этого момента идёт время на подключение) и закончился ли он неявкой

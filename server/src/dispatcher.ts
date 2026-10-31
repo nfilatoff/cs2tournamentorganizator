@@ -4,6 +4,7 @@ import { panelUrlFor } from './config.js';
 import { rconHost } from './network.js';
 import { Rcon } from './rcon.js';
 import { eventToken } from './arenapro.js';
+import { ensureRunning, rconAlive } from './serverProcess.js';
 import { matchMaps, vetoComplete } from './vetoStore.js';
 import {
   clearRuntime, getMatchRow, getTournament, loadMatches, saveMatches, teamName, type MatchRow,
@@ -90,6 +91,8 @@ async function startOnServer(tid: number, row: MatchRow, server: ServerRow): Pro
   if (!reserve(tid, row, server.id, JSON.stringify(maps))) throw new AppError('matchTaken');
 
   try {
+    // Сервер панели выключен, пока на него не назначен матч: запускаем его под этот матч
+    await ensureRunning(server.id);
     const url = `${panelUrlFor(server.host)}/api/arenapro/config/${row.id}`;
     await withRcon(server, async (r) => {
       await r.exec('get5_endmatch'); // сбросить то, что осталось на сервере от прошлого матча
@@ -121,6 +124,16 @@ function freeServers(): ServerRow[] {
   `).all(Date.now()) as unknown as ServerRow[];
 }
 
+// Для автораздачи: серверы панели, которые уже запущены без матча, включил админ (для свободной игры), их не занимаем
+async function idleServers(): Promise<ServerRow[]> {
+  const out: ServerRow[] = [];
+  for (const s of freeServers()) {
+    if ((s as ServerRow & { managed?: number }).managed && await rconAlive(s)) continue;
+    out.push(s);
+  }
+  return out;
+}
+
 let busy = false;
 
 // Раздаёт готовые матчи свободным серверам (только турниры с автозапуском).
@@ -141,7 +154,7 @@ export async function dispatchAll(): Promise<void> {
       } catch {
         continue;
       }
-      const server = freeServers()[0];
+      const server = (await idleServers())[0];
       if (!server) return;
       try {
         await startOnServer(row.tournament_id, row, server);
@@ -169,7 +182,7 @@ export async function dispatchOne(matchId: number, serverId?: number): Promise<v
       throw new AppError('serverCooldown');
     }
   } else {
-    server = freeServers()[0];
+    server = (await idleServers())[0];
     if (!server) throw new AppError('noFreeServers');
   }
   await startOnServer(row.tournament_id, row, server);

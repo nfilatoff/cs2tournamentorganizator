@@ -145,6 +145,8 @@ export function Servers() {
   const [error, setError] = useState('');
   const [info, setInfo] = useState('');
   const [editing, setEditing] = useState<number | null>(null);
+  const [logOf, setLogOf] = useState<number | null>(null);
+  const [logText, setLogText] = useState('');
   const [busy, setBusy] = useState<Record<number, boolean>>({});
   const [mapNow, setMapNow] = useState<Record<number, string>>({});
   const [status, setStatus] = useState<Record<number, ServerStatus | 'loading'>>({});
@@ -164,6 +166,16 @@ export function Servers() {
     api<LauncherInfo>('/api/servers/launcher').then(setLauncher).catch(() => undefined);
   }, [err]);
   useEffect(load, [load]);
+  // Пока лог открыт, обновляем его раз в 2 секунды
+  useEffect(() => {
+    if (logOf === null) return;
+    let alive = true;
+    const pull = () => api<{ text: string }>(`/api/servers/${logOf}/log`).then((r) => { if (alive) setLogText(r.text); }).catch(() => undefined);
+    setLogText('');
+    void pull();
+    const timer = setInterval(pull, 2000);
+    return () => { alive = false; clearInterval(timer); };
+  }, [logOf]);
   useEffect(() => {
     api<MapItem[]>('/api/maps').then(setMaps).catch(() => undefined);
   }, []);
@@ -279,10 +291,18 @@ export function Servers() {
                         <button className="ghost" disabled={busy[s.id]} onClick={() => run(s.id, 'stop')}>{t('srv.stop')}</button>
                       </>
                     )}
+                    {s.managed && <button className="ghost" onClick={() => setLogOf(logOf === s.id ? null : s.id)}>{t('srv.log')}</button>}
                     <button className="ghost" onClick={() => setEditing(editing === s.id ? null : s.id)}>{t('srv.settingsBtn')}</button>
                     <button className="danger" onClick={() => remove(s.id)}>{t('common.delete')}</button>
                   </td>
                 </tr>,
+                logOf === s.id && (
+                  <tr key={`${s.id}-log`}>
+                    <td colSpan={4}>
+                      <pre className="srvlog">{logText || t('srv.logEmpty')}</pre>
+                    </td>
+                  </tr>
+                ),
                 editing === s.id && (
                   <tr key={`${s.id}-edit`}>
                     <td colSpan={4}>

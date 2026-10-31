@@ -1,11 +1,12 @@
 import { spawn, type ChildProcess } from 'node:child_process';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { closeSync, existsSync, mkdirSync, openSync, readSync, renameSync, fstatSync, writeFileSync } from 'node:fs';
 import { isIP } from 'node:net';
 import { join, resolve } from 'node:path';
 import { db, getSetting } from './db.js';
 import { AUTO_HOST, isAutoHost, lanAddress } from './network.js';
 import { AppError } from './errors.js';
 import { getServer, withRcon, type ServerRow } from './dispatcher.js';
+import { onServerFreed } from './tournamentStore.js';
 
 // Запуск процессов CS2 на компьютере с панелью. Серверы с флагом managed панель запускает сама:
 // пишет для каждого свой cfg в game/csgo/cfg/tournament-panel и стартует cs2.exe в отдельном окне.
@@ -21,7 +22,7 @@ export type GameMode = keyof typeof GAME_MODES;
 export interface ManagedRow extends ServerRow {
   managed: number; start_map: string; game_mode: GameMode; max_players: number; hostname: string | null;
   sv_password: string | null; lan: number; gslt: string | null; tv_enable: number; tv_port: number | null;
-  autostart: number; extra_cfg: string | null;
+  autostart: number; extra_cfg: string | null; auto_started: number;
 }
 
 const CFG_DIR = 'tournament-panel';
@@ -97,6 +98,39 @@ function launchArgs(s: ManagedRow, cfg: string): string[] {
   return args;
 }
 
+function logPath(id: number): string | null {
+  const root = cs2Root();
+  return root ? join(root, 'panel-logs', `server-${id}.log`) : null;
+}
+
+// Лог текущего запуска перезаписывается, предыдущий остаётся в .old
+function openLog(id: number): number {
+  const file = logPath(id)!;
+  mkdirSync(join(file, '..'), { recursive: true });
+  if (existsSync(file)) {
+    try { renameSync(file, `${file}.old`); } catch { /* занят: дописываем в него */ }
+  }
+  return openSync(file, 'a');
+}
+
+// Последние строки вывода сервера
+export function readServerLog(id: number, maxBytes = 96 * 1024): string {
+  const file = logPath(id);
+  if (!file || !existsSync(file)) return '';
+  const fd = openSync(file, 'r');
+  try {
+    const size = fstatSync(fd).size;
+    const len = Math.min(size, maxBytes);
+    const buf = Buffer.alloc(len);
+    readSync(fd, buf, 0, len, size - len);
+    const text = buf.toString('utf8');
+    // Обрезанная первая строка не показывается
+    return len < size ? text.slice(text.indexOf('\n') + 1) : text;
+  } finally {
+    closeSync(fd);
+  }
+}
+
 interface Proc { child: ChildProcess; startedAt: number }
 const procs = new Map<number, Proc>();
 const lastExit = new Map<number, { code: number | null; at: number }>();
@@ -105,7 +139,7 @@ export function getManaged(id: number): ManagedRow | undefined {
   return db.prepare('SELECT * FROM game_servers WHERE id = ?').get(id) as unknown as ManagedRow | undefined;
 }
 
-async function rconAlive(s: ServerRow): Promise<boolean> {
+export async function rconAlive(s: ServerRow): Promise<boolean> {
   try {
     await withRcon(s, (r) => r.exec('echo ping'));
     return true;
@@ -124,7 +158,8 @@ function busyMatch(id: number): boolean {
   return !!db.prepare('SELECT 1 FROM matches WHERE server_id = ?').get(id);
 }
 
-export async function startServer(id: number): Promise<void> {
+// auto: сервер запускает панель под матч (после матча он выключается); иначе его запустил админ и он работает, пока тот не остановит
+export async function startServer(id: number, auto = false): Promise<void> {
   const s = getManaged(id);
   if (!s) throw new AppError('serverNotFound');
   if (!s.managed) throw new AppError('serverNotManaged');
@@ -136,8 +171,14 @@ export async function startServer(id: number): Promise<void> {
 
   const cfg = writeCfg(root, s);
   const args = launchArgs(s, cfg);
-  // cs2.exe открывает собственное окно с консолью; лог сервера пишется в game/csgo/console.log (-condebug)
-  const child: ChildProcess = spawn(exeIn(root), args, { cwd: root, detached: true, stdio: 'ignore' });
+  // Окно cs2.exe остаётся пустым, поэтому вывод сервера (в том числе строки плагина) пишется в файл, его показывает панель
+  const logFd = openLog(id);
+  let child: ChildProcess;
+  try {
+    child = spawn(exeIn(root), args, { cwd: root, detached: true, stdio: ['ignore', logFd, logFd] });
+  } finally {
+    closeSync(logFd);
+  }
   await new Promise<void>((ok, fail) => {
     child.once('spawn', ok);
     child.once('error', (e) => fail(new AppError('serverStartFailed', { message: e.message })));
@@ -149,8 +190,37 @@ export async function startServer(id: number): Promise<void> {
     if (procs.get(id)?.child === child) procs.delete(id);
     lastExit.set(id, { code, at: Date.now() });
   });
-  db.prepare('UPDATE game_servers SET cooldown_until = 0, last_error = NULL WHERE id = ?').run(id);
+  db.prepare('UPDATE game_servers SET cooldown_until = 0, last_error = NULL, auto_started = ? WHERE id = ?').run(auto ? 1 : 0, id);
 }
+
+// Для матча: если сервер панели не запущен, запускает его и ждёт, пока он начнёт отвечать по RCON
+export async function ensureRunning(id: number): Promise<void> {
+  const s = getManaged(id);
+  if (!s || !s.managed) return;
+  if (await rconAlive(s)) return;
+  if (!procs.has(id)) await startServer(id, true);
+  for (let i = 0; i < 60; i++) {
+    await sleep(2000);
+    if (await rconAlive(s)) return;
+  }
+  throw new AppError('serverNoConfirm');
+}
+
+// Сервер, который запускала панель под матч, выключается, когда ему больше не назначен матч
+async function stopIfIdleAuto(id: number): Promise<void> {
+  const s = getManaged(id);
+  if (!s || !s.managed || !s.auto_started || busyMatch(id)) return;
+  try {
+    await stopServer(id, true);
+  } catch {
+    // уже выключен или недоступен
+  }
+  db.prepare('UPDATE game_servers SET auto_started = 0 WHERE id = ? AND NOT EXISTS (SELECT 1 FROM matches WHERE server_id = ?)').run(id, id);
+}
+
+// Пауза, чтобы игроки успели увидеть итог; повторная проверка защищает сервер, на который сразу назначили следующий матч
+const STOP_DELAY_MS = 10_000;
+onServerFreed((id) => { setTimeout(() => { void stopIfIdleAuto(id); }, STOP_DELAY_MS).unref(); });
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -218,6 +288,9 @@ export function nextPort(): number {
 
 // Серверы с автозапуском стартуют вместе с панелью
 export async function autostartServers(log: (msg: string) => void): Promise<void> {
+  // Остались от прошлого запуска панели без матча: выключаем
+  const leftovers = db.prepare('SELECT id FROM game_servers WHERE managed = 1 AND auto_started = 1').all() as unknown as { id: number }[];
+  for (const r of leftovers) await stopIfIdleAuto(r.id);
   const rows = db.prepare('SELECT id, name FROM game_servers WHERE managed = 1 AND autostart = 1').all() as unknown as { id: number; name: string }[];
   for (const r of rows) {
     try {

@@ -462,6 +462,8 @@ export const ru = {
   'srv.restart': 'Перезапустить',
   'srv.stop': 'Остановить',
   'srv.settingsBtn': 'Настройки',
+  'srv.log': 'Лог',
+  'srv.logEmpty': 'Лога пока нет: сервер ещё не запускался из панели',
   'srv.mapNow': 'Сменить карту сейчас',
   'srv.changeMap': 'Сменить',
   'srv.mapChanged': 'Команда смены карты отправлена.',

@@ -463,6 +463,8 @@ export const en: Dict = {
   'srv.restart': 'Restart',
   'srv.stop': 'Stop',
   'srv.settingsBtn': 'Settings',
+  'srv.log': 'Log',
+  'srv.logEmpty': 'No log yet: the server has not been started from the panel',
   'srv.mapNow': 'Change map now',
   'srv.changeMap': 'Change',
   'srv.mapChanged': 'Map change command sent.',

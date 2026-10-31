@@ -17,7 +17,11 @@ namespace ArenaPro
             try
             {
                 target ??= CurrentRemoteLogTarget();
-                if (string.IsNullOrEmpty(target.Url)) return;
+                if (string.IsNullOrEmpty(target.Url))
+                {
+                    if (@event.EventName == "series_end") Log($"[SendEventAsync] No remote log URL is set, {@event.EventName} is not sent.");
+                    return;
+                }
 
                 string jsonString = JsonSerializer.Serialize(@event, @event.GetType());
                 using var request = new HttpRequestMessage(HttpMethod.Post, target.Url)

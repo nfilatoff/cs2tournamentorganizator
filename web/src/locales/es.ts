@@ -463,6 +463,8 @@ export const es: Dict = {
   'srv.restart': 'Reiniciar',
   'srv.stop': 'Detener',
   'srv.settingsBtn': 'Ajustes',
+  'srv.log': 'Registro',
+  'srv.logEmpty': 'Aún no hay registro: el servidor no se ha iniciado desde el panel',
   'srv.mapNow': 'Cambiar mapa ahora',
   'srv.changeMap': 'Cambiar',
   'srv.mapChanged': 'Orden de cambio de mapa enviada.',

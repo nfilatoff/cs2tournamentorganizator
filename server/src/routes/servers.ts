@@ -8,7 +8,7 @@ import { requireAdmin } from '../auth.js';
 import { isAutoHost, publicHost } from '../network.js';
 import { getServer, parseStatus, withRcon } from '../dispatcher.js';
 import {
-  GAME_MODES, applyCfg, changeMap, cs2Root, defaultHost, exeIn, getManaged, nextPort, processInfo, startServer, stopServer,
+  GAME_MODES, applyCfg, changeMap, cs2Root, defaultHost, exeIn, getManaged, nextPort, processInfo, readServerLog, startServer, stopServer,
   tvPortOf, type ManagedRow,
 } from '../serverProcess.js';
 
@@ -207,6 +207,12 @@ export async function serverRoutes(app: FastifyInstance): Promise<void> {
       return reply.code(409).send(errBody(e));
     }
     return { ok: true };
+  });
+
+  // Вывод процесса сервера (окно CS2 пустое)
+  app.get<{ Params: { id: string } }>('/api/servers/:id/log', async (req, reply) => {
+    if (!getManaged(Number(req.params.id))) return reply.code(404).send(E('serverNotFound'));
+    return { text: readServerLog(Number(req.params.id)) };
   });
 
   // Проверка связи: RCON и состояние матча на сервере
