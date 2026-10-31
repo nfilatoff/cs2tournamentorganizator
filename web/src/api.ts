@@ -37,10 +37,11 @@ export interface TournamentSummary {
   status: 'registration' | 'running' | 'finished'; teamCount: number;
 }
 
-export type EntryDto = { type: 'team'; id: number; name: string } | { type: 'tbd' } | { type: 'bye' };
+export type EntryDto = { type: 'team'; id: number; name: string; seed: number | null } | { type: 'tbd' } | { type: 'bye' };
 
 export interface MatchDto {
   code: string; bracket: 'W' | 'L' | 'GF'; round: number; position: number; roundFromEnd: number;
+  from: ({ kind: 'winner' | 'loser' | 'slot'; code: string } | null)[];
   a: EntryDto; b: EntryDto; status: 'pending' | 'ready' | 'live' | 'done' | 'bye' | 'skipped';
   winner: 'a' | 'b' | null; bestOf: number; scoreA: number; scoreB: number; forced: boolean;
   matchId?: number;

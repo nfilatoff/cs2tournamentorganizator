@@ -1,133 +1,20 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { api, type EntryDto, type MatchDto, type Me, type Team, type TournamentDetails } from '../api';
+import { api, type MatchDto, type Me, type Team, type TournamentDetails } from '../api';
 import { useI18n } from '../i18n';
-import { roundLabel } from '../rounds';
-
-function Slot({ entry, score, won }: { entry: EntryDto; score: number; won: boolean }) {
-  const { t } = useI18n();
-  const text = entry.type === 'team' ? entry.name : entry.type === 'bye' ? t('match.bye') : t('match.tbd');
-  return (
-    <div className={`slot${won ? ' won' : ''}${entry.type !== 'team' ? ' empty' : ''}`}>
-      <span>{text}</span>
-      <b>{entry.type === 'team' ? score : ''}</b>
-    </div>
-  );
-}
-
-interface Actions {
-  onResult: (code: string, a: number, b: number) => void;
-  onWinner: (code: string, winner: 'a' | 'b') => void;
-  onUndo: (code: string) => void;
-  onDispatch: (code: string) => void;
-  onPause: (code: string, paused: boolean) => void;
-  onRestartMap: (code: string) => void;
-  onRestartMatch: (code: string) => void;
-}
-
-function MatchCard({ m, admin, actions }: { m: MatchDto; admin: boolean; actions: Actions }) {
-  const { t, err } = useI18n();
-  const [a, setA] = useState(0);
-  const [b, setB] = useState(0);
-  const need = Math.ceil(m.bestOf / 2);
-  const inPlay = m.status === 'ready' || m.status === 'live';
-  return (
-    <div className={`match ${m.status}`}>
-      <div className="mhead"><span>{m.code}</span><span>{m.forced ? t('match.byAdmin') : `BO${m.bestOf}`}</span></div>
-      <Slot entry={m.a} score={m.status === 'live' ? m.seriesA ?? 0 : m.scoreA} won={m.winner === 'a' && m.status === 'done'} />
-      <Slot entry={m.b} score={m.status === 'live' ? m.seriesB ?? 0 : m.scoreB} won={m.winner === 'b' && m.status === 'done'} />
-      {m.status === 'live' && (
-        <div className="livebox">
-          <div>
-            {m.live
-              ? <>{t('match.playing', { map: m.curMap?.name ?? t('match.map'), a: m.curMap?.scoreA ?? 0, b: m.curMap?.scoreB ?? 0 })}{m.paused && ` · ${t('match.paused')}`}</>
-              : t('match.waiting')}
-          </div>
-          {m.server && <div>{t('match.server')}: <b>{m.server.name}</b>, <code>connect {m.server.host}:{m.server.port}</code></div>}
-        </div>
-      )}
-      {m.status === 'done' && m.playedMaps && m.playedMaps.length > 0 && (
-        <div className="livebox muted">{m.playedMaps.map((p) => `${p.name ?? t('match.map')} ${p.scoreA}:${p.scoreB}`).join(' · ')}</div>
-      )}
-      {admin && m.note && <div className="livebox error">{err(m.note)}</div>}
-      {admin && m.status === 'ready' && (
-        <div className="result">
-          <button onClick={() => actions.onDispatch(m.code)}>{t('match.dispatch')}</button>
-        </div>
-      )}
-      {admin && m.status === 'live' && (
-        <div className="result wrap">
-          <button className="ghost" onClick={() => actions.onPause(m.code, !m.paused)}>{m.paused ? t('match.unpause') : t('match.pause')}</button>
-          {m.live && <button className="ghost" onClick={() => confirm(t('match.confirmRestartMap')) && actions.onRestartMap(m.code)}>{t('match.restartMap')}</button>}
-          <button className="ghost" onClick={() => confirm(t('match.confirmRestartMatch')) && actions.onRestartMatch(m.code)}>{t('match.restartMatch')}</button>
-        </div>
-      )}
-      {admin && inPlay && (
-        <>
-          <div className="result">
-            <input type="number" min={0} max={need} value={a} onChange={(e) => setA(Number(e.target.value))} />
-            <span>:</span>
-            <input type="number" min={0} max={need} value={b} onChange={(e) => setB(Number(e.target.value))} />
-            <button onClick={() => actions.onResult(m.code, a, b)}>OK</button>
-          </div>
-          <div className="result">
-            <span className="muted">{t('match.victory')}:</span>
-            <button className="ghost" onClick={() => actions.onWinner(m.code, 'a')}>A</button>
-            <button className="ghost" onClick={() => actions.onWinner(m.code, 'b')}>B</button>
-          </div>
-        </>
-      )}
-      {admin && m.status === 'done' && (
-        <div className="result">
-          <button className="ghost" onClick={() => actions.onUndo(m.code)}>{t('match.undo')}</button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function Bracket({ tr, admin, actions }: { tr: TournamentDetails; admin: boolean; actions: Actions }) {
-  const { t } = useI18n();
-  const visible = tr.matches.filter((m) => m.status !== 'bye' && m.status !== 'skipped');
-  const title = (br: 'W' | 'L' | 'GF') =>
-    tr.format === 'single' && br === 'W' ? t('bracket.single') : br === 'W' ? t('bracket.upper') : br === 'L' ? t('bracket.lower') : t('bracket.gf');
-  return (
-    <>
-      {(['W', 'L', 'GF'] as const).map((br) => {
-        const ms = visible.filter((m) => m.bracket === br);
-        if (ms.length === 0) return null;
-        const rounds = [...new Set(ms.map((m) => m.round))].sort((x, y) => x - y);
-        return (
-          <div className="card" key={br}>
-            <h2>{title(br)}</h2>
-            <div className="bracket">
-              {rounds.map((r) => {
-                const col = ms.filter((m) => m.round === r);
-                return (
-                  <div className="col" key={r}>
-                    <div className="roundname">{roundLabel(t, br, col[0]!.roundFromEnd, tr.format)}</div>
-                    {col.map((m) => <MatchCard key={m.code} m={m} admin={admin} actions={actions} />)}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        );
-      })}
-    </>
-  );
-}
+import { BracketTree } from '../components/BracketTree';
+import type { MatchActions } from '../components/MatchCard';
 
 export function TournamentView({ me }: { me: Me }) {
   const { t, err } = useI18n();
   const { id } = useParams();
   const navigate = useNavigate();
   const [tr, setTr] = useState<TournamentDetails | null>(null);
+  const [preview, setPreview] = useState<MatchDto[]>([]);
   const [myTeams, setMyTeams] = useState<Team[]>([]);
   const [allTeams, setAllTeams] = useState<Team[]>([]);
   const [teamId, setTeamId] = useState<number | null>(null);
   const [roster, setRoster] = useState<number[]>([]);
-  const [shuffle, setShuffle] = useState(true);
   const [error, setError] = useState('');
 
   const load = useCallback(() => {
@@ -151,11 +38,19 @@ export function TournamentView({ me }: { me: Me }) {
     }
   }, [me]);
 
+  // До старта показываем, как сетка выглядит при текущей рассадке
+  const seedKey = tr ? tr.teams.map((x) => `${x.id}:${x.seed}`).join(',') : '';
+  const inRegistration = tr?.status === 'registration';
+  useEffect(() => {
+    if (!inRegistration) return;
+    api<{ matches: MatchDto[] }>(`/api/tournaments/${id}/preview`).then((p) => setPreview(p.matches)).catch(() => setPreview([]));
+  }, [id, inRegistration, seedKey]);
+
   const act = async (fn: () => Promise<TournamentDetails | unknown>) => {
     setError('');
     try {
       const res = await fn();
-      if (res && typeof res === 'object' && 'matches' in res) setTr(res as TournamentDetails);
+      if (res && typeof res === 'object' && 'matches' in res && 'teams' in res) setTr(res as TournamentDetails);
       else load();
     } catch (e) {
       setError(err(e));
@@ -175,6 +70,24 @@ export function TournamentView({ me }: { me: Me }) {
   }));
   const url = (code: string, action: string) => `/api/tournaments/${tr.id}/matches/${code}/${action}`;
 
+  const move = (index: number, delta: number) => {
+    const order = tr.teams.map((x) => x.id);
+    const j = index + delta;
+    if (j < 0 || j >= order.length) return;
+    [order[index], order[j]] = [order[j]!, order[index]!];
+    void act(() => api(`/api/tournaments/${tr.id}/seeding`, { method: 'PUT', body: { order } }));
+  };
+
+  const actions: MatchActions | undefined = admin ? {
+    onResult: (code, scoreA, scoreB) => act(() => api(url(code, 'result'), { method: 'POST', body: { scoreA, scoreB } })),
+    onWinner: (code, winner) => act(() => api(url(code, 'winner'), { method: 'POST', body: { winner } })),
+    onUndo: (code) => act(() => api(url(code, 'undo'), { method: 'POST', body: {} })),
+    onDispatch: (code) => act(() => api(url(code, 'dispatch'), { method: 'POST', body: {} })),
+    onPause: (code, paused) => act(() => api(url(code, 'pause'), { method: 'POST', body: { paused } })),
+    onRestartMap: (code) => act(() => api(url(code, 'restart-map'), { method: 'POST', body: {} })),
+    onRestartMatch: (code) => act(() => api(url(code, 'restart-match'), { method: 'POST', body: {} })),
+  } : undefined;
+
   return (
     <>
       <div className="between">
@@ -192,12 +105,16 @@ export function TournamentView({ me }: { me: Me }) {
           <h2>{t('view.teams', { n: tr.teams.length, max: tr.maxTeams })}</h2>
           <table>
             <tbody>
-              {tr.teams.map((x) => (
+              {tr.teams.map((x, i) => (
                 <tr key={x.id}>
                   <td>{x.seed ? `#${x.seed} ` : ''}{x.name}</td>
-                  <td style={{ textAlign: 'right' }}>
+                  <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                     {admin && tr.status === 'registration' && (
-                      <button className="ghost" onClick={() => act(() => api(`/api/tournaments/${tr.id}/teams/${x.id}`, { method: 'DELETE' }))}>{t('view.removeTeam')}</button>
+                      <>
+                        <button className="ghost" title={t('seeding.up')} disabled={i === 0} onClick={() => move(i, -1)}>▲</button>{' '}
+                        <button className="ghost" title={t('seeding.down')} disabled={i === tr.teams.length - 1} onClick={() => move(i, 1)}>▼</button>{' '}
+                        <button className="ghost" onClick={() => act(() => api(`/api/tournaments/${tr.id}/teams/${x.id}`, { method: 'DELETE' }))}>{t('view.removeTeam')}</button>
+                      </>
                     )}
                   </td>
                 </tr>
@@ -205,10 +122,16 @@ export function TournamentView({ me }: { me: Me }) {
               {tr.teams.length === 0 && <tr><td className="muted">{t('view.noTeams')}</td></tr>}
             </tbody>
           </table>
+          {admin && tr.status === 'registration' && tr.teams.length > 1 && (
+            <p>
+              <button className="ghost" onClick={() => act(() => api(`/api/tournaments/${tr.id}/seeding/shuffle`, { method: 'POST', body: {} }))}>🎲 {t('seeding.shuffle')}</button>
+              <span className="muted"> {t('seeding.hint')}</span>
+            </p>
+          )}
           {tr.status === 'registration' && me.kind !== null && (
             selectable.length > 0 && chosen ? (
               <div style={{ marginTop: 12 }}>
-                <label>{t('view.yourTeam')}
+                <label>{admin ? t('view.pickTeam') : t('view.yourTeam')}
                   <select value={chosen.id} onChange={(e) => { setTeamId(Number(e.target.value)); setRoster([]); }}>
                     {selectable.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
                   </select>
@@ -243,13 +166,7 @@ export function TournamentView({ me }: { me: Me }) {
             ))}
           </div>
           {admin && tr.status === 'registration' && (
-            <div style={{ marginTop: 16 }}>
-              <label style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <input type="checkbox" checked={shuffle} onChange={(e) => setShuffle(e.target.checked)} />
-                {t('view.randomSeeding')}
-              </label>
-              <p><button onClick={() => act(() => api(`/api/tournaments/${tr.id}/start`, { method: 'POST', body: { shuffle } }))}>{t('view.start')}</button></p>
-            </div>
+            <p style={{ marginTop: 16 }}><button onClick={() => act(() => api(`/api/tournaments/${tr.id}/start`, { method: 'POST', body: {} }))}>{t('view.start')}</button></p>
           )}
         </div>
       </div>
@@ -262,17 +179,14 @@ export function TournamentView({ me }: { me: Me }) {
         </label>
       )}
 
-      {tr.status !== 'registration' && (
-        <Bracket tr={tr} admin={admin} actions={{
-          onResult: (code, scoreA, scoreB) => act(() => api(url(code, 'result'), { method: 'POST', body: { scoreA, scoreB } })),
-          onWinner: (code, winner) => act(() => api(url(code, 'winner'), { method: 'POST', body: { winner } })),
-          onUndo: (code) => act(() => api(url(code, 'undo'), { method: 'POST', body: {} })),
-          onDispatch: (code) => act(() => api(url(code, 'dispatch'), { method: 'POST', body: {} })),
-          onPause: (code, paused) => act(() => api(url(code, 'pause'), { method: 'POST', body: { paused } })),
-          onRestartMap: (code) => act(() => api(url(code, 'restart-map'), { method: 'POST', body: {} })),
-          onRestartMatch: (code) => act(() => api(url(code, 'restart-match'), { method: 'POST', body: {} })),
-        }} />
+      {tr.status === 'registration' && preview.length > 0 && (
+        <>
+          <h2>{t('preview.title')}</h2>
+          <p className="muted">{t('preview.hint')}</p>
+          <BracketTree matches={preview} format={tr.format} />
+        </>
       )}
+      {tr.status !== 'registration' && <BracketTree matches={tr.matches} format={tr.format} actions={actions} />}
     </>
   );
 }

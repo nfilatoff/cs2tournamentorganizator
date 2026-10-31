@@ -56,3 +56,11 @@ main { max-width: 1200px; }
 .result input { width: 52px; padding: 4px 6px; }
 .livebox { padding: 6px 8px; border-top: 1px solid var(--line); font-size: 13px; }
 .result.wrap { flex-wrap: wrap; }
+.treescroll { overflow-x: auto; padding-bottom: 8px; }
+.treehead { display: grid; column-gap: 40px; margin-bottom: 6px; }
+.tree { position: relative; display: grid; column-gap: 40px; }
+.treecell { position: relative; z-index: 1; display: flex; align-items: center; padding: 4px 0; }
+.cardwrap { width: 100%; }
+.links { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; z-index: 0; }
+.links path { fill: none; stroke: #4a5465; stroke-width: 2; }
+.match.bye { opacity: .5; }

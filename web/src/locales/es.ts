@@ -141,6 +141,14 @@ export const es: Dict = {
   'view.randomSeeding': 'Sorteo aleatorio',
   'view.start': 'Iniciar torneo',
   'view.autoDispatch': 'Iniciar partidos automáticamente en servidores libres',
+  'view.pickTeam': 'Equipo',
+
+  'seeding.up': 'Subir',
+  'seeding.down': 'Bajar',
+  'seeding.shuffle': 'Sorteo aleatorio',
+  'seeding.hint': 'El número de cabeza de serie decide el lugar en el cuadro: el 1 juega contra el último y los mejores reciben bye.',
+  'preview.title': 'Cómo será el cuadro',
+  'preview.hint': 'Vista previa con el sorteo actual: el número antes del nombre del equipo es su cabeza de serie. El cuadro se puede cambiar hasta que empiece el torneo.',
   'view.adminNeedTeam': 'No hay equipos sin inscribir. Crea equipos en la página «Equipos».',
 
   'adminTeams.title': 'Equipos (administrador)',
@@ -193,6 +201,7 @@ export const es: Dict = {
   'e.notTeamMember': 'Este jugador no está en el equipo',
   'e.badTeam': 'Datos del equipo no válidos: un SteamID64 tiene 17 dígitos y el apodo es obligatorio',
   'e.duplicatePlayer': 'El mismo jugador aparece dos veces',
+  'e.badSeeding': 'Orden de sorteo no válido',
   'e.tournamentNotFound': 'Torneo no encontrado',
   'e.badParams': 'Parámetros no válidos',
   'e.badTournament': 'Datos del torneo no válidos',

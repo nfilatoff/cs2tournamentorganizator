@@ -141,6 +141,14 @@ export const en: Dict = {
   'view.randomSeeding': 'Random seeding',
   'view.start': 'Start tournament',
   'view.autoDispatch': 'Automatically start matches on free servers',
+  'view.pickTeam': 'Team',
+
+  'seeding.up': 'Move up',
+  'seeding.down': 'Move down',
+  'seeding.shuffle': 'Random seeding',
+  'seeding.hint': 'The seed number decides the place in the bracket: seed 1 plays the last seed and top seeds get byes.',
+  'preview.title': 'What the bracket will look like',
+  'preview.hint': 'Preview for the current seeding: the number before a team name is its seed. The bracket can be changed until the tournament starts.',
   'view.adminNeedTeam': 'There are no unregistered teams. Create teams on the "Teams" page.',
 
   'adminTeams.title': 'Teams (administrator)',
@@ -193,6 +201,7 @@ export const en: Dict = {
   'e.notTeamMember': 'This player is not in the team',
   'e.badTeam': 'Invalid team data: a SteamID64 has 17 digits and a nickname is required',
   'e.duplicatePlayer': 'The same player is listed twice',
+  'e.badSeeding': 'Invalid seeding order',
   'e.tournamentNotFound': 'Tournament not found',
   'e.badParams': 'Invalid parameters',
   'e.badTournament': 'Invalid tournament data',

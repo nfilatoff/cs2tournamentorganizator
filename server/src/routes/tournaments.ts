@@ -4,14 +4,14 @@ import { z } from 'zod';
 import { db, tx } from '../db.js';
 import { getSession, requireAdmin } from '../auth.js';
 import {
-  boFn, clearRuntime, commit, getMatchRowByCode, getTournament, loadMatchRows, loadMatches, saveMatches, teamName,
+  boFn, clearRuntime, commit, getMatchRowByCode, getTournament, loadMatches, saveMatches,
   type MatchRow, type TournamentRow,
 } from '../tournamentStore.js';
 import { dispatchAll, dispatchOne, endMatchOnServer, getServer, release, withRcon } from '../dispatcher.js';
-import type { MapRef } from '../arenapro.js';
+import { details, previewDto, renumberSeeds } from '../tournamentDto.js';
 import {
-  buildBracket, champion, forceWinner, minTeams, reportResult, roundFromEnd, undoResult,
-  type BracketId, type Entry, type Format,
+  buildBracket, forceWinner, minTeams, reportResult, roundFromEnd, undoResult,
+  type BracketId, type Format,
 } from '../bracket.js';
 
 const BEST_OF = z.union([z.literal(1), z.literal(3), z.literal(5)]);
@@ -43,60 +43,6 @@ function previewRounds(format: Format, maxTeams: number) {
     }
   }
   return [...seen].map(([key, v]) => ({ key, ...v }));
-}
-
-function entryDto(e: Entry) {
-  if (e.k === 'team') return { type: 'team' as const, id: e.id, name: teamName(e.id) };
-  return { type: e.k };
-}
-
-function details(t: TournamentRow) {
-  const teams = db.prepare(`
-    SELECT tt.team_id, tt.seed, tt.roster, te.name FROM tournament_teams tt JOIN teams te ON te.id = tt.team_id
-    WHERE tt.tournament_id = ? ORDER BY COALESCE(tt.seed, 9999), tt.registered_at
-  `).all(t.id) as unknown as { team_id: number; seed: number | null; roster: string; name: string }[];
-  const maps = db.prepare(`
-    SELECT m.id, m.name, m.workshop_id, m.map_file, m.image_url FROM tournament_maps tm JOIN maps m ON m.id = tm.map_id
-    WHERE tm.tournament_id = ? ORDER BY tm.position
-  `).all(t.id) as unknown as { id: number; name: string; workshop_id: string | null; map_file: string | null; image_url: string | null }[];
-  const ms = loadMatches(t.id);
-  const rows = new Map(loadMatchRows(t.id).map((r) => [r.code, r]));
-  const servers = new Map((db.prepare('SELECT id, name, host, port FROM game_servers').all() as unknown as
-    { id: number; name: string; host: string; port: number }[]).map((s) => [s.id, s]));
-  return {
-    id: t.id, name: t.name, format: t.format, teamSize: t.team_size, maxTeams: t.max_teams,
-    defaultBestOf: t.default_best_of, boConfig: JSON.parse(t.bo_config) as Record<string, number>,
-    grandFinalReset: !!t.grand_final_reset, autoDispatch: !!t.auto_dispatch, status: t.status,
-    champion: t.champion_team_id ? { id: t.champion_team_id, name: teamName(t.champion_team_id) } : null,
-    teams: teams.map((x) => ({ id: x.team_id, name: x.name, seed: x.seed, roster: JSON.parse(x.roster) as number[] })),
-    maps: maps.map((m) => ({ id: m.id, name: m.name, workshopId: m.workshop_id, mapFile: m.map_file, imageUrl: m.image_url })),
-    matches: ms.map((m) => ({
-      code: m.code, bracket: m.bracket, round: m.round, position: m.position,
-      roundFromEnd: roundFromEnd(ms, m),
-      a: entryDto(m.a), b: entryDto(m.b), status: m.status, winner: m.winner,
-      bestOf: m.bestOf, scoreA: m.scoreA, scoreB: m.scoreB, forced: m.forced,
-      ...runtimeDto(rows.get(m.code), servers),
-    })),
-  };
-}
-
-function runtimeDto(r: MatchRow | undefined, servers: Map<number, { id: number; name: string; host: string; port: number }>) {
-  if (!r) return {};
-  const refs = r.maps_json ? (JSON.parse(r.maps_json) as MapRef[]) : [];
-  const played = db.prepare('SELECT map_no, score_a, score_b, winner FROM match_maps WHERE match_id = ? ORDER BY map_no')
-    .all(r.id) as unknown as { map_no: number; score_a: number; score_b: number; winner: 'a' | 'b' | null }[];
-  const server = r.server_id ? servers.get(r.server_id) : undefined;
-  return {
-    matchId: r.id,
-    server: server ?? null,
-    live: !!r.live,
-    paused: !!r.paused,
-    note: r.note,
-    seriesA: r.series_a,
-    seriesB: r.series_b,
-    curMap: r.live ? { no: r.cur_map_no, name: refs[r.cur_map_no]?.name ?? null, scoreA: r.cur_score_a, scoreB: r.cur_score_b } : null,
-    playedMaps: played.map((p) => ({ no: p.map_no, name: refs[p.map_no]?.name ?? null, scoreA: p.score_a, scoreB: p.score_b, winner: p.winner })),
-  };
 }
 
 function setMaps(tid: number, mapIds: number[]): boolean {
@@ -207,7 +153,7 @@ export async function tournamentRoutes(app: FastifyInstance): Promise<void> {
     const body = z.object({ shuffle: z.boolean().default(false) }).safeParse(req.body ?? {});
     const shuffle = body.success ? body.data.shuffle : false;
 
-    const teamIds = (db.prepare('SELECT team_id FROM tournament_teams WHERE tournament_id = ? ORDER BY registered_at, rowid')
+    const teamIds = (db.prepare('SELECT team_id FROM tournament_teams WHERE tournament_id = ? ORDER BY COALESCE(seed, 9999), registered_at, rowid')
       .all(t.id) as unknown as { team_id: number }[]).map((r) => r.team_id);
     if (teamIds.length < minTeams(t.format)) {
       return reply.code(409).send(E('needMinTeams', { n: minTeams(t.format) }));
@@ -304,6 +250,43 @@ export async function tournamentRoutes(app: FastifyInstance): Promise<void> {
       return details(getTournament(t.id)!);
     },
   );
+
+  // --- Рассадка и предпросмотр сетки до старта ---
+  app.get<{ Params: { id: string } }>('/api/tournaments/:id/preview', async (req, reply) => {
+    const t = await requireTournament(req, reply);
+    return t ? previewDto(t) : undefined;
+  });
+
+  app.put<{ Params: { id: string } }>('/api/tournaments/:id/seeding', { preHandler: requireAdmin }, async (req, reply) => {
+    const t = await requireTournament(req, reply);
+    if (!t) return;
+    if (t.status !== 'registration') return reply.code(409).send(E('alreadyStarted'));
+    const body = z.object({ order: z.array(z.number().int()) }).safeParse(req.body);
+    const current = (db.prepare('SELECT team_id FROM tournament_teams WHERE tournament_id = ?').all(t.id) as unknown as { team_id: number }[])
+      .map((r) => r.team_id);
+    if (!body.success || body.data.order.length !== current.length
+      || new Set(body.data.order).size !== current.length || !body.data.order.every((id) => current.includes(id))) {
+      return reply.code(400).send(E('badSeeding'));
+    }
+    const upd = db.prepare('UPDATE tournament_teams SET seed = ? WHERE tournament_id = ? AND team_id = ?');
+    tx(() => body.data.order.forEach((id, i) => upd.run(i + 1, t.id, id)));
+    return details(getTournament(t.id)!);
+  });
+
+  app.post<{ Params: { id: string } }>('/api/tournaments/:id/seeding/shuffle', { preHandler: requireAdmin }, async (req, reply) => {
+    const t = await requireTournament(req, reply);
+    if (!t) return;
+    if (t.status !== 'registration') return reply.code(409).send(E('alreadyStarted'));
+    const ids = (db.prepare('SELECT team_id FROM tournament_teams WHERE tournament_id = ?').all(t.id) as unknown as { team_id: number }[])
+      .map((r) => r.team_id);
+    for (let i = ids.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [ids[i], ids[j]] = [ids[j]!, ids[i]!];
+    }
+    const upd = db.prepare('UPDATE tournament_teams SET seed = ? WHERE tournament_id = ? AND team_id = ?');
+    tx(() => ids.forEach((id, i) => upd.run(i + 1, t.id, id)));
+    return details(getTournament(t.id)!);
+  });
 
   // --- Управление матчем на сервере (админ) ---
   const liveMatch = (req: FastifyRequest<{ Params: { id: string; code: string } }>) => {
@@ -407,8 +390,9 @@ export async function tournamentRoutes(app: FastifyInstance): Promise<void> {
     if (roster.some((p) => taken.has(p))) {
       return reply.code(409).send(E('playerTaken'));
     }
-    db.prepare('INSERT INTO tournament_teams (tournament_id, team_id, roster) VALUES (?, ?, ?)')
-      .run(t.id, team.id, JSON.stringify(roster));
+    db.prepare(`INSERT INTO tournament_teams (tournament_id, team_id, roster, seed)
+      VALUES (?, ?, ?, (SELECT COALESCE(MAX(seed), 0) + 1 FROM tournament_teams WHERE tournament_id = ?))`)
+      .run(t.id, team.id, JSON.stringify(roster), t.id);
     return reply.code(201).send(details(t));
   });
 
@@ -424,6 +408,7 @@ export async function tournamentRoutes(app: FastifyInstance): Promise<void> {
       if (team?.captain_id !== session.userId) return reply.code(403).send(E('onlyCaptainUnregister'));
     }
     db.prepare('DELETE FROM tournament_teams WHERE tournament_id = ? AND team_id = ?').run(t.id, teamId);
+    renumberSeeds(t.id);
     return details(t);
   });
 }
