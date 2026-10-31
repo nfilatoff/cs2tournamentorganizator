@@ -9,7 +9,7 @@ export interface TournamentRow {
   status: 'registration' | 'running' | 'finished'; champion_team_id: number | null;
   stage_mode: 'playoff' | 'groups'; group_format: 'round_robin' | 'swiss' | 'gsl' | null; groups_count: number;
   advance: number; swiss_rounds: number | null; group_best_of: number; has_playoff: number;
-  phase: 'playoff' | 'groups' | 'groups_done'; veto_enabled: number;
+  phase: 'playoff' | 'groups' | 'groups_done'; veto_enabled: number; veto_sides: number;
   tactical_pauses: number; tactical_pause_time: number; tech_pauses: number;
 }
 

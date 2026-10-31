@@ -21,6 +21,7 @@ export function TournamentForm() {
   const [reset, setReset] = useState(false);
   const [autoDispatch, setAutoDispatch] = useState(true);
   const [vetoEnabled, setVetoEnabled] = useState(true);
+  const [vetoSides, setVetoSides] = useState(true);
   const [pauses, setPauses] = useState<PauseLimits>({ tactical: 3, tacticalTime: 30, technical: 0 });
   const [maps, setMaps] = useState<MapItem[]>([]);
   const [picked, setPicked] = useState<number[]>([]);
@@ -70,7 +71,7 @@ export function TournamentForm() {
       const created = await api<TournamentDetails>('/api/tournaments', {
         method: 'POST',
         body: {
-          name, format, teamSize, maxTeams, defaultBestOf: defaultBo, boConfig: cfg, grandFinalReset: reset, autoDispatch, vetoEnabled, pauses, mapIds: picked,
+          name, format, teamSize, maxTeams, defaultBestOf: defaultBo, boConfig: cfg, grandFinalReset: reset, autoDispatch, vetoEnabled, vetoSides, pauses, mapIds: picked,
           stageMode: withGroups ? 'groups' : 'playoff',
           ...(withGroups ? {
             groupFormat, groupsCount: groupsN, advance, groupBestOf: groupBo, hasPlayoff,
@@ -192,6 +193,10 @@ export function TournamentForm() {
         <label style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 }}>
           <input type="checkbox" checked={vetoEnabled} onChange={(e) => setVetoEnabled(e.target.checked)} />
           {t('form.vetoEnabled')}
+        </label>
+        <label style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 }}>
+          <input type="checkbox" checked={vetoSides} disabled={!vetoEnabled} onChange={(e) => setVetoSides(e.target.checked)} />
+          {t('form.vetoSides')}
         </label>
         <p className="muted">{t('form.vetoHint')}</p>
       </div>

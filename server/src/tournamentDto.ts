@@ -109,7 +109,7 @@ export function details(t: TournamentRow) {
     champion: t.champion_team_id ? { id: t.champion_team_id, name: teamName(t.champion_team_id) } : null,
     teams: teams.map((x) => ({ id: x.team_id, name: x.name, seed: x.seed, roster: JSON.parse(x.roster) as number[] })),
     maps: maps.map((m) => ({ id: m.id, name: m.name, workshopId: m.workshop_id, mapFile: m.map_file, imageUrl: mapImageUrl(m) })),
-    vetoEnabled: !!t.veto_enabled,
+    vetoEnabled: !!t.veto_enabled, vetoSides: !!t.veto_sides,
     pauses: { tactical: t.tactical_pauses, tacticalTime: t.tactical_pause_time, technical: t.tech_pauses },
     matches: matchDtos(ms, seeds, rows, servers, t),
     groupConfig: groupConfigDto(t),

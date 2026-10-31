@@ -94,3 +94,20 @@ test('если банов нет (пул равен серии), начинаю�
   const s = newVeto(pool(3), 3);
   assert.deepEqual(nextAction(s), { type: 'pick', team: 'a' });
 });
+
+test('без выбора стороны пики идут сразу дальше и играются на ноже', () => {
+  let s = newVeto(pool(7), 3, false);
+  const rnd = () => 0;
+  s = autoComplete(s, rnd);
+  assert.ok(isDone(s));
+  assert.ok(s.actions.every((a) => a.side === undefined));
+  assert.deepEqual(vetoResult(s).map((r) => r.side), ['knife', 'knife', 'knife']);
+  // после пика следующий ход сразу баны, а не выбор стороны
+  let t = newVeto(pool(7), 3, false);
+  t = applyAction(t, 'a', { mapId: 1 });
+  t = applyAction(t, 'b', { mapId: 2 });
+  t = applyAction(t, 'a', { mapId: 3 });
+  assert.equal(nextAction(t).type, 'pick');
+  t = applyAction(t, 'b', { mapId: 4 });
+  assert.equal(nextAction(t).type, 'ban');
+});

@@ -21,7 +21,8 @@ export interface VetoAction {
   side?: Side;
 }
 
-export interface VetoState { poolIds: number[]; bestOf: number; actions: VetoAction[] }
+// sides: false отключает выбор стороны, тогда пики играются на ноже (в старых сохранённых вето поля нет, это значит true)
+export interface VetoState { poolIds: number[]; bestOf: number; actions: VetoAction[]; sides?: boolean }
 
 export type Next =
   | { type: 'ban' | 'pick' | 'side'; team: Team }
@@ -47,9 +48,15 @@ export function vetoTemplate(poolSize: number, bestOf: number): TemplateStep[] {
   return kinds.map((kind, i) => ({ kind, team: kind === 'decider' ? null : i % 2 === 0 ? 'a' : 'b' }));
 }
 
-export function newVeto(poolIds: number[], bestOf: number): VetoState {
-  return { poolIds: [...poolIds], bestOf, actions: [] };
+export function newVeto(poolIds: number[], bestOf: number, sides = true): VetoState {
+  return { poolIds: [...poolIds], bestOf, actions: [], ...(sides ? {} : { sides: false }) };
 }
+
+const hasSides = (s: VetoState): boolean => s.sides !== false;
+const pendingSide = (s: VetoState): boolean => {
+  const last = s.actions[s.actions.length - 1];
+  return hasSides(s) && !!last && last.kind === 'pick' && !last.side;
+};
 
 export const remaining = (s: VetoState): number[] => {
   const used = new Set(s.actions.map((a) => a.mapId));
@@ -59,7 +66,7 @@ export const remaining = (s: VetoState): number[] => {
 export function nextAction(s: VetoState): Next {
   const tpl = vetoTemplate(s.poolIds.length, s.bestOf);
   const last = s.actions[s.actions.length - 1];
-  if (last && last.kind === 'pick' && !last.side) return { type: 'side', team: other(last.by!) };
+  if (pendingSide(s)) return { type: 'side', team: other(last!.by!) };
   const step = tpl[s.actions.length];
   if (!step) return { type: 'done' };
   if (step.kind === 'decider') return { type: 'done' };
@@ -69,11 +76,9 @@ export function nextAction(s: VetoState): Next {
 // Решающая карта назначается сама, когда осталась одна карта
 function settleDecider(s: VetoState): VetoState {
   const tpl = vetoTemplate(s.poolIds.length, s.bestOf);
-  const last = s.actions[s.actions.length - 1];
-  const pendingSide = !!last && last.kind === 'pick' && !last.side;
   const step = tpl[s.actions.length];
   const left = remaining(s);
-  if (!pendingSide && step?.kind === 'decider' && left.length === 1) {
+  if (!pendingSide(s) && step?.kind === 'decider' && left.length === 1) {
     return { ...s, actions: [...s.actions, { mapId: left[0]!, kind: 'decider', by: null }] };
   }
   return s;
@@ -130,6 +135,10 @@ export function vetoResult(s: VetoState): PlayedMap[] {
     if (a.kind === 'ban') continue;
     if (a.kind === 'decider') {
       out.push({ mapId: a.mapId, side: 'knife', pickedBy: null });
+      continue;
+    }
+    if (!hasSides(s)) {
+      out.push({ mapId: a.mapId, side: 'knife', pickedBy: a.by });
       continue;
     }
     // Сторону выбирал соперник пикнувшей команды: team1 это A, team2 это B

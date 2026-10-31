@@ -13,7 +13,7 @@ export function vetoApplies(t: TournamentRow, row: MatchRow): boolean {
 
 export function loadVeto(t: TournamentRow, row: MatchRow, pool: MapRef[] = tournamentMapPool(t.id)): VetoState {
   if (row.veto_json) return JSON.parse(row.veto_json) as VetoState;
-  return newVeto(pool.map((m) => m.id), row.best_of);
+  return newVeto(pool.map((m) => m.id), row.best_of, !!t.veto_sides);
 }
 
 export function saveVeto(matchId: number, state: VetoState | null): void {

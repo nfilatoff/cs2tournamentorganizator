@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { api, type MatchDetails, type MatchPlayer, type MatchTeam } from '../api';
+import { copyText } from '../clipboard';
 import { useI18n } from '../i18n';
 import { roundLabel } from '../rounds';
 
@@ -10,13 +11,9 @@ function Copy({ text, label }: { text: string; label: string }) {
   const { t } = useI18n();
   const [done, setDone] = useState(false);
   const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setDone(true);
-      setTimeout(() => setDone(false), 1500);
-    } catch {
-      // буфер обмена недоступен (например, не HTTPS): текст можно выделить вручную
-    }
+    if (!(await copyText(text))) return;
+    setDone(true);
+    setTimeout(() => setDone(false), 1500);
   };
   return <button className="ghost" onClick={copy}>{done ? t('home.copied') : label}</button>;
 }

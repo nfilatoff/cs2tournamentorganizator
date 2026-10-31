@@ -79,6 +79,7 @@ export interface TournamentDetails extends Omit<TournamentSummary, 'teamCount'> 
   grandFinalReset: boolean;
   autoDispatch: boolean;
   vetoEnabled: boolean;
+  vetoSides: boolean;
   pauses: PauseLimits;
   groupConfig: GroupConfig;
   groups: GroupsInfo | null;

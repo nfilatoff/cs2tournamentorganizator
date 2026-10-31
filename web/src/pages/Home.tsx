@@ -1,19 +1,16 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api, type HomeDto, type HomeMatch } from '../api';
+import { copyText } from '../clipboard';
 import { useI18n } from '../i18n';
 
 function Copy({ text }: { text: string }) {
   const { t } = useI18n();
   const [done, setDone] = useState(false);
   const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setDone(true);
-      setTimeout(() => setDone(false), 1500);
-    } catch {
-      // буфер обмена недоступен (например, не HTTPS): текст можно выделить вручную
-    }
+    if (!(await copyText(text))) return;
+    setDone(true);
+    setTimeout(() => setDone(false), 1500);
   };
   return <button className="ghost" onClick={copy}>{done ? t('home.copied') : t('home.copy')}</button>;
 }
