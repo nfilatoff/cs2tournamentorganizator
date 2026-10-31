@@ -1,8 +1,9 @@
 import type { FastifyInstance } from 'fastify';
 import { E, encode, errBody } from '../errors.js';
 import { db, tx } from '../db.js';
-import { buildMatchConfig, rosterOf, tokenMatches, type MapRef } from '../arenapro.js';
-import { reportResult } from '../bracket.js';
+import { buildMatchConfig, captainSteamId, rosterOf, tokenMatches, type MapRef } from '../arenapro.js';
+import { forceWinner, reportResult } from '../bracket.js';
+import { forgetLobby } from '../lobby.js';
 import { dispatchAll } from '../dispatcher.js';
 import { applyChanges } from '../groupStage.js';
 import {
@@ -29,6 +30,7 @@ export function handleEvent(ev: ArenaEvent): void {
 
   switch (ev.event) {
     case 'going_live':
+      forgetLobby(row.id);
       db.prepare('UPDATE matches SET live = 1, cur_map_no = ?, cur_score_a = 0, cur_score_b = 0 WHERE id = ?')
         .run(mapNo, row.id);
       break;
@@ -60,8 +62,12 @@ export function handleEvent(ev: ArenaEvent): void {
       const t = getTournament(row.tournament_id);
       if (!t) return;
       const ms = loadMatches(t.id);
+      // Ни одна карта не начиналась: за отведённое время матч не стартовал, и плагин присудил победу по числу игроков
+      const played = db.prepare('SELECT 1 FROM match_maps WHERE match_id = ? LIMIT 1').get(row.id);
+      const walkover = !row.live && !played && s1 !== s2;
       try {
-        reportResult(ms, row.code, s1, s2);
+        if (walkover) forceWinner(ms, row.code, s1 > s2 ? 'a' : 'b');
+        else reportResult(ms, row.code, s1, s2);
       } catch (e) {
         db.prepare('UPDATE matches SET note = ? WHERE id = ?')
           .run(encode(E('noteBadResult', { s1, s2, reason: errBody(e) })), row.id);
@@ -70,8 +76,9 @@ export function handleEvent(ev: ArenaEvent): void {
       tx(() => {
         applyChanges(t, ms);
         clearRuntime(row.id);
-        db.prepare('UPDATE matches SET note = NULL WHERE id = ?').run(row.id);
+        db.prepare('UPDATE matches SET note = NULL, walkover = ? WHERE id = ?').run(walkover ? 1 : 0, row.id);
       });
+      forgetLobby(row.id);
       // Сервер освободился, а победитель мог открыть следующий матч
       void dispatchAll();
       break;
@@ -93,8 +100,8 @@ export async function arenaproRoutes(app: FastifyInstance): Promise<void> {
     return buildMatchConfig({
       matchId: row.id,
       teamSize: t.team_size,
-      teamA: { id: a.id!, name: teamName(a.id!), players: rosterOf(t.id, a.id!) },
-      teamB: { id: b.id!, name: teamName(b.id!), players: rosterOf(t.id, b.id!) },
+      teamA: { id: a.id!, name: teamName(a.id!), players: rosterOf(t.id, a.id!), captain: captainSteamId(t.id, a.id!) },
+      teamB: { id: b.id!, name: teamName(b.id!), players: rosterOf(t.id, b.id!), captain: captainSteamId(t.id, b.id!) },
       maps: JSON.parse(row.maps_json) as MapRef[],
       pauses: { tactical: t.tactical_pauses, tacticalTime: t.tactical_pause_time, technical: t.tech_pauses },
     });

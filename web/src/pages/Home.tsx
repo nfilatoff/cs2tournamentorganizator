@@ -25,7 +25,7 @@ function MyMatch({ m }: { m: HomeMatch }) {
     <div className={`card${mine ? ' mine' : ''}`}>
       <div className="between">
         <h2>{m.team} <span className="muted">vs</span> {m.opponent ?? t('match.tbd')}</h2>
-        <span className="muted">BO{m.bestOf} · {m.code}</span>
+        <span className="muted">BO{m.bestOf} · <Link to={`/tournaments/${m.tournamentId}/matches/${m.code}`}>{m.code}</Link></span>
       </div>
       <p className="muted"><Link to={`/tournaments/${m.tournamentId}`}>{m.tournamentName}</Link></p>
 
@@ -52,6 +52,7 @@ function MyMatch({ m }: { m: HomeMatch }) {
               <span className="muted"> · {m.server.name}</span>
             </p>
           )}
+          <p><Link to={`/tournaments/${m.tournamentId}/matches/${m.code}`}><button>{t('home.openMatch')}</button></Link></p>
         </>
       )}
     </div>

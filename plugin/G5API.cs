@@ -40,6 +40,14 @@ namespace ArenaPro
         [JsonPropertyName("team2")]
         public Get5StatusTeam? Team2 { get; set; } = null;
 
+        // ArenaPro extension: seconds left to ready up (arenapro_time_to_start), null without a limit or outside the warmup.
+        [JsonPropertyName("ready_time_left")]
+        public int? ReadyTimeLeft { get; set; } = null;
+
+        // ArenaPro extension: seconds left of the start countdown in join/captain mode, null while it does not run.
+        [JsonPropertyName("start_countdown")]
+        public int? StartCountdown { get; set; } = null;
+
         [JsonPropertyName("maps")]
         public string[]? Maps { get; set; } = null;
     }
@@ -63,6 +71,14 @@ namespace ArenaPro
 
         [JsonPropertyName("side")]
         public required string Side { get; set; }
+
+        // ArenaPro extension: SteamID64 of the connected players (as counted in connected_clients).
+        [JsonPropertyName("players")]
+        public string[] Players { get; set; } = [];
+
+        // ArenaPro extension: captain mode, whether the captain has typed .ready.
+        [JsonPropertyName("captain_ready")]
+        public bool CaptainReady { get; set; } = false;
     }
 
     public enum Get5GameState : int
@@ -127,6 +143,12 @@ namespace ArenaPro
                 get5Status.Team2 = GetGet5StatusTeam(arenaproTeam2, team2);
             }
 
+            if (GetReadyPhase() == ReadyPhase.Warmup)
+            {
+                if (timeToStart > 0) get5Status.ReadyTimeLeft = Math.Max(0, timeToStart - readyTimeWaitingUsed);
+                get5Status.StartCountdown = joinStartSecondsLeft;
+            }
+
             if (gamestate >= Get5GameState.GoingLive)
             {
                 get5Status.Maps = matchConfig.Maplist.ToArray();
@@ -145,9 +167,12 @@ namespace ArenaPro
         {
             int side = teamSides[team] == "CT" ? (int)CsTeam.CounterTerrorist : (int)CsTeam.Terrorist;
             // Players only, as Get5 counts them (coaches are on the side too).
-            int connectedPlayers = playerData.Values.Count(p => p.IsValid && !p.IsBot && p.TeamNum == side && !team.coach.Contains(p));
+            var connected = playerData.Values.Where(p => p.IsValid && !p.IsBot && p.TeamNum == side && !team.coach.Contains(p)).ToList();
+            int connectedPlayers = connected.Count;
             return new Get5StatusTeam
             {
+                Players = connected.Select(p => p.SteamID.ToString()).ToArray(),
+                CaptainReady = captainReady[team == arenaproTeam1 ? "team1" : "team2"],
                 Name = team.teamName,
                 SeriesScore = team.seriesScore,
                 CurrentMapScore = mapScore,

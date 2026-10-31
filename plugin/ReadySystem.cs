@@ -41,7 +41,14 @@ public partial class ArenaPro
             // Join mode: joining is ready, no .ready needed.
             if (team == (int)CsTeam.Spectator && minReady == 0) return true;
             if (IsTeamForcedReady((CsTeam)team)) return true;
-            return ReadyTimeLogic.IsTeamComplete(GetJoinedPlayerCount(team), minReady);
+            bool complete = ReadyTimeLogic.IsTeamComplete(GetJoinedPlayerCount(team), minReady);
+            // Captain mode: a complete team also needs its captain's .ready.
+            if (complete && IsCaptainReadyMode() && team != (int)CsTeam.Spectator)
+            {
+                string? key = TeamKeyOfSide(team);
+                return key != null && captainReady[key];
+            }
+            return complete;
         }
 
         if (team == (int)CsTeam.Spectator && minReady == 0)

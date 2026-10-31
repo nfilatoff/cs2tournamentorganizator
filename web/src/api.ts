@@ -66,6 +66,7 @@ export interface MatchDto {
   live?: boolean;
   paused?: boolean;
   note?: string | null;
+  walkover?: boolean;
   seriesA?: number;
   seriesB?: number;
   curMap?: { no: number; name: string | null; scoreA: number; scoreB: number } | null;
@@ -145,6 +146,37 @@ export interface VetoDto {
   you: 'a' | 'b' | 'admin' | null;
   canAct: boolean;
   result: { mapId: number; name: string; side: string; pickedBy: 'a' | 'b' | null }[] | null;
+}
+
+export type MatchPhase = 'waiting' | 'veto' | 'queued' | 'warmup' | 'live' | 'done' | 'skipped';
+
+export interface MatchPlayer {
+  id: number; name: string; steamId: string; avatarUrl: string | null; captain: boolean;
+  // null: неизвестно (матч не на сервере или уже идёт)
+  online: boolean | null;
+}
+
+export interface MatchTeam { id: number; name: string; seed: number | null; players: MatchPlayer[] }
+
+export interface MatchDetails {
+  tournament: { id: number; name: string; format: 'single' | 'double'; teamSize: number; status: string };
+  code: string; bracket: 'W' | 'L' | 'GF' | 'G'; stage: 'group' | 'playoff'; groupNo: number | null; roundFromEnd: number;
+  bestOf: number; status: MatchDto['status']; phase: MatchPhase;
+  winner: 'a' | 'b' | null; scoreA: number; scoreB: number; forced: boolean; walkover: boolean;
+  series: { a: number; b: number };
+  paused: boolean;
+  teams: { a: MatchTeam | null; b: MatchTeam | null };
+  maps: { no: number; name: string; imageUrl: string | null; side: string; score: { a: number; b: number } | null; winner: 'a' | 'b' | null; current: boolean }[];
+  veto: { done: boolean; step: number; total: number } | null;
+  server: { name: string; host: string; port: number } | null;
+  lobby: {
+    deadline: number | null; startsAt: number | null; captainReady: { a: boolean; b: boolean };
+    known: boolean; joinTime: number; startDelay: number;
+  } | null;
+  now: number;
+  you: { side: 'a' | 'b' | null; captain: boolean } | null;
+  admin: boolean;
+  note: { error: string; params?: Record<string, unknown> } | null;
 }
 
 export interface HomeTournament {

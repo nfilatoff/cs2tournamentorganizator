@@ -30,6 +30,10 @@ namespace ArenaPro
 
         [JsonPropertyName("seriesscore")]
         public int seriesScore = 0;
+
+        // SteamID64 of the player who types .ready for the team in captain mode, "" if not set.
+        [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+        public string captainSteamId = "";
     }
 
     public partial class ArenaPro

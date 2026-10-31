@@ -66,6 +66,11 @@ namespace ArenaPro
         {
             if (player == null) return;
             Log($"[!ready command] Sent by: {player.UserId} readyAvailable: {readyAvailable} matchStarted: {matchStarted}");
+            if (IsCaptainReadyMode() && readyAvailable && !matchStarted)
+            {
+                HandleCaptainReady(player, true);
+                return;
+            }
             if (IsJoinReadyMode() && readyAvailable && !matchStarted)
             {
                 PrintToPlayerChat(player, Localizer["arenapro.ready.joinmode"]);
@@ -102,6 +107,11 @@ namespace ArenaPro
         {
             if (player == null) return;
             Log($"[!unready command] {player.UserId}");
+            if (IsCaptainReadyMode() && readyAvailable && !matchStarted)
+            {
+                HandleCaptainReady(player, false);
+                return;
+            }
             if (IsJoinReadyMode() && readyAvailable && !matchStarted)
             {
                 PrintToPlayerChat(player, Localizer["arenapro.ready.joinmode"]);

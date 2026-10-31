@@ -18,11 +18,13 @@ import { arenaproRoutes } from './routes/arenapro.js';
 import { adminTeamRoutes } from './routes/adminTeams.js';
 import { vetoRoutes } from './routes/veto.js';
 import { homeRoutes } from './routes/home.js';
+import { matchRoutes } from './routes/match.js';
 import { profileRoutes } from './routes/profile.js';
 import { mapImageRoutes } from './mapImages.js';
 import { seedDefaultMapsIfEmpty } from './defaultMaps.js';
 import { dispatchAll, startDispatchTimer } from './dispatcher.js';
 import { autostartServers } from './serverProcess.js';
+import { startLobbyTimer } from './lobby.js';
 
 async function ensureAdmin(): Promise<void> {
   const { n } = db.prepare('SELECT COUNT(*) AS n FROM admins').get() as { n: number };
@@ -48,6 +50,7 @@ await app.register(tournamentRoutes);
 await app.register(arenaproRoutes);
 await app.register(vetoRoutes);
 await app.register(homeRoutes);
+await app.register(matchRoutes);
 await app.register(profileRoutes);
 
 app.get('/api/health', async () => ({ ok: true }));
@@ -66,4 +69,5 @@ await ensureAdmin();
 seedDefaultMapsIfEmpty();
 await app.listen({ port: config.port, host: config.host });
 startDispatchTimer();
+startLobbyTimer();
 void autostartServers((msg) => app.log.info(msg)).then(() => dispatchAll());

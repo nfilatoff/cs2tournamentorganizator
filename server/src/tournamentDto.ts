@@ -36,6 +36,7 @@ function runtimeDto(r: MatchRow | undefined, servers: Map<number, ServerInfo>, v
     live: !!r.live,
     paused: !!r.paused,
     note: r.note,
+    walkover: !!r.walkover,
     seriesA: r.series_a,
     seriesB: r.series_b,
     curMap: r.live ? { no: r.cur_map_no, name: refs[r.cur_map_no]?.name ?? null, scoreA: r.cur_score_a, scoreB: r.cur_score_b } : null,

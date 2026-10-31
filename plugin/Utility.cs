@@ -160,6 +160,17 @@ namespace ArenaPro
                 if (joinStartSecondsLeft != null) return;
                 int team1Side = GetTeamSideNumber("team1");
                 int team2Side = GetTeamSideNumber("team2");
+                bool team1Complete = ReadyTimeLogic.IsTeamComplete(GetJoinedPlayerCount(team1Side), GetTeamMinReady(team1Side));
+                bool team2Complete = ReadyTimeLogic.IsTeamComplete(GetJoinedPlayerCount(team2Side), GetTeamMinReady(team2Side));
+                if (IsCaptainReadyMode() && team1Complete && team2Complete)
+                {
+                    // Everyone is here: remind the captains who still have to type .ready.
+                    foreach (var (key, team) in new[] { ("team1", arenaproTeam1), ("team2", arenaproTeam2) })
+                    {
+                        if (!captainReady[key]) PrintToAllChat(Localizer["arenapro.ready.captainmustready", team.teamName]);
+                    }
+                    return;
+                }
                 PrintToAllChat(Localizer["arenapro.ready.waitingforplayers",
                     arenaproTeam1.teamName, GetJoinedPlayerCount(team1Side), GetTeamMinReady(team1Side),
                     arenaproTeam2.teamName, GetJoinedPlayerCount(team2Side), GetTeamMinReady(team2Side)]);

@@ -58,12 +58,13 @@ export function VetoPage() {
 
   return (
     <>
-      <p><Link to={`/tournaments/${id}`}>← {t('veto.back')}</Link></p>
+      <p><Link to={`/tournaments/${id}`}>← {t('veto.back')}</Link> · <Link to={`/tournaments/${id}/matches/${code}`}>{t('mp.open')}</Link></p>
       <h1>{teamName('a')} <span className="muted">vs</span> {teamName('b')}</h1>
       <p className="muted">BO{v.bestOf} · {t('veto.title')} · {t('veto.firstNote', { team: teamName('a') })}</p>
 
       <div className={`card vetobanner${v.canAct ? ' mine' : ''}`}>
         <b>{banner}</b>
+        {v.status === 'done' && <p style={{ marginBottom: 0 }}><Link className="btn" to={`/tournaments/${id}/matches/${code}`}>{t('mp.open')}</Link></p>}
         {v.locked && v.status !== 'done' && <span className="muted"> · {t('veto.locked')}</span>}
         {v.next.type === 'side' && v.canAct && !v.locked && (
           <p style={{ marginBottom: 0 }}>

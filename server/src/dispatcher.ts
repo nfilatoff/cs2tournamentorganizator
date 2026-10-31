@@ -59,7 +59,8 @@ function reserve(tid: number, row: MatchRow, serverId: number, mapsJson: string)
     if (!m || m.status !== 'ready') return false;
     m.status = 'live';
     saveMatches(tid, ms);
-    db.prepare('UPDATE matches SET server_id = ?, maps_json = ?, note = NULL WHERE id = ?').run(serverId, mapsJson, row.id);
+    db.prepare('UPDATE matches SET server_id = ?, maps_json = ?, note = NULL, dispatched_at = ?, walkover = 0 WHERE id = ?')
+      .run(serverId, mapsJson, Date.now(), row.id);
     return true;
   });
 }

@@ -53,7 +53,7 @@ namespace ArenaPro
                 ["arenapro_remote_backup_header_value"] = Text(() => backupUploadHeaderValue, v => backupUploadHeaderValue = v),
                 ["arenapro_time_to_start"] = Int(() => timeToStart, v => timeToStart = Math.Max(0, v)),
                 ["arenapro_time_to_start_veto"] = Int(() => timeToStartVeto, v => timeToStartVeto = Math.Max(0, v)),
-                ["arenapro_ready_mode"] = Int(() => readyMode, v => readyMode = v == 1 ? 1 : 0),
+                ["arenapro_ready_mode"] = Int(() => readyMode, v => readyMode = v >= 0 && v <= 2 ? v : 0),
                 ["arenapro_join_start_delay"] = Int(() => joinStartDelay, v => joinStartDelay = Math.Max(0, v)),
                 ["arenapro_max_tech_pauses"] = Int(() => maxTechPauses, v => maxTechPauses = Math.Max(0, v)),
                 ["arenapro_tech_pause_time"] = Int(() => techPauseTime, v => techPauseTime = Math.Max(0, v)),

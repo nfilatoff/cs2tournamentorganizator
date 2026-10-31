@@ -313,6 +313,9 @@ namespace ArenaPro
             arenaproTeam2.teamName = RemoveSpecialCharacters(team2["name"]!.ToString());
             arenaproTeam1.teamPlayers = MatchConfigJson.NormalizeRoster(team1["players"]);
             arenaproTeam2.teamPlayers = MatchConfigJson.NormalizeRoster(team2["players"]);
+            // Who readies the team in captain mode (arenapro_ready_mode 2); optional.
+            arenaproTeam1.captainSteamId = team1["captain"]?.ToString() ?? "";
+            arenaproTeam2.captainSteamId = team2["captain"]?.ToString() ?? "";
 
             // The previous match's veto must not decide who starts or picks sides in this one.
             lastVetoTeam = CsTeam.None;
@@ -452,6 +455,7 @@ namespace ArenaPro
                 {CsTeam.CounterTerrorist, false},
                 {CsTeam.Spectator, false}
             };
+            captainReady["team1"] = captainReady["team2"] = false;
         }
 
         private void UnpauseIfPaused()

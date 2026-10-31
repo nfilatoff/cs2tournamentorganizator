@@ -38,6 +38,16 @@ namespace ArenaPro
             return 0;
         }
 
+        // Captain mode (arenapro_ready_mode 2): when the time runs out the team with more joined players wins. With as many players
+        // on both sides (none at all included) a ready team beats one that is not, otherwise coinFlip (1 or 2) decides.
+        // There is always a winner, so a no-show cannot stall the bracket.
+        public static int ForfeitWinnerByPlayers(int joined1, int joined2, bool team1Ready, bool team2Ready, int coinFlip)
+        {
+            if (joined1 != joined2) return joined1 > joined2 ? 1 : 2;
+            if (team1Ready != team2Ready) return team1Ready ? 1 : 2;
+            return coinFlip == 2 ? 2 : 1;
+        }
+
         // Get5's reminders: every minute while 5 minutes or more are left, every 30 seconds below that, and at 10 seconds.
         public static bool ShouldWarn(int timeLeft)
         {

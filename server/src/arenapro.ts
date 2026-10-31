@@ -48,6 +48,22 @@ export function pickMaps(pool: MapRef[], bestOf: number): MapRef[] {
 
 interface RosterPlayer { steamId: string; name: string }
 
+// Сколько секунд у игроков есть, чтобы зайти на сервер и начать матч. Потом побеждает команда, у которой
+// больше игроков на сервере (поровну: случайная). См. arenapro_ready_mode 2 в плагине.
+export const JOIN_TIME_S = 600;
+// Обратный отсчёт после .ready обоих капитанов до старта матча
+export const START_DELAY_S = 10;
+
+// SteamID капитана, если он играет в этом составе: он пишет .ready за команду
+export function captainSteamId(tid: number, teamId: number): string | undefined {
+  const tt = db.prepare('SELECT roster FROM tournament_teams WHERE tournament_id = ? AND team_id = ?')
+    .get(tid, teamId) as { roster: string } | undefined;
+  const cap = db.prepare('SELECT p.id, p.steam_id FROM teams t JOIN players p ON p.id = t.captain_id WHERE t.id = ?')
+    .get(teamId) as { id: number; steam_id: string } | undefined;
+  if (!tt || !cap || !(JSON.parse(tt.roster) as number[]).includes(cap.id)) return undefined;
+  return cap.steam_id;
+}
+
 export function rosterOf(tid: number, teamId: number): RosterPlayer[] {
   const tt = db.prepare('SELECT roster FROM tournament_teams WHERE tournament_id = ? AND team_id = ?')
     .get(tid, teamId) as { roster: string } | undefined;
@@ -65,8 +81,8 @@ const clean = (s: string, max = 40) => s.replace(/["';\\\r\n\t]/g, '').trim().sl
 export interface MatchConfigInput {
   matchId: number;
   teamSize: number;
-  teamA: { id: number; name: string; players: RosterPlayer[] };
-  teamB: { id: number; name: string; players: RosterPlayer[] };
+  teamA: { id: number; name: string; players: RosterPlayer[]; captain?: string };
+  teamB: { id: number; name: string; players: RosterPlayer[]; captain?: string };
   maps: MapRef[];
   pauses: { tactical: number; tacticalTime: number; technical: number };
 }
@@ -87,10 +103,13 @@ function pauseCvars(p: MatchConfigInput['pauses']): Record<string, string> {
 
 export function buildMatchConfig(i: MatchConfigInput) {
   const players = (list: RosterPlayer[]) => Object.fromEntries(list.map((p) => [p.steamId, clean(p.name)]));
+  const team = (x: MatchConfigInput['teamA']) => ({
+    id: String(x.id), name: clean(x.name), players: players(x.players), ...(x.captain ? { captain: x.captain } : {}),
+  });
   return {
     matchid: i.matchId,
-    team1: { id: String(i.teamA.id), name: clean(i.teamA.name), players: players(i.teamA.players) },
-    team2: { id: String(i.teamB.id), name: clean(i.teamB.name), players: players(i.teamB.players) },
+    team1: team(i.teamA),
+    team2: team(i.teamB),
     num_maps: i.maps.length,
     maplist: i.maps.map((m) => m.ref),
     map_sides: i.maps.map((m) => m.side ?? 'knife'),
@@ -101,6 +120,11 @@ export function buildMatchConfig(i: MatchConfigInput) {
     min_players_to_ready: i.teamSize,
     cvars: {
       ...pauseCvars(i.pauses),
+      // Все игроки зашли и оба капитана написали .ready: отсчёт START_DELAY_S и старт.
+      // Через JOIN_TIME_S без старта побеждает команда, у которой больше игроков на сервере.
+      arenapro_ready_mode: '2',
+      arenapro_join_start_delay: String(START_DELAY_S),
+      arenapro_time_to_start: String(JOIN_TIME_S),
       arenapro_remote_log_url: `${config.publicUrl}/api/arenapro/events`,
       arenapro_remote_log_header_key: 'Authorization',
       arenapro_remote_log_header_value: `Bearer ${eventToken()}`,

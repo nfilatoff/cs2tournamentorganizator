@@ -36,7 +36,10 @@ export function MatchCard({ m, actions }: { m: MatchDto; actions?: MatchActions 
   const inPlay = m.status === 'ready' || m.status === 'live';
   return (
     <div className={`match ${m.status}`}>
-      <div className="mhead"><span>{m.code}</span><span>{m.forced ? t('match.byAdmin') : `BO${m.bestOf}`}</span></div>
+      <div className="mhead">
+        {m.matchId !== undefined && id ? <Link to={`/tournaments/${id}/matches/${m.code}`}>{m.code}</Link> : <span>{m.code}</span>}
+        <span>{m.walkover ? t('mp.walkoverShort') : m.forced ? t('match.byAdmin') : `BO${m.bestOf}`}</span>
+      </div>
       <Slot entry={m.a} score={m.status === 'live' ? m.seriesA ?? 0 : m.scoreA} won={m.winner === 'a' && m.status === 'done'} />
       <Slot entry={m.b} score={m.status === 'live' ? m.seriesB ?? 0 : m.scoreB} won={m.winner === 'b' && m.status === 'done'} />
       {m.veto && (

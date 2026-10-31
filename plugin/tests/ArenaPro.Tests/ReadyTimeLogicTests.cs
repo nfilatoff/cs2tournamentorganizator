@@ -21,6 +21,18 @@ public class ReadyTimeLogicTests
     public void ForfeitWinner(bool team1, bool team2, int expected) => Assert.Equal(expected, ReadyTimeLogic.ForfeitWinner(team1, team2));
 
     [Theory]
+    [InlineData(2, 1, false, false, 2, 1)] // more players wins, whatever the coin says
+    [InlineData(0, 1, false, false, 1, 2)]
+    [InlineData(1, 2, true, false, 1, 2)]  // player count comes before ready
+    [InlineData(2, 2, false, true, 1, 2)]  // same count: the ready team wins
+    [InlineData(2, 2, true, false, 2, 1)]
+    [InlineData(0, 0, false, false, 1, 1)] // nobody joined: the coin decides
+    [InlineData(0, 0, false, false, 2, 2)]
+    [InlineData(1, 1, true, true, 2, 2)]
+    public void ForfeitWinnerByPlayers(int joined1, int joined2, bool ready1, bool ready2, int coin, int expected) =>
+        Assert.Equal(expected, ReadyTimeLogic.ForfeitWinnerByPlayers(joined1, joined2, ready1, ready2, coin));
+
+    [Theory]
     [InlineData(600, true)]
     [InlineData(540, true)]
     [InlineData(300, true)]
