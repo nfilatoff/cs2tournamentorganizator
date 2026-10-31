@@ -54,7 +54,7 @@ export function App() {
       </header>
       <main>
         <Routes>
-          <Route path="/" element={<Home me={me} />} />
+          <Route path="/" element={<Home />} />
           <Route path="/tournaments" element={<Tournaments me={me} />} />
           <Route path="/tournaments/new" element={me.kind === 'admin' ? <TournamentForm /> : <Navigate to="/login" />} />
           <Route path="/tournaments/:id" element={<TournamentView me={me} />} />

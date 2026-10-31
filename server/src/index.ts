@@ -17,6 +17,7 @@ import { tournamentRoutes } from './routes/tournaments.js';
 import { arenaproRoutes } from './routes/arenapro.js';
 import { adminTeamRoutes } from './routes/adminTeams.js';
 import { vetoRoutes } from './routes/veto.js';
+import { homeRoutes } from './routes/home.js';
 import { dispatchAll, startDispatchTimer } from './dispatcher.js';
 
 async function ensureAdmin(): Promise<void> {
@@ -41,6 +42,7 @@ await app.register(adminTeamRoutes);
 await app.register(tournamentRoutes);
 await app.register(arenaproRoutes);
 await app.register(vetoRoutes);
+await app.register(homeRoutes);
 
 app.get('/api/health', async () => ({ ok: true }));
 

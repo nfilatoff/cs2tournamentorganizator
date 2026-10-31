@@ -128,3 +128,47 @@ export interface VetoDto {
   canAct: boolean;
   result: { mapId: number; name: string; side: string; pickedBy: 'a' | 'b' | null }[] | null;
 }
+
+export interface HomeTournament {
+  id: number; name: string; format: 'single' | 'double'; teamSize: number; maxTeams: number;
+  status: 'registration' | 'running' | 'finished'; teamCount: number; stageMode: string;
+}
+
+export interface HomeMatch {
+  tournamentId: number; tournamentName: string; code: string; stage: string; bestOf: number;
+  team: string; opponent: string | null; side: 'a' | 'b';
+  state: 'live' | 'veto' | 'queued' | 'waiting';
+  veto?: { done: boolean; step: number; total: number; yourTurn: boolean } | null;
+  server?: { id: number; name: string; host: string; port: number } | null;
+  started?: boolean; paused?: boolean; map?: string | null; score?: { a: number; b: number } | null;
+}
+
+type ErrObj = { error: string; params?: Record<string, unknown> } | null;
+
+export type AttentionItem =
+  | { type: 'veto'; tournamentId: number; tournamentName: string; code: string; a: string | null; b: string | null; step: number; total: number; count: number }
+  | { type: 'queued'; tournamentId: number; tournamentName: string; code: string; a: string | null; b: string | null; reason: 'manual' | 'noServer'; count: number }
+  | { type: 'note'; tournamentId: number; tournamentName: string; code: string; a: string | null; b: string | null; note: ErrObj }
+  | { type: 'paused'; tournamentId: number; tournamentName: string; code: string; a: string | null; b: string | null }
+  | { type: 'playoff'; tournamentId: number; tournamentName: string }
+  | { type: 'serverError'; server: string; error: ErrObj };
+
+export type HomeDto =
+  | { kind: 'guest'; tournaments: HomeTournament[] }
+  | {
+    kind: 'player'; tournaments: HomeTournament[];
+    player: {
+      teams: { id: number; name: string; captain: boolean }[];
+      registered: { tournamentId: number; tournamentName: string; teamName: string }[];
+      matches: HomeMatch[];
+      open: { tournamentId: number; tournamentName: string; teams: { id: number; name: string }[] }[];
+    };
+  }
+  | {
+    kind: 'admin'; tournaments: HomeTournament[];
+    admin: {
+      servers: { total: number; free: number; busy: number; list: { id: number; name: string; address: string; state: 'free' | 'busy' | 'problem'; match: string | null }[] };
+      attention: AttentionItem[];
+      running: { id: number; name: string; total: number; done: number; live: number; phase: string; stageMode: string }[];
+    };
+  };
