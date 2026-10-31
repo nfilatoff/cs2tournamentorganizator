@@ -96,9 +96,9 @@ try {
     Invoke-Native $git @('-C', $cloneSource, '-c', 'user.name=Installer Test', '-c', 'user.email=installer@example.invalid', '-c', 'commit.gpgsign=false', '-c', 'core.hooksPath=NUL', 'commit', '--quiet', '-m', 'Test fixture')
     Invoke-Native $git @('-C', $cloneSource, 'tag', 'test-version')
     $sourceUrl = ([uri]$cloneSource).AbsoluteUri
-    Clone-Project $git $sourceUrl '' (Join-Path $fixture 'clone default with spaces')
-    Clone-Project $git $sourceUrl 'main' (Join-Path $fixture 'clone branch')
-    Clone-Project $git $sourceUrl 'test-version' (Join-Path $fixture 'clone tag')
+    Copy-Project $git $sourceUrl '' (Join-Path $fixture 'clone default with spaces')
+    Copy-Project $git $sourceUrl 'main' (Join-Path $fixture 'clone branch')
+    Copy-Project $git $sourceUrl 'test-version' (Join-Path $fixture 'clone tag')
     Write-Host 'PASS: actual git clone into selected folders, default branch, explicit branch and tag.'
 
     if ((Get-Command node.exe -ErrorAction SilentlyContinue) -and (Test-Path -LiteralPath (Join-Path $root 'server\dist\auth.js'))) {

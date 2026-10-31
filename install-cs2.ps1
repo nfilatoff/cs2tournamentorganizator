@@ -23,6 +23,7 @@ param(
     [ValidateRange(1, 65535)][int]$TvPort = 27020,
     [ValidateRange(120, 4096)][int]$RequiredFreeGB = 120,
     [switch]$SkipFirewall,
+    [switch]$UpdateGame,
     [switch]$CheckOnly
 )
 
@@ -184,7 +185,7 @@ function Get-InstallDirectory([string]$Requested, [string]$GameDrive, [switch]$N
     return $Requested
 }
 
-function Clone-Project([string]$GitExe, [string]$Url, [string]$Branch, [string]$Destination) {
+function Copy-Project([string]$GitExe, [string]$Url, [string]$Branch, [string]$Destination) {
     $cloneArgs = @('clone', '--depth', '1')
     if ($Branch) { $cloneArgs += @('--branch', $Branch) }
     $cloneArgs += @('--', $Url, $Destination)
@@ -261,6 +262,49 @@ Write-Host 'Started in the background. Logs: logs directory. Stop node.exe / ded
     $Settings | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $Root 'installation.json') -Encoding UTF8
 }
 
+function Get-NodeVersionOk([string]$NodeExe) {
+    if (-not (Test-Path -LiteralPath $NodeExe -PathType Leaf)) { return $false }
+    try { return ((& $NodeExe --version) -match '^v24\.') } catch { return $false }
+}
+
+function Get-DotnetOk([string]$DotnetExe) {
+    if (-not (Test-Path -LiteralPath $DotnetExe -PathType Leaf)) { return $false }
+    try { return ((& $DotnetExe --version) -match '^10\.') } catch { return $false }
+}
+
+function Test-VcRuntime {
+    $entry = Get-ItemProperty -LiteralPath 'HKLM:\SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\X64' -ErrorAction SilentlyContinue
+    return [bool]($entry -and $entry.PSObject.Properties['Installed'] -and $entry.Installed -eq 1)
+}
+
+function Test-Cs2ServerInstalled([string]$ServerRoot) {
+    if (-not (Test-Path -LiteralPath (Join-Path $ServerRoot 'game\bin\win64\cs2.exe') -PathType Leaf)) { return $false }
+    $manifest = Join-Path $ServerRoot 'steamapps\appmanifest_730.acf'
+    if (-not (Test-Path -LiteralPath $manifest)) { return $false }
+    # StateFlags 4 = fully installed; anything else means an interrupted or pending update.
+    return ((Get-Content -LiteralPath $manifest -Raw) -match '"StateFlags"\s+"4"')
+}
+
+function Test-MetamodInstalled([string]$GameDir) {
+    return (Test-Path -LiteralPath (Join-Path $GameDir 'addons\metamod') -PathType Container) -and (Test-Path -LiteralPath (Join-Path $GameDir 'addons\metamod.vdf') -PathType Leaf)
+}
+
+function Test-CssInstalled([string]$GameDir) {
+    $css = Join-Path $GameDir 'addons\counterstrikesharp'
+    return (Test-Path -LiteralPath (Join-Path $css 'bin\win64\counterstrikesharp.dll') -PathType Leaf) -and (Test-Path -LiteralPath (Join-Path $css 'dotnet') -PathType Container)
+}
+
+function Test-FirewallRule([string]$DisplayName) {
+    return [bool](Get-NetFirewallRule -DisplayName $DisplayName -ErrorAction SilentlyContinue)
+}
+
+function Remove-InsideRoot([string]$Root, [string]$Path) {
+    # Only ever delete leftovers of an interrupted step, and only inside the installation folder.
+    $full = [IO.Path]::GetFullPath($Path)
+    if (-not $full.StartsWith($Root + '\', [StringComparison]::OrdinalIgnoreCase)) { throw "Unsafe cleanup path: $full" }
+    if (Test-Path -LiteralPath $full) { Remove-Item -LiteralPath $full -Recurse -Force }
+}
+
 $savedEnvironment = @{}
 $transcribing = $false
 try {
@@ -280,15 +324,77 @@ try {
     if ($InstallRoot -ieq $Cs2Path -or $InstallRoot.StartsWith($Cs2Path + '\', [StringComparison]::OrdinalIgnoreCase) -or $Cs2Path.StartsWith($InstallRoot + '\', [StringComparison]::OrdinalIgnoreCase)) {
         throw 'The server directory must be separate from the installed Steam game.'
     }
+    # An existing folder is accepted only if it is an earlier run of this installer (resume/repair mode).
+    $existing = $false
     if (Test-Path -LiteralPath $InstallRoot) {
-        if (-not (Test-Path -LiteralPath $InstallRoot -PathType Container) -or @(Get-ChildItem -LiteralPath $InstallRoot -Force).Count) {
-            throw "Installation directory is not empty: $InstallRoot. Choose a new/empty directory; existing files will not be overwritten."
+        if (-not (Test-Path -LiteralPath $InstallRoot -PathType Container)) { throw "Installation path is a file: $InstallRoot" }
+        if (@(Get-ChildItem -LiteralPath $InstallRoot -Force).Count) {
+            $isOurs = (Test-Path -LiteralPath (Join-Path $InstallRoot 'logs\install.log')) -or (Test-Path -LiteralPath (Join-Path $InstallRoot 'installation.json'))
+            if (-not $isOurs) {
+                throw "Installation directory is not empty and is not a previous installation of this installer: $InstallRoot. Choose a new/empty directory."
+            }
+            $existing = $true
         }
     }
-    Assert-FreeSpace $driveRoot (Get-RequiredBytes $Cs2Path $RequiredFreeGB)
+
+    $downloads = Join-Path $InstallRoot 'downloads'
+    $panelRoot = Join-Path $InstallRoot 'panel'
+    $gitRoot = Join-Path $InstallRoot 'tools\git'
+    $gitExe = Join-Path $gitRoot 'cmd\git.exe'
+    $nodeRoot = Join-Path $InstallRoot 'tools\node'
+    $nodeExe = Join-Path $nodeRoot 'node.exe'
+    $npm = Join-Path $nodeRoot 'npm.cmd'
+    $dotnetRoot = Join-Path $InstallRoot 'tools\dotnet'
+    $dotnetExe = Join-Path $dotnetRoot 'dotnet.exe'
+    $steamRoot = Join-Path $InstallRoot 'tools\steamcmd'
+    $serverRoot = Join-Path $InstallRoot 'cs2'
+    $gameDir = Join-Path $serverRoot 'game\csgo'
+    $settingsPath = Join-Path $InstallRoot 'installation.json'
+    $dbPath = Join-Path $InstallRoot 'data\app.db'
+    $credentialsPath = Join-Path $InstallRoot 'credentials.txt'
+    $serverCfg = Join-Path $gameDir 'cfg\arenapro-server.cfg'
+
+    # Ports and address of an existing installation win over defaults (they are already in the DB/launchers).
+    if ($existing -and (Test-Path -LiteralPath $settingsPath)) {
+        $saved = Get-Content -LiteralPath $settingsPath -Raw | ConvertFrom-Json
+        $requested = @{ ServerAddress = $ServerAddress; ServerPort = $ServerPort; PanelPort = $PanelPort; TvPort = $TvPort }
+        foreach ($name in @($requested.Keys)) {
+            if ($PSBoundParameters.ContainsKey($name) -and [string]$requested[$name] -ne [string]$saved.$name) {
+                Write-Warning "$name differs from installation.json ($($saved.$name)); changing it on an existing installation is not supported. Using the saved value."
+            }
+        }
+        $ServerAddress = [string]$saved.ServerAddress; $ServerPort = [int]$saved.ServerPort; $PanelPort = [int]$saved.PanelPort; $TvPort = [int]$saved.TvPort
+    }
+
+    # What is already in place (read-only).
+    $state = [ordered]@{
+        'Git'                = (Test-Path -LiteralPath $gitExe -PathType Leaf)
+        'Project clone'      = (Test-Path -LiteralPath (Join-Path $panelRoot 'package.json') -PathType Leaf)
+        'Node.js 24'         = (Get-NodeVersionOk $nodeExe)
+        '.NET SDK 10'        = (Get-DotnetOk $dotnetExe)
+        'VC++ runtime'       = (Test-VcRuntime)
+        'SteamCMD'           = (Test-Path -LiteralPath (Join-Path $steamRoot 'steamcmd.exe') -PathType Leaf)
+        'CS2 server'         = (Test-Cs2ServerInstalled $serverRoot)
+        'Metamod'            = (Test-Path -LiteralPath $gameDir) -and (Test-MetamodInstalled $gameDir)
+        'CounterStrikeSharp' = (Test-Path -LiteralPath $gameDir) -and (Test-CssInstalled $gameDir)
+        'Panel build'        = (Test-Path -LiteralPath (Join-Path $panelRoot 'server\dist\index.js')) -and (Test-Path -LiteralPath (Join-Path $panelRoot 'web\dist') -PathType Container) -and (Test-Path -LiteralPath (Join-Path $panelRoot 'node_modules') -PathType Container)
+        'ArenaPro plugin'    = (Test-Path -LiteralPath (Join-Path $gameDir 'addons\counterstrikesharp\plugins\ArenaPro\ArenaPro.dll') -PathType Leaf)
+        'Server config'      = (Test-Path -LiteralPath $serverCfg -PathType Leaf)
+        'Panel database'     = (Test-Path -LiteralPath $dbPath -PathType Leaf)
+        'Launchers'          = @('start-server.ps1', 'start-panel.ps1', 'start-all.ps1', 'installation.json' | Where-Object { -not (Test-Path -LiteralPath (Join-Path $InstallRoot $_)) }).Count -eq 0
+    }
+    if ($existing) {
+        Write-Host 'Existing installation found; status of components:'
+        foreach ($key in $state.Keys) { Write-Host ('  {0,-20} {1}' -f $key, $(if ($state[$key]) { 'OK' } else { 'MISSING - will be installed' })) }
+    }
+
+    # Free space matters only while the server itself still has to be downloaded.
+    if (-not $state['CS2 server'] -or $UpdateGame) {
+        Assert-FreeSpace $driveRoot (Get-RequiredBytes $Cs2Path $RequiredFreeGB)
+    }
     # VC++ setup also needs space on the Windows volume.
     $windowsDrive = [IO.Path]::GetPathRoot($env:SystemRoot)
-    if ($windowsDrive -ine $driveRoot) { Assert-FreeSpace $windowsDrive (2GB) }
+    if (-not $state['VC++ runtime'] -and $windowsDrive -ine $driveRoot) { Assert-FreeSpace $windowsDrive (2GB) }
     if (@($ServerPort, $PanelPort, $TvPort | Select-Object -Unique).Count -ne 3) { throw 'ServerPort, PanelPort and TvPort must be different.' }
     if (-not $ServerAddress) { $ServerAddress = Get-LanAddress }
     $parsedIp = $null
@@ -305,17 +411,23 @@ try {
     Write-Host "Separate server and panel: $InstallRoot"
     Write-Host "Repository: $RepositoryUrl"
     Write-Host "Panel URL: http://${ServerAddress}:$PanelPort"
-    if ($CheckOnly) { Write-Host 'Preflight OK. Nothing was downloaded, installed or created.'; return }
+    if ($CheckOnly) {
+        if ($existing) { Write-Host 'Preflight OK. Nothing was changed; components marked MISSING above would be installed on a normal run.' }
+        else { Write-Host 'Preflight OK. Nothing was downloaded, installed or created.' }
+        return
+    }
     $principal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
     if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
         throw 'Run PowerShell as Administrator (required for VC++ Redistributable and Windows Firewall). Use -CheckOnly for a read-only preflight.'
     }
-    New-Item -ItemType Directory -Path $InstallRoot -Force | Out-Null
-    Protect-InstallDirectory $InstallRoot
-    foreach ($name in @('downloads', 'tools', 'logs', 'temp', 'cache', 'data')) {
-        New-Item -ItemType Directory -Path (Join-Path $InstallRoot $name) | Out-Null
+    if (-not $existing) {
+        New-Item -ItemType Directory -Path $InstallRoot -Force | Out-Null
+        Protect-InstallDirectory $InstallRoot
     }
-    Start-Transcript -LiteralPath (Join-Path $InstallRoot 'logs\install.log') | Out-Null
+    foreach ($name in @('downloads', 'tools', 'logs', 'temp', 'cache', 'data')) {
+        New-Item -ItemType Directory -Path (Join-Path $InstallRoot $name) -Force | Out-Null
+    }
+    Start-Transcript -LiteralPath (Join-Path $InstallRoot 'logs\install.log') -Append | Out-Null
     $transcribing = $true
     foreach ($name in @('PATH', 'TEMP', 'TMP', 'DOTNET_ROOT', 'DOTNET_CLI_HOME', 'NUGET_PACKAGES', 'npm_config_cache', 'DOTNET_CLI_TELEMETRY_OPTOUT', 'DOTNET_SKIP_FIRST_TIME_EXPERIENCE', 'DATA_DIR')) {
         $savedEnvironment[$name] = [Environment]::GetEnvironmentVariable($name, 'Process')
@@ -327,107 +439,130 @@ try {
     $env:DOTNET_CLI_TELEMETRY_OPTOUT = '1'
     $env:DOTNET_SKIP_FIRST_TIME_EXPERIENCE = '1'
     [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
-    $downloads = Join-Path $InstallRoot 'downloads'
-    $panelRoot = Join-Path $InstallRoot 'panel'
 
-    Write-Host '[1/8] Installing portable Git and cloning the project...'
-    $gitRelease = Get-Release 'git-for-windows/git'
-    $assets = @($gitRelease.assets | Where-Object { $_.name -match '^MinGit-[\d.]+-64-bit\.zip$' })
-    if ($assets.Count -ne 1) { throw 'Cannot find a unique Windows x64 MinGit ZIP in the official release.' }
-    $gitZip = Join-Path $downloads 'mingit.zip'
-    Save-Asset $assets[0] $gitZip
-    $gitRoot = Join-Path $InstallRoot 'tools\git'
-    Expand-Archive -LiteralPath $gitZip -DestinationPath $gitRoot
-    Clone-Project (Join-Path $gitRoot 'cmd\git.exe') $RepositoryUrl $RepositoryBranch $panelRoot
+    Write-Host '[1/8] Portable Git and project clone...'
+    if (-not $state['Git']) {
+        Remove-InsideRoot $InstallRoot $gitRoot
+        $gitRelease = Get-Release 'git-for-windows/git'
+        $assets = @($gitRelease.assets | Where-Object { $_.name -match '^MinGit-[\d.]+-64-bit\.zip$' })
+        if ($assets.Count -ne 1) { throw 'Cannot find a unique Windows x64 MinGit ZIP in the official release.' }
+        $gitZip = Join-Path $downloads 'mingit.zip'
+        Save-Asset $assets[0] $gitZip
+        Expand-Archive -LiteralPath $gitZip -DestinationPath $gitRoot
+    } else { Write-Host '  Git is already installed.' }
+    if (-not $state['Project clone']) {
+        # A folder without package.json is the remains of an interrupted clone.
+        Remove-InsideRoot $InstallRoot $panelRoot
+        Copy-Project $gitExe $RepositoryUrl $RepositoryBranch $panelRoot
+    } else { Write-Host '  Project is already cloned (it is not updated; local files are kept).' }
 
-    Write-Host '[2/8] Installing portable Node.js 24 (verified SHA256)...'
-    $checksums = (Invoke-WebRequest -UseBasicParsing -Uri 'https://nodejs.org/dist/latest-v24.x/SHASUMS256.txt' -TimeoutSec 60).Content
-    $nodeMatch = [regex]::Match($checksums, '(?m)^([a-fA-F0-9]{64})\s+(node-v24\.[\d.]+-win-x64\.zip)\s*$')
-    if (-not $nodeMatch.Success) { throw 'Node.js Windows x64 archive not found in official SHA256 manifest.' }
-    $nodeZip = Join-Path $downloads 'node.zip'
-    Invoke-Download "https://nodejs.org/dist/latest-v24.x/$($nodeMatch.Groups[2].Value)" $nodeZip $nodeMatch.Groups[1].Value
-    Expand-Archive -LiteralPath $nodeZip -DestinationPath (Join-Path $InstallRoot 'tools')
-    Move-Item -LiteralPath (Join-Path $InstallRoot ('tools\' + $nodeMatch.Groups[2].Value.Replace('.zip', ''))) -Destination (Join-Path $InstallRoot 'tools\node')
-    $nodeRoot = Join-Path $InstallRoot 'tools\node'
-    $nodeExe = Join-Path $nodeRoot 'node.exe'
-    $npm = Join-Path $nodeRoot 'npm.cmd'
+    Write-Host '[2/8] Portable Node.js 24 (verified SHA256)...'
+    if (-not $state['Node.js 24']) {
+        Remove-InsideRoot $InstallRoot $nodeRoot
+        $checksums = (Invoke-WebRequest -UseBasicParsing -Uri 'https://nodejs.org/dist/latest-v24.x/SHASUMS256.txt' -TimeoutSec 60).Content
+        $nodeMatch = [regex]::Match($checksums, '(?m)^([a-fA-F0-9]{64})\s+(node-v24\.[\d.]+-win-x64\.zip)\s*$')
+        if (-not $nodeMatch.Success) { throw 'Node.js Windows x64 archive not found in official SHA256 manifest.' }
+        $nodeZip = Join-Path $downloads 'node.zip'
+        Invoke-Download "https://nodejs.org/dist/latest-v24.x/$($nodeMatch.Groups[2].Value)" $nodeZip $nodeMatch.Groups[1].Value
+        $nodeExtracted = Join-Path $InstallRoot ('tools\' + $nodeMatch.Groups[2].Value.Replace('.zip', ''))
+        Remove-InsideRoot $InstallRoot $nodeExtracted
+        Expand-Archive -LiteralPath $nodeZip -DestinationPath (Join-Path $InstallRoot 'tools')
+        Move-Item -LiteralPath $nodeExtracted -Destination $nodeRoot
+    } else { Write-Host '  Node.js is already installed.' }
     $env:PATH = "$nodeRoot;$env:PATH"
     Invoke-Native $nodeExe @('--version')
 
-    Write-Host '[3/8] Installing portable .NET SDK 10...'
-    $dotnetScript = Join-Path $downloads 'dotnet-install.ps1'
-    Invoke-Download 'https://dot.net/v1/dotnet-install.ps1' $dotnetScript
-    $env:DOTNET_ROOT = Join-Path $InstallRoot 'tools\dotnet'
-    Invoke-Native "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $dotnetScript, '-Channel', '10.0', '-Quality', 'GA', '-Architecture', 'x64', '-InstallDir', $env:DOTNET_ROOT, '-NoPath')
+    Write-Host '[3/8] Portable .NET SDK 10...'
+    $env:DOTNET_ROOT = $dotnetRoot
+    if (-not $state['.NET SDK 10']) {
+        $dotnetScript = Join-Path $downloads 'dotnet-install.ps1'
+        Invoke-Download 'https://dot.net/v1/dotnet-install.ps1' $dotnetScript
+        Invoke-Native "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $dotnetScript, '-Channel', '10.0', '-Quality', 'GA', '-Architecture', 'x64', '-InstallDir', $env:DOTNET_ROOT, '-NoPath')
+    } else { Write-Host '  .NET SDK is already installed.' }
     $env:PATH = "$env:DOTNET_ROOT;$env:PATH"
-    Invoke-Native (Join-Path $env:DOTNET_ROOT 'dotnet.exe') @('--version')
+    Invoke-Native $dotnetExe @('--version')
 
-    Write-Host '[4/8] Installing Microsoft VC++ x64 runtime...'
-    $vcInstaller = Join-Path $downloads 'vc_redist.x64.exe'
-    Invoke-Download 'https://aka.ms/vc14/vc_redist.x64.exe' $vcInstaller
-    $signature = Get-AuthenticodeSignature -LiteralPath $vcInstaller
-    if ($signature.Status -ne 'Valid' -or $signature.SignerCertificate.Subject -notmatch 'O=Microsoft Corporation') { throw 'VC++ installer does not have a valid Microsoft signature.' }
-    $vc = Start-Process -FilePath $vcInstaller -ArgumentList @('/install', '/quiet', '/norestart') -WindowStyle Hidden -Wait -PassThru
-    if ($vc.ExitCode -notin @(0, 1638, 3010)) { throw "VC++ setup failed: $($vc.ExitCode)" }
-    if ($vc.ExitCode -eq 3010) { Write-Warning 'VC++ runtime installation requires a Windows restart before starting CS2.' }
+    Write-Host '[4/8] Microsoft VC++ x64 runtime...'
+    if (-not $state['VC++ runtime']) {
+        $vcInstaller = Join-Path $downloads 'vc_redist.x64.exe'
+        Invoke-Download 'https://aka.ms/vc14/vc_redist.x64.exe' $vcInstaller
+        $signature = Get-AuthenticodeSignature -LiteralPath $vcInstaller
+        if ($signature.Status -ne 'Valid' -or $signature.SignerCertificate.Subject -notmatch 'O=Microsoft Corporation') { throw 'VC++ installer does not have a valid Microsoft signature.' }
+        $vc = Start-Process -FilePath $vcInstaller -ArgumentList @('/install', '/quiet', '/norestart') -WindowStyle Hidden -Wait -PassThru
+        if ($vc.ExitCode -notin @(0, 1638, 3010)) { throw "VC++ setup failed: $($vc.ExitCode)" }
+        if ($vc.ExitCode -eq 3010) { Write-Warning 'VC++ runtime installation requires a Windows restart before starting CS2.' }
+    } else { Write-Host '  VC++ runtime is already installed.' }
 
-    Write-Host '[5/8] Installing SteamCMD and a separate CS2 server (large download)...'
-    Assert-FreeSpace $driveRoot (100GB)
-    $steamZip = Join-Path $downloads 'steamcmd.zip'
-    Invoke-Download 'https://steamcdn-a.akamaihd.net/client/installer/steamcmd.zip' $steamZip
-    $steamRoot = Join-Path $InstallRoot 'tools\steamcmd'
-    Expand-Archive -LiteralPath $steamZip -DestinationPath $steamRoot
-    $serverRoot = Join-Path $InstallRoot 'cs2'
-    # A SteamCMD runscript preserves spaces in the installation path.
-    $steamScript = Join-Path $downloads 'install-steam.txt'
-    [IO.File]::WriteAllLines($steamScript, @('@ShutdownOnFailedCommand 1', '@NoPromptForPassword 1', "force_install_dir `"$serverRoot`"", 'login anonymous', 'app_update 730 validate', 'quit'), (New-Object Text.UTF8Encoding $false))
-    $steamLog = Join-Path $InstallRoot 'logs\steamcmd.log'
-    Push-Location $steamRoot
-    try {
-        & (Join-Path $steamRoot 'steamcmd.exe') '+runscript' $steamScript 2>&1 | Tee-Object -FilePath $steamLog
-        $steamExit = $LASTEXITCODE
-    } finally { Pop-Location }
-    if ($steamExit -ne 0 -or -not (Select-String -LiteralPath $steamLog -Pattern "Success! App '730' fully installed" -Quiet) -or -not (Test-Path -LiteralPath (Join-Path $serverRoot 'game\bin\win64\cs2.exe'))) {
-        throw 'SteamCMD did not confirm successful CS2 installation. See logs\steamcmd.log. The server has not been configured.'
-    }
-    Assert-FreeSpace $driveRoot (8GB)
+    Write-Host '[5/8] SteamCMD and a separate CS2 server...'
+    if (-not $state['SteamCMD']) {
+        $steamZip = Join-Path $downloads 'steamcmd.zip'
+        Invoke-Download 'https://steamcdn-a.akamaihd.net/client/installer/steamcmd.zip' $steamZip
+        Remove-InsideRoot $InstallRoot $steamRoot
+        Expand-Archive -LiteralPath $steamZip -DestinationPath $steamRoot
+    } else { Write-Host '  SteamCMD is already installed.' }
+    if (-not $state['CS2 server'] -or $UpdateGame) {
+        if (-not $state['CS2 server']) { Assert-FreeSpace $driveRoot (100GB) }
+        # A SteamCMD runscript preserves spaces in the installation path. Rerunning resumes/validates files.
+        $steamScript = Join-Path $downloads 'install-steam.txt'
+        [IO.File]::WriteAllLines($steamScript, @('@ShutdownOnFailedCommand 1', '@NoPromptForPassword 1', "force_install_dir `"$serverRoot`"", 'login anonymous', 'app_update 730 validate', 'quit'), (New-Object Text.UTF8Encoding $false))
+        $steamLog = Join-Path $InstallRoot 'logs\steamcmd.log'
+        Push-Location $steamRoot
+        try {
+            & (Join-Path $steamRoot 'steamcmd.exe') '+runscript' $steamScript 2>&1 | Tee-Object -FilePath $steamLog
+            $steamExit = $LASTEXITCODE
+        } finally { Pop-Location }
+        if ($steamExit -ne 0 -or -not (Select-String -LiteralPath $steamLog -Pattern "Success! App '730' fully installed" -Quiet) -or -not (Test-Path -LiteralPath (Join-Path $serverRoot 'game\bin\win64\cs2.exe'))) {
+            throw 'SteamCMD did not confirm successful CS2 installation. See logs\steamcmd.log. The server has not been configured. Run the installer again to resume.'
+        }
+        Assert-FreeSpace $driveRoot (8GB)
+        # Validation can restore the original gameinfo.gi; Metamod is re-enabled below in any case.
+    } else { Write-Host '  CS2 server is already installed (use -UpdateGame to update/validate it).' }
 
-    Write-Host '[6/8] Installing Metamod 2.x and CounterStrikeSharp with runtime...'
-    # Current CounterStrikeSharp requires Metamod 2.x, build >=1467 (KHook).
-    $mmPage = (Invoke-WebRequest -UseBasicParsing -Uri 'https://www.sourcemm.net/downloads.php/?branch=master' -TimeoutSec 60).Content
-    $mmMatch = [regex]::Match($mmPage, 'https://github\.com/alliedmodders/metamod-source/releases/download/2\.[^"\s<>]+/mmsource-2\.[^"\s<>]*-git(\d+)-windows\.zip')
-    if (-not $mmMatch.Success -or [int]$mmMatch.Groups[1].Value -lt 1467) { throw 'Compatible Metamod 2.x Windows download was not found on the official site.' }
-    $mmZip = Join-Path $downloads 'metamod.zip'
-    Invoke-Download $mmMatch.Value $mmZip
-    $gameDir = Join-Path $serverRoot 'game\csgo'
-    Expand-Archive -LiteralPath $mmZip -DestinationPath $gameDir -Force
-    $cssRelease = Get-Release 'roflmuffin/CounterStrikeSharp'
-    if ([version]$cssRelease.tag_name.TrimStart('v') -lt [version]'1.0.379') { throw 'CounterStrikeSharp 1.0.379 or newer is required by this ArenaPro build.' }
-    $cssAssets = @($cssRelease.assets | Where-Object { $_.name -match '^counterstrikesharp-with-runtime-windows-(?:x64-)?[\d.]+\.zip$' })
-    if ($cssAssets.Count -ne 1) { throw 'Cannot find a unique CounterStrikeSharp with-runtime Windows x64 ZIP.' }
-    $cssZip = Join-Path $downloads 'counterstrikesharp.zip'
-    Save-Asset $cssAssets[0] $cssZip
-    Expand-Archive -LiteralPath $cssZip -DestinationPath $gameDir -Force
-    Enable-Metamod (Join-Path $gameDir 'gameinfo.gi')
+    Write-Host '[6/8] Metamod 2.x and CounterStrikeSharp with runtime...'
+    if (-not $state['Metamod']) {
+        # Current CounterStrikeSharp requires Metamod 2.x, build >=1467 (KHook).
+        $mmPage = (Invoke-WebRequest -UseBasicParsing -Uri 'https://www.sourcemm.net/downloads.php/?branch=master' -TimeoutSec 60).Content
+        $mmMatch = [regex]::Match($mmPage, 'https://github\.com/alliedmodders/metamod-source/releases/download/2\.[^"\s<>]+/mmsource-2\.[^"\s<>]*-git(\d+)-windows\.zip')
+        if (-not $mmMatch.Success -or [int]$mmMatch.Groups[1].Value -lt 1467) { throw 'Compatible Metamod 2.x Windows download was not found on the official site.' }
+        $mmZip = Join-Path $downloads 'metamod.zip'
+        Invoke-Download $mmMatch.Value $mmZip
+        Expand-Archive -LiteralPath $mmZip -DestinationPath $gameDir -Force
+    } else { Write-Host '  Metamod is already installed.' }
+    if (-not $state['CounterStrikeSharp']) {
+        $cssRelease = Get-Release 'roflmuffin/CounterStrikeSharp'
+        if ([version]$cssRelease.tag_name.TrimStart('v') -lt [version]'1.0.379') { throw 'CounterStrikeSharp 1.0.379 or newer is required by this ArenaPro build.' }
+        $cssAssets = @($cssRelease.assets | Where-Object { $_.name -match '^counterstrikesharp-with-runtime-windows-(?:x64-)?[\d.]+\.zip$' })
+        if ($cssAssets.Count -ne 1) { throw 'Cannot find a unique CounterStrikeSharp with-runtime Windows x64 ZIP.' }
+        $cssZip = Join-Path $downloads 'counterstrikesharp.zip'
+        Save-Asset $cssAssets[0] $cssZip
+        Expand-Archive -LiteralPath $cssZip -DestinationPath $gameDir -Force
+    } else { Write-Host '  CounterStrikeSharp is already installed.' }
+    Enable-Metamod (Join-Path $gameDir 'gameinfo.gi') # no-op when already enabled; repairs it after a Steam update
 
-    Write-Host '[7/8] Building panel and ArenaPro...'
+    Write-Host '[7/8] Panel and ArenaPro build...'
     Push-Location $panelRoot
     try {
-        Invoke-Native $npm @('ci', '--no-audit', '--no-fund')
-        Invoke-Native $npm @('run', 'build')
-        & (Join-Path $panelRoot 'scripts\build-plugin.ps1') -DeployTo $gameDir
-        if (-not (Test-Path -LiteralPath (Join-Path $gameDir 'addons\counterstrikesharp\plugins\ArenaPro\ArenaPro.dll'))) { throw 'ArenaPro DLL was not deployed.' }
+        if (-not (Test-Path -LiteralPath (Join-Path $panelRoot 'node_modules') -PathType Container)) {
+            Invoke-Native $npm @('ci', '--no-audit', '--no-fund')
+        } else { Write-Host '  npm dependencies are already installed.' }
+        if (-not $state['Panel build']) { Invoke-Native $npm @('run', 'build') }
+        else { Write-Host '  Panel is already built.' }
+        if (-not $state['ArenaPro plugin']) {
+            & (Join-Path $panelRoot 'scripts\build-plugin.ps1') -DeployTo $gameDir
+            if (-not (Test-Path -LiteralPath (Join-Path $gameDir 'addons\counterstrikesharp\plugins\ArenaPro\ArenaPro.dll'))) { throw 'ArenaPro DLL was not deployed.' }
+        } else { Write-Host '  ArenaPro is already deployed.' }
     } finally { Pop-Location }
 
-    Write-Host '[8/8] Creating LAN configuration, panel database and launchers...'
-    $rconPassword = New-Secret
-    $adminPassword = New-Secret
+    Write-Host '[8/8] LAN configuration, panel database, launchers and firewall...'
     $settings = [ordered]@{ ServerAddress = $ServerAddress; ServerPort = $ServerPort; PanelPort = $PanelPort; TvPort = $TvPort; PublicUrl = "http://${ServerAddress}:$PanelPort" }
-    Write-Launchers $InstallRoot $settings
-    @('hostname "CS2 ArenaPro LAN"', 'sv_lan 1', "rcon_password `"$rconPassword`"", 'tv_enable 1') |
-        Set-Content -LiteralPath (Join-Path $gameDir 'cfg\arenapro-server.cfg') -Encoding ASCII
-    # Use the application's compiled schema and hashing implementation; no live HTTP server is needed.
-    $bootstrap = @'
+    if (-not $state['Launchers']) { Write-Launchers $InstallRoot $settings }
+    else { Write-Host '  Launchers already exist.' }
+    $newPanelDatabase = -not (Test-Path -LiteralPath $dbPath)
+    if ($newPanelDatabase) {
+        $rconPassword = New-Secret
+        $adminPassword = New-Secret
+        # Use the application's compiled schema and hashing implementation; no live HTTP server is needed.
+        $bootstrap = @'
 import { readFileSync } from 'node:fs';
 import { db } from './server/dist/db.js';
 import { hashPassword } from './server/dist/auth.js';
@@ -437,18 +572,30 @@ db.prepare('INSERT INTO admins (username, password_hash) VALUES (?, ?)').run('ad
 db.prepare('INSERT INTO game_servers (name, host, port, rcon_password) VALUES (?, ?, ?, ?)').run('Local ArenaPro', input.ServerAddress, input.ServerPort, input.RconPassword);
 db.close();
 '@
-    $bootstrapPath = Join-Path $panelRoot 'installer-bootstrap.mjs'
-    Set-Content -LiteralPath $bootstrapPath -Value $bootstrap -Encoding UTF8
-    $bootstrapInput = Join-Path $InstallRoot 'temp\bootstrap.json'
-    @{ AdminPassword = $adminPassword; RconPassword = $rconPassword; ServerAddress = $ServerAddress; ServerPort = $ServerPort } |
-        ConvertTo-Json | Set-Content -LiteralPath $bootstrapInput -Encoding UTF8
-    $env:DATA_DIR = Join-Path $InstallRoot 'data'
-    try { Invoke-Native $nodeExe @($bootstrapPath, $bootstrapInput) } finally {
-        Remove-Item -LiteralPath $bootstrapPath, $bootstrapInput -Force -ErrorAction SilentlyContinue
+        $bootstrapPath = Join-Path $panelRoot 'installer-bootstrap.mjs'
+        Set-Content -LiteralPath $bootstrapPath -Value $bootstrap -Encoding UTF8
+        $bootstrapInput = Join-Path $InstallRoot 'temp\bootstrap.json'
+        @{ AdminPassword = $adminPassword; RconPassword = $rconPassword; ServerAddress = $ServerAddress; ServerPort = $ServerPort } |
+            ConvertTo-Json | Set-Content -LiteralPath $bootstrapInput -Encoding UTF8
+        $env:DATA_DIR = Join-Path $InstallRoot 'data'
+        try { Invoke-Native $nodeExe @($bootstrapPath, $bootstrapInput) } finally {
+            Remove-Item -LiteralPath $bootstrapPath, $bootstrapInput -Force -ErrorAction SilentlyContinue
+        }
+        # Write secrets directly, without placing them in the transcript or command line.
+        [IO.File]::WriteAllLines($credentialsPath, @("Panel: $($settings.PublicUrl)", 'Login: admin', "Initial password: $adminPassword", "Server: ${ServerAddress}:$ServerPort", "RCON password: $rconPassword"))
+        # The cfg must carry the same RCON password as the new database, so it is (re)written here.
+        @('hostname "CS2 ArenaPro LAN"', 'sv_lan 1', "rcon_password `"$rconPassword`"", 'tv_enable 1') |
+            Set-Content -LiteralPath $serverCfg -Encoding ASCII
+    } else {
+        Write-Host '  Panel database already exists; admin account and passwords are kept.'
+        if (-not (Test-Path -LiteralPath $serverCfg -PathType Leaf)) {
+            $rconLine = $null
+            if (Test-Path -LiteralPath $credentialsPath) { $rconLine = Select-String -LiteralPath $credentialsPath -Pattern '^RCON password: (\S+)$' | Select-Object -First 1 }
+            if (-not $rconLine) { throw "Server config $serverCfg is missing and the RCON password cannot be recovered from credentials.txt. Create that file with the rcon_password stored for the server in the panel." }
+            @('hostname "CS2 ArenaPro LAN"', 'sv_lan 1', "rcon_password `"$($rconLine.Matches[0].Groups[1].Value)`"", 'tv_enable 1') |
+                Set-Content -LiteralPath $serverCfg -Encoding ASCII
+        }
     }
-    # Write secrets directly, without placing them in the transcript or command line.
-    $credentialsPath = Join-Path $InstallRoot 'credentials.txt'
-    [IO.File]::WriteAllLines($credentialsPath, @("Panel: $($settings.PublicUrl)", 'Login: admin', "Initial password: $adminPassword", "Server: ${ServerAddress}:$ServerPort", "RCON password: $rconPassword"))
     if (-not $SkipFirewall) {
         foreach ($rule in @(
             @{ Name = 'Panel'; Port = $PanelPort; Protocol = 'TCP'; Program = $nodeExe },
@@ -456,16 +603,19 @@ db.close();
             @{ Name = 'Game'; Port = $ServerPort; Protocol = 'UDP'; Program = (Join-Path $serverRoot 'game\bin\win64\cs2.exe') },
             @{ Name = 'GOTV'; Port = $TvPort; Protocol = 'UDP'; Program = (Join-Path $serverRoot 'game\bin\win64\cs2.exe') }
         )) {
-            New-NetFirewallRule -DisplayName "CS2Tournament $PanelPort $($rule.Name)" -Direction Inbound -Action Allow -Profile Private,Domain -RemoteAddress LocalSubnet -Protocol $rule.Protocol -LocalPort $rule.Port -Program $rule.Program | Out-Null
+            $ruleName = "CS2Tournament $PanelPort $($rule.Name)"
+            if (Test-FirewallRule $ruleName) { continue }
+            New-NetFirewallRule -DisplayName $ruleName -Direction Inbound -Action Allow -Profile Private,Domain -RemoteAddress LocalSubnet -Protocol $rule.Protocol -LocalPort $rule.Port -Program $rule.Program | Out-Null
         }
     }
-    Write-Host "Installation complete. Credentials: $credentialsPath"
+    Write-Host 'Installation is complete.'
+    if ($newPanelDatabase) { Write-Host "Credentials: $credentialsPath" }
     Write-Host "Start panel: & '$InstallRoot\start-panel.ps1'"
     Write-Host "Start server: & '$InstallRoot\start-server.ps1'"
     Write-Host 'Verify meta list and css_plugins list in the game server console before a tournament.'
 } catch {
     Write-Error -Message $_.Exception.Message -ErrorAction Continue
-    if ($transcribing) { Write-Host "Incomplete installation kept for diagnostics: $InstallRoot. See logs\install.log. Nothing is started automatically." }
+    if ($transcribing) { Write-Host "Incomplete installation kept for diagnostics: $InstallRoot. See logs\install.log. Run the installer again with the same -InstallRoot to resume. Nothing is started automatically." }
     exit 1
 } finally {
     foreach ($name in $savedEnvironment.Keys) { [Environment]::SetEnvironmentVariable($name, $savedEnvironment[$name], 'Process') }
