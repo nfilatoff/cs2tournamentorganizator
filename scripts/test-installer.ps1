@@ -139,6 +139,19 @@ try {
     Copy-Project $git $sourceUrl 'main' (Join-Path $fixture 'clone branch')
     Copy-Project $git $sourceUrl 'test-version' (Join-Path $fixture 'clone tag')
     Write-Host 'PASS: actual git clone into selected folders, default branch, explicit branch and tag.'
+    # -Update on the shallow clone: up to date, a new commit, local changes, and a clone on a tag.
+    $updated = Join-Path $fixture 'clone branch'
+    Assert (-not (Update-Project $git $updated '')) 'An up-to-date clone must report no change.'
+    Set-Content -LiteralPath (Join-Path $cloneSource 'web\index.html') -Value 'fixture v2'
+    Invoke-Native $git @('-C', $cloneSource, '-c', 'user.name=Installer Test', '-c', 'user.email=installer@example.invalid', '-c', 'commit.gpgsign=false', '-c', 'core.hooksPath=NUL', 'commit', '--quiet', '--all', '-m', 'Fixture v2')
+    Assert (Update-Project $git $updated '') 'A new commit must update the clone.'
+    Assert ((Get-Content -LiteralPath (Join-Path $updated 'web\index.html') -Raw).Trim() -eq 'fixture v2') 'The updated clone must contain the new commit.'
+    Set-Content -LiteralPath (Join-Path $updated 'web\index.html') -Value 'local edit'
+    Expect-Failure { Update-Project $git $updated '' } 'local changes'
+    Assert ((Get-Content -LiteralPath (Join-Path $updated 'web\index.html') -Raw).Trim() -eq 'local edit') 'A refused update must keep local changes.'
+    Expect-Failure { Update-Project $git (Join-Path $fixture 'clone tag') '' } 'RepositoryBranch'
+    Assert (Update-Project $git (Join-Path $fixture 'clone tag') 'main') 'A tag clone must update to an explicit branch.'
+    Write-Host 'PASS: -Update pulls new commits into the shallow clone and refuses to overwrite local changes.'
     Assert (Test-ProjectComplete $cloneSource) 'Complete source fixture was not detected.'
     Remove-Item -LiteralPath (Join-Path $cloneSource 'plugin\ArenaPro.csproj')
     Assert (-not (Test-ProjectComplete $cloneSource)) 'A partial clone must not be reported as complete.'

@@ -9,7 +9,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\install-cs2.ps1 -Cs2Path '
 .EXAMPLE
 powershell -NoProfile -ExecutionPolicy Bypass -File .\install-cs2.ps1 -InstallRoot 'E:\LAN Server'
 .NOTES
-See install-cs2.txt. ASCII source is intentional for Windows PowerShell 5.1.
+See INSTALLATION.md. ASCII source is intentional for Windows PowerShell 5.1.
 #>
 [CmdletBinding()]
 param(
@@ -26,6 +26,9 @@ param(
     [ValidateRange(120, 4096)][int]$RequiredFreeGB = 120,
     [switch]$SkipFirewall,
     [switch]$UpdateGame,
+    # Existing installation: pull the latest project from GitHub, rebuild the panel and ArenaPro, redeploy the plugin and
+    # rewrite the launchers. Data, passwords and configs are kept. Combine with -UpdateGame to update CS2 as well.
+    [switch]$Update,
     # Download the whole server with SteamCMD instead of starting from a copy of the Steam client's CS2.
     [switch]$NoClientCopy,
     [switch]$CheckOnly
@@ -298,6 +301,25 @@ function Copy-Project([string]$GitExe, [string]$Url, [string]$Branch, [string]$D
     $cloneArgs += @('--', $Url, $Destination)
     Invoke-Native $GitExe $cloneArgs
     Assert-Project $Destination
+}
+
+# -Update: brings the shallow clone to the latest commit of its branch (or of -RepositoryBranch). Tracked local changes
+# stop the update so nothing is lost. Returns $true when the code changed.
+function Update-Project([string]$GitExe, [string]$Project, [string]$Branch) {
+    $git = { param([string[]]$GitArgs) $out = & $GitExe -C $Project @GitArgs; if ($LASTEXITCODE -ne 0) { throw "git $($GitArgs -join ' ') failed (exit $LASTEXITCODE)." }; $out }
+    if (@(& $git ('status', '--porcelain', '--untracked-files=no')).Count) {
+        throw "The project in $Project has local changes. Commit, move or discard them before -Update (git -C `"$Project`" status)."
+    }
+    if (-not $Branch) { $Branch = [string](& $GitExe -C $Project symbolic-ref --short -q HEAD) }
+    if (-not $Branch) { throw 'The project is on a fixed tag or commit. Pass -RepositoryBranch with the branch or tag to update to.' }
+    $before = [string](& $git ('rev-parse', 'HEAD'))
+    & $git ('fetch', '--depth', '1', 'origin', $Branch) | Out-Null
+    $after = [string](& $git ('rev-parse', 'FETCH_HEAD'))
+    if ($before -eq $after) { Write-Host "  Project is up to date ($Branch, $($after.Substring(0, 7)))."; return $false }
+    & $git ('reset', '--keep', 'FETCH_HEAD') | Out-Null
+    Assert-Project $Project
+    Write-Host "  Project updated: $($before.Substring(0, 7)) -> $($after.Substring(0, 7)) ($Branch)."
+    return $true
 }
 
 function Enable-Metamod([string]$GameInfo) {
@@ -601,6 +623,7 @@ try {
         }
     }
     if ($existing) { Assert-NoReparsePoint $InstallRoot $InstallRoot -AllowInternalLinks }
+    if ($Update -and -not $existing) { throw 'There is no installation to update in this folder. Run the installer without -Update first.' }
 
     $downloads = Join-Path $InstallRoot 'downloads'
     $panelRoot = Join-Path $InstallRoot 'panel'
@@ -703,6 +726,7 @@ try {
     Write-Host "Repository: $RepositoryUrl"
     if ($ServerAddress -eq 'auto') { Write-Host "Panel URL: $displayUrl (now; the panel detects its LAN address at every start)" }
     else { Write-Host "Panel URL: $displayUrl" }
+    if ($Update) { Write-Host 'Update: the project is pulled from GitHub, then the panel and ArenaPro are rebuilt and redeployed; data, passwords and configs are kept.' }
     if ($CheckOnly) {
         if ($existing) { Write-Host 'Preflight OK. Nothing was changed; components marked MISSING above would be installed on a normal run.' }
         else { Write-Host 'Preflight OK. Nothing was downloaded, installed or created.' }
@@ -739,6 +763,7 @@ try {
     $env:DOTNET_SKIP_FIRST_TIME_EXPERIENCE = '1'
     [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
 
+    $projectChanged = $false
     Write-Host '[1/8] Portable Git and project clone...'
     if (-not $state['Git']) {
         Remove-InsideRoot $InstallRoot $gitRoot
@@ -759,7 +784,9 @@ try {
             Write-Host "  Incomplete project preserved in $backup"
         }
         Move-Item -LiteralPath $pendingClone -Destination $panelRoot
-    } else { Write-Host '  Project is already cloned (it is not updated; local files are kept).' }
+    } elseif ($Update) {
+        $projectChanged = Update-Project $gitExe $panelRoot $RepositoryBranch
+    } else { Write-Host '  Project is already cloned (it is not updated without -Update; local files are kept).' }
 
     Write-Host '[2/8] Portable Node.js 24 (verified SHA256)...'
     if (-not $state['Node.js 24']) {
@@ -872,9 +899,11 @@ try {
             Invoke-Native $npm @('ci', '--no-audit', '--no-fund')
             [IO.File]::WriteAllText((Join-Path $panelRoot 'node_modules\.installer-lock.sha256'), (Get-FileHash -LiteralPath (Join-Path $panelRoot 'package-lock.json') -Algorithm SHA256).Hash)
         } else { Write-Host '  npm dependencies are already installed.' }
-        if (-not $state['Panel build']) { Invoke-Native $npm @('run', 'build') }
+        # -Update rebuilds when the code changed (and always repairs a missing build or plugin).
+        $rebuild = $Update -and $projectChanged
+        if (-not $state['Panel build'] -or $rebuild) { Invoke-Native $npm @('run', 'build') }
         else { Write-Host '  Panel is already built.' }
-        if (-not $state['ArenaPro plugin']) {
+        if (-not $state['ArenaPro plugin'] -or $rebuild) {
             Invoke-WithPreservedFiles @((Join-Path $gameDir 'cfg\ArenaPro')) { & (Join-Path $panelRoot 'scripts\build-plugin.ps1') -DeployTo $gameDir }
             if (-not (Test-ArenaProInstalled $gameDir)) { throw 'ArenaPro package was not completely deployed.' }
         } else { Write-Host '  ArenaPro is already deployed.' }
@@ -884,7 +913,11 @@ try {
     # 'auto': no fixed URL, the panel detects its address at start (empty PublicUrl).
     $publicUrl = if ($saved) { [string]$saved.PublicUrl } elseif ($ServerAddress -eq 'auto') { '' } else { "http://${ServerAddress}:$PanelPort" }
     $settings = [ordered]@{ ServerAddress = $ServerAddress; ServerPort = $ServerPort; PanelPort = $PanelPort; TvPort = $TvPort; PublicUrl = $publicUrl }
-    if (-not $state['Launchers']) { Write-Launchers $InstallRoot $settings -MissingOnly:$existing }
+    if ($Update) {
+        # New versions may change how the panel and server start; settings come from installation.json.
+        Write-Launchers $InstallRoot $settings
+        Write-Host '  Launchers rewritten from installation.json.'
+    } elseif (-not $state['Launchers']) { Write-Launchers $InstallRoot $settings -MissingOnly:$existing }
     else { Write-Host '  Launchers already exist.' }
     $newPanelDatabase = -not (Test-Path -LiteralPath $dbPath)
     if (-not $state['Panel database'] -or -not (Test-Path -LiteralPath $serverCfg) -or -not (Test-Path -LiteralPath $credentialsPath)) {
