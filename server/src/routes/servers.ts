@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { db } from '../db.js';
 import { requireAdmin } from '../auth.js';
+import { getServer, parseStatus, withRcon } from '../dispatcher.js';
 
 const serverBody = z.object({
   name: z.string().trim().min(1).max(60),
@@ -53,8 +54,33 @@ export async function serverRoutes(app: FastifyInstance): Promise<void> {
   });
 
   app.delete<{ Params: { id: string } }>('/api/servers/:id', async (req, reply) => {
-    const res = db.prepare('DELETE FROM game_servers WHERE id = ?').run(Number(req.params.id));
-    if (res.changes === 0) return reply.code(404).send({ error: 'Сервер не найден' });
+    try {
+      const res = db.prepare('DELETE FROM game_servers WHERE id = ?').run(Number(req.params.id));
+      if (res.changes === 0) return reply.code(404).send({ error: 'Сервер не найден' });
+    } catch {
+      return reply.code(409).send({ error: 'На сервере идёт матч' });
+    }
     return { ok: true };
+  });
+
+  // Проверка связи: RCON и состояние матча на сервере
+  app.get<{ Params: { id: string } }>('/api/servers/:id/status', async (req, reply) => {
+    const server = getServer(Number(req.params.id));
+    if (!server) return reply.code(404).send({ error: 'Сервер не найден' });
+    const busy = db.prepare('SELECT code, tournament_id FROM matches WHERE server_id = ?').get(server.id) as
+      { code: string; tournament_id: number } | undefined;
+    try {
+      const st = await withRcon(server, async (r) => parseStatus(await r.exec('get5_status')));
+      return {
+        online: true,
+        gamestate: st?.gamestate ?? 'unknown',
+        paused: st?.paused ?? false,
+        serverMatchId: st?.matchId ?? null,
+        panelMatch: busy ?? null,
+        lastError: server.last_error,
+      };
+    } catch (e) {
+      return { online: false, error: (e as Error).message, panelMatch: busy ?? null, lastError: server.last_error };
+    }
   });
 }

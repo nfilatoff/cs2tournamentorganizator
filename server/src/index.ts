@@ -13,6 +13,8 @@ import { serverRoutes } from './routes/servers.js';
 import { mapRoutes } from './routes/maps.js';
 import { teamRoutes } from './routes/teams.js';
 import { tournamentRoutes } from './routes/tournaments.js';
+import { arenaproRoutes } from './routes/arenapro.js';
+import { dispatchAll, startDispatchTimer } from './dispatcher.js';
 
 async function ensureAdmin(): Promise<void> {
   const { n } = db.prepare('SELECT COUNT(*) AS n FROM admins').get() as { n: number };
@@ -33,6 +35,7 @@ await app.register(serverRoutes);
 await app.register(mapRoutes);
 await app.register(teamRoutes);
 await app.register(tournamentRoutes);
+await app.register(arenaproRoutes);
 
 app.get('/api/health', async () => ({ ok: true }));
 
@@ -48,3 +51,5 @@ if (existsSync(webDist)) {
 
 await ensureAdmin();
 await app.listen({ port: config.port, host: config.host });
+startDispatchTimer();
+void dispatchAll();

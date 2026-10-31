@@ -3,20 +3,15 @@ import { z } from 'zod';
 import { db, tx } from '../db.js';
 import { getSession, requireAdmin } from '../auth.js';
 import {
+  boFn, clearRuntime, commit, getMatchRowByCode, getTournament, loadMatchRows, loadMatches, saveMatches, teamName,
+  type MatchRow, type TournamentRow,
+} from '../tournamentStore.js';
+import { dispatchAll, dispatchOne, endMatchOnServer, getServer, release, withRcon } from '../dispatcher.js';
+import type { MapRef } from '../arenapro.js';
+import {
   buildBracket, champion, forceWinner, minTeams, reportResult, roundFromEnd, roundLabel, undoResult,
-  type BMatch, type BracketId, type Entry, type Format, type Source, type Status,
+  type BracketId, type Entry, type Format,
 } from '../bracket.js';
-
-interface TournamentRow {
-  id: number; name: string; format: Format; team_size: number; max_teams: number;
-  default_best_of: number; bo_config: string; grand_final_reset: number;
-  status: 'registration' | 'running' | 'finished'; champion_team_id: number | null;
-}
-interface MatchRow {
-  code: string; bracket: BracketId; round: number; position: number;
-  src_a: string; src_b: string; entry_a: string; entry_b: string;
-  winner: 'a' | 'b' | null; status: Status; best_of: number; score_a: number; score_b: number; forced: number;
-}
 
 const BEST_OF = z.union([z.literal(1), z.literal(3), z.literal(5)]);
 const MAX_MAPS = 7;
@@ -29,35 +24,9 @@ const tournamentBody = z.object({
   defaultBestOf: BEST_OF.default(1),
   boConfig: z.record(z.string().regex(/^(W\d+|L\d+|GF)$/), BEST_OF).default({}),
   grandFinalReset: z.boolean().default(true),
+  autoDispatch: z.boolean().default(true),
   mapIds: z.array(z.number().int()).max(MAX_MAPS),
 });
-
-const getTournament = (id: number) =>
-  db.prepare('SELECT * FROM tournaments WHERE id = ?').get(id) as unknown as TournamentRow | undefined;
-
-function loadMatches(tid: number): BMatch[] {
-  const rows = db.prepare('SELECT * FROM matches WHERE tournament_id = ? ORDER BY id').all(tid) as unknown as MatchRow[];
-  return rows.map((r) => ({
-    code: r.code, bracket: r.bracket, round: r.round, position: r.position,
-    srcA: JSON.parse(r.src_a) as Source, srcB: JSON.parse(r.src_b) as Source,
-    a: JSON.parse(r.entry_a) as Entry, b: JSON.parse(r.entry_b) as Entry,
-    winner: r.winner, status: r.status, bestOf: r.best_of, scoreA: r.score_a, scoreB: r.score_b, forced: !!r.forced,
-  }));
-}
-
-function saveMatches(tid: number, ms: BMatch[]): void {
-  const upd = db.prepare(`UPDATE matches SET entry_a = ?, entry_b = ?, winner = ?, status = ?, score_a = ?, score_b = ?, forced = ?
-    WHERE tournament_id = ? AND code = ?`);
-  for (const m of ms) {
-    upd.run(JSON.stringify(m.a), JSON.stringify(m.b), m.winner, m.status, m.scoreA, m.scoreB, m.forced ? 1 : 0, tid, m.code);
-  }
-}
-
-function boFn(t: TournamentRow) {
-  const cfg = JSON.parse(t.bo_config) as Record<string, number>;
-  return (bracket: BracketId, fromEnd: number) =>
-    cfg[bracket === 'GF' ? 'GF' : `${bracket}${fromEnd}`] ?? t.default_best_of;
-}
 
 // Раунды для формы создания: ключ BO и подпись для заданных формата и числа команд.
 function previewRounds(format: Format, maxTeams: number) {
@@ -75,11 +44,6 @@ function previewRounds(format: Format, maxTeams: number) {
   return [...seen].map(([key, label]) => ({ key, label }));
 }
 
-function teamName(id: number): string {
-  const r = db.prepare('SELECT name FROM teams WHERE id = ?').get(id) as { name: string } | undefined;
-  return r?.name ?? `Команда ${id}`;
-}
-
 function entryDto(e: Entry) {
   if (e.k === 'team') return { type: 'team' as const, id: e.id, name: teamName(e.id) };
   return { type: e.k };
@@ -95,10 +59,13 @@ function details(t: TournamentRow) {
     WHERE tm.tournament_id = ? ORDER BY tm.position
   `).all(t.id) as unknown as { id: number; name: string; workshop_id: string | null; map_file: string | null; image_url: string | null }[];
   const ms = loadMatches(t.id);
+  const rows = new Map(loadMatchRows(t.id).map((r) => [r.code, r]));
+  const servers = new Map((db.prepare('SELECT id, name, host, port FROM game_servers').all() as unknown as
+    { id: number; name: string; host: string; port: number }[]).map((s) => [s.id, s]));
   return {
     id: t.id, name: t.name, format: t.format, teamSize: t.team_size, maxTeams: t.max_teams,
     defaultBestOf: t.default_best_of, boConfig: JSON.parse(t.bo_config) as Record<string, number>,
-    grandFinalReset: !!t.grand_final_reset, status: t.status,
+    grandFinalReset: !!t.grand_final_reset, autoDispatch: !!t.auto_dispatch, status: t.status,
     champion: t.champion_team_id ? { id: t.champion_team_id, name: teamName(t.champion_team_id) } : null,
     teams: teams.map((x) => ({ id: x.team_id, name: x.name, seed: x.seed, roster: JSON.parse(x.roster) as number[] })),
     maps: maps.map((m) => ({ id: m.id, name: m.name, workshopId: m.workshop_id, mapFile: m.map_file, imageUrl: m.image_url })),
@@ -107,7 +74,27 @@ function details(t: TournamentRow) {
       roundLabel: roundLabel(m.bracket, roundFromEnd(ms, m), t.format),
       a: entryDto(m.a), b: entryDto(m.b), status: m.status, winner: m.winner,
       bestOf: m.bestOf, scoreA: m.scoreA, scoreB: m.scoreB, forced: m.forced,
+      ...runtimeDto(rows.get(m.code), servers),
     })),
+  };
+}
+
+function runtimeDto(r: MatchRow | undefined, servers: Map<number, { id: number; name: string; host: string; port: number }>) {
+  if (!r) return {};
+  const refs = r.maps_json ? (JSON.parse(r.maps_json) as MapRef[]) : [];
+  const played = db.prepare('SELECT map_no, score_a, score_b, winner FROM match_maps WHERE match_id = ? ORDER BY map_no')
+    .all(r.id) as unknown as { map_no: number; score_a: number; score_b: number; winner: 'a' | 'b' | null }[];
+  const server = r.server_id ? servers.get(r.server_id) : undefined;
+  return {
+    matchId: r.id,
+    server: server ?? null,
+    live: !!r.live,
+    paused: !!r.paused,
+    note: r.note,
+    seriesA: r.series_a,
+    seriesB: r.series_b,
+    curMap: r.live ? { no: r.cur_map_no, name: refs[r.cur_map_no]?.name ?? null, scoreA: r.cur_score_a, scoreB: r.cur_score_b } : null,
+    playedMaps: played.map((p) => ({ no: p.map_no, name: refs[p.map_no]?.name ?? null, scoreA: p.score_a, scoreB: p.score_b, winner: p.winner })),
   };
 }
 
@@ -122,14 +109,12 @@ function setMaps(tid: number, mapIds: number[]): boolean {
   return true;
 }
 
-// Сохраняет матчи и пересчитывает статус турнира: есть чемпион — завершён, иначе идёт.
-function commit(t: TournamentRow, ms: BMatch[]): void {
-  tx(() => {
-    saveMatches(t.id, ms);
-    const champ = champion(ms, t.format);
-    db.prepare('UPDATE tournaments SET status = ?, champion_team_id = ? WHERE id = ?')
-      .run(champ !== null ? 'finished' : 'running', champ, t.id);
-  });
+// Матч закончен вручную: останавливаем его на сервере и освобождаем сервер.
+async function freeServerOf(row: MatchRow | undefined): Promise<void> {
+  if (!row || row.server_id === null) return;
+  const s = getServer(row.server_id);
+  if (s) await endMatchOnServer(s);
+  clearRuntime(row.id);
 }
 
 async function requireTournament(req: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
@@ -173,8 +158,8 @@ export async function tournamentRoutes(app: FastifyInstance): Promise<void> {
     }
     const id = tx(() => {
       const res = db.prepare(`INSERT INTO tournaments
-        (name, format, team_size, max_teams, default_best_of, bo_config, grand_final_reset) VALUES (?, ?, ?, ?, ?, ?, ?)`)
-        .run(d.name, d.format, d.teamSize, d.maxTeams, d.defaultBestOf, JSON.stringify(d.boConfig), d.grandFinalReset ? 1 : 0);
+        (name, format, team_size, max_teams, default_best_of, bo_config, grand_final_reset, auto_dispatch) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
+        .run(d.name, d.format, d.teamSize, d.maxTeams, d.defaultBestOf, JSON.stringify(d.boConfig), d.grandFinalReset ? 1 : 0, d.autoDispatch ? 1 : 0);
       const tid = Number(res.lastInsertRowid);
       if (!setMaps(tid, d.mapIds)) throw new Error('map');
       return tid;
@@ -200,8 +185,8 @@ export async function tournamentRoutes(app: FastifyInstance): Promise<void> {
     }
     tx(() => {
       db.prepare(`UPDATE tournaments SET name = ?, format = ?, team_size = ?, max_teams = ?, default_best_of = ?,
-        bo_config = ?, grand_final_reset = ? WHERE id = ?`)
-        .run(d.name, d.format, d.teamSize, d.maxTeams, d.defaultBestOf, JSON.stringify(d.boConfig), d.grandFinalReset ? 1 : 0, t.id);
+        bo_config = ?, grand_final_reset = ?, auto_dispatch = ? WHERE id = ?`)
+        .run(d.name, d.format, d.teamSize, d.maxTeams, d.defaultBestOf, JSON.stringify(d.boConfig), d.grandFinalReset ? 1 : 0, d.autoDispatch ? 1 : 0, t.id);
       if (!setMaps(t.id, d.mapIds)) throw new Error('map');
     });
     return details(getTournament(t.id)!);
@@ -248,6 +233,7 @@ export async function tournamentRoutes(app: FastifyInstance): Promise<void> {
       }
       db.prepare("UPDATE tournaments SET status = 'running' WHERE id = ?").run(t.id);
     });
+    void dispatchAll();
     return details(getTournament(t.id)!);
   });
 
@@ -261,12 +247,15 @@ export async function tournamentRoutes(app: FastifyInstance): Promise<void> {
       const body = z.object({ scoreA: z.number().int().min(0), scoreB: z.number().int().min(0) }).safeParse(req.body);
       if (!body.success) return reply.code(400).send({ error: 'Укажите счёт' });
       const ms = loadMatches(t.id);
+      const row = getMatchRowByCode(t.id, req.params.code);
       try {
         reportResult(ms, req.params.code, body.data.scoreA, body.data.scoreB);
       } catch (e) {
         return reply.code(400).send({ error: (e as Error).message });
       }
       commit(t, ms);
+      await freeServerOf(row);
+      void dispatchAll();
       return details(getTournament(t.id)!);
     },
   );
@@ -282,12 +271,15 @@ export async function tournamentRoutes(app: FastifyInstance): Promise<void> {
       const body = z.object({ winner: z.enum(['a', 'b']) }).safeParse(req.body);
       if (!body.success) return reply.code(400).send({ error: 'Укажите победителя' });
       const ms = loadMatches(t.id);
+      const row = getMatchRowByCode(t.id, req.params.code);
       try {
         forceWinner(ms, req.params.code, body.data.winner);
       } catch (e) {
         return reply.code(400).send({ error: (e as Error).message });
       }
       commit(t, ms);
+      await freeServerOf(row);
+      void dispatchAll();
       return details(getTournament(t.id)!);
     },
   );
@@ -307,9 +299,79 @@ export async function tournamentRoutes(app: FastifyInstance): Promise<void> {
         return reply.code(400).send({ error: (e as Error).message });
       }
       commit(t, ms);
+      void dispatchAll();
       return details(getTournament(t.id)!);
     },
   );
+
+  // --- Управление матчем на сервере (админ) ---
+  const liveMatch = (req: FastifyRequest<{ Params: { id: string; code: string } }>) => {
+    const t = getTournament(Number(req.params.id));
+    const row = t ? getMatchRowByCode(t.id, req.params.code) : undefined;
+    return { t, row, server: row?.server_id ? getServer(row.server_id) : undefined };
+  };
+  const ctrl = { preHandler: requireAdmin };
+
+  app.post<{ Params: { id: string; code: string } }>('/api/tournaments/:id/matches/:code/dispatch', ctrl, async (req, reply) => {
+    const { t, row } = liveMatch(req);
+    if (!t || !row) return reply.code(404).send({ error: 'Матч не найден' });
+    const body = z.object({ serverId: z.number().int().optional() }).safeParse(req.body ?? {});
+    try {
+      await dispatchOne(row.id, body.success ? body.data.serverId : undefined);
+    } catch (e) {
+      return reply.code(409).send({ error: (e as Error).message });
+    }
+    return details(getTournament(t.id)!);
+  });
+
+  app.post<{ Params: { id: string; code: string } }>('/api/tournaments/:id/matches/:code/pause', ctrl, async (req, reply) => {
+    const { t, row, server } = liveMatch(req);
+    if (!t || !row) return reply.code(404).send({ error: 'Матч не найден' });
+    if (!server) return reply.code(409).send({ error: 'Матч не запущен на сервере' });
+    const body = z.object({ paused: z.boolean() }).safeParse(req.body);
+    if (!body.success) return reply.code(400).send({ error: 'Укажите paused' });
+    try {
+      await withRcon(server, (r) => r.exec(body.data.paused ? 'css_forcepause' : 'css_forceunpause'));
+    } catch (e) {
+      return reply.code(502).send({ error: `Сервер не ответил: ${(e as Error).message}` });
+    }
+    return details(getTournament(t.id)!);
+  });
+
+  // Переиграть текущую карту с первого раунда: восстановление бэкапа нулевого раунда.
+  app.post<{ Params: { id: string; code: string } }>('/api/tournaments/:id/matches/:code/restart-map', ctrl, async (req, reply) => {
+    const { t, row, server } = liveMatch(req);
+    if (!t || !row) return reply.code(404).send({ error: 'Матч не найден' });
+    if (!server || !row.live) return reply.code(409).send({ error: 'Карта ещё не началась' });
+    try {
+      const out = await withRcon(server, (r) => r.exec('css_restore 0'));
+      db.prepare('UPDATE matches SET cur_score_a = 0, cur_score_b = 0 WHERE id = ?').run(row.id);
+      return { ...details(getTournament(t.id)!), serverReply: out.trim() };
+    } catch (e) {
+      return reply.code(502).send({ error: `Сервер не ответил: ${(e as Error).message}` });
+    }
+  });
+
+  // Переиграть матч целиком: остановить на сервере, сбросить счёт серии и запустить заново.
+  app.post<{ Params: { id: string; code: string } }>('/api/tournaments/:id/matches/:code/restart-match', ctrl, async (req, reply) => {
+    const { t, row, server } = liveMatch(req);
+    if (!t || !row) return reply.code(404).send({ error: 'Матч не найден' });
+    if (!server) return reply.code(409).send({ error: 'Матч не запущен на сервере' });
+    await endMatchOnServer(server);
+    release(t.id, row.id, 'Матч перезапущен администратором');
+    void dispatchAll();
+    return details(getTournament(t.id)!);
+  });
+
+  app.post<{ Params: { id: string } }>('/api/tournaments/:id/auto-dispatch', ctrl, async (req, reply) => {
+    const t = await requireTournament(req, reply);
+    if (!t) return;
+    const body = z.object({ enabled: z.boolean() }).safeParse(req.body);
+    if (!body.success) return reply.code(400).send({ error: 'Укажите enabled' });
+    db.prepare('UPDATE tournaments SET auto_dispatch = ? WHERE id = ?').run(body.data.enabled ? 1 : 0, t.id);
+    if (body.data.enabled) void dispatchAll();
+    return details(getTournament(t.id)!);
+  });
 
   // --- Регистрация команд: капитан или админ ---
   app.post<{ Params: { id: string } }>('/api/tournaments/:id/teams', async (req, reply) => {

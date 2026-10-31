@@ -14,6 +14,7 @@ export function TournamentForm() {
   const [defaultBo, setDefaultBo] = useState(1);
   const [boConfig, setBoConfig] = useState<Record<string, number>>({});
   const [reset, setReset] = useState(true);
+  const [autoDispatch, setAutoDispatch] = useState(true);
   const [maps, setMaps] = useState<MapItem[]>([]);
   const [picked, setPicked] = useState<number[]>([]);
   const [rounds, setRounds] = useState<RoundDef[]>([]);
@@ -42,7 +43,7 @@ export function TournamentForm() {
     try {
       const t = await api<TournamentDetails>('/api/tournaments', {
         method: 'POST',
-        body: { name, format, teamSize, maxTeams, defaultBestOf: defaultBo, boConfig: cfg, grandFinalReset: reset, mapIds: picked },
+        body: { name, format, teamSize, maxTeams, defaultBestOf: defaultBo, boConfig: cfg, grandFinalReset: reset, autoDispatch, mapIds: picked },
       });
       navigate(`/tournaments/${t.id}`);
     } catch (err) {
@@ -97,6 +98,13 @@ export function TournamentForm() {
           </label>
         )}
         <p className="muted">Раунды считаются с конца сетки, поэтому настройки сохранятся, даже если команд придёт меньше.</p>
+      </div>
+
+      <div className="card">
+        <label style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <input type="checkbox" checked={autoDispatch} onChange={(e) => setAutoDispatch(e.target.checked)} />
+          Автоматически запускать готовые матчи на свободных серверах
+        </label>
       </div>
 
       <div className="card">

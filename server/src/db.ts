@@ -133,3 +133,50 @@ export function tx<T>(fn: () => T): T {
     throw e;
   }
 }
+
+function addColumn(table: string, column: string, definition: string): void {
+  const cols = db.prepare(`PRAGMA table_info(${table})`).all() as unknown as { name: string }[];
+  if (!cols.some((c) => c.name === column)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+}
+
+db.exec(`
+CREATE TABLE IF NOT EXISTS settings (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);
+
+-- Результаты отдельных карт серии, приходят с сервера
+CREATE TABLE IF NOT EXISTS match_maps (
+  match_id INTEGER NOT NULL REFERENCES matches(id) ON DELETE CASCADE,
+  map_no INTEGER NOT NULL,
+  score_a INTEGER NOT NULL,
+  score_b INTEGER NOT NULL,
+  winner TEXT,
+  PRIMARY KEY (match_id, map_no)
+);
+`);
+
+// Состояние матча на игровом сервере (id матча в панели = matchid в ArenaPro)
+addColumn('matches', 'server_id', 'INTEGER REFERENCES game_servers(id)');
+addColumn('matches', 'maps_json', 'TEXT');
+addColumn('matches', 'live', 'INTEGER NOT NULL DEFAULT 0');
+addColumn('matches', 'paused', 'INTEGER NOT NULL DEFAULT 0');
+addColumn('matches', 'cur_map_no', 'INTEGER NOT NULL DEFAULT 0');
+addColumn('matches', 'cur_score_a', 'INTEGER NOT NULL DEFAULT 0');
+addColumn('matches', 'cur_score_b', 'INTEGER NOT NULL DEFAULT 0');
+addColumn('matches', 'series_a', 'INTEGER NOT NULL DEFAULT 0');
+addColumn('matches', 'series_b', 'INTEGER NOT NULL DEFAULT 0');
+addColumn('matches', 'note', 'TEXT');
+addColumn('tournaments', 'auto_dispatch', 'INTEGER NOT NULL DEFAULT 1');
+addColumn('game_servers', 'cooldown_until', 'INTEGER NOT NULL DEFAULT 0');
+addColumn('game_servers', 'last_error', 'TEXT');
+
+export function getSetting(key: string): string | undefined {
+  const r = db.prepare('SELECT value FROM settings WHERE key = ?').get(key) as { value: string } | undefined;
+  return r?.value;
+}
+
+export function setSetting(key: string, value: string): void {
+  db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value')
+    .run(key, value);
+}

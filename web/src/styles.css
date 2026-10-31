@@ -54,3 +54,5 @@ main { max-width: 1200px; }
 .slot.empty { color: var(--muted); font-style: italic; }
 .result { display: flex; align-items: center; gap: 4px; padding: 6px 8px; border-top: 1px solid var(--line); }
 .result input { width: 52px; padding: 4px 6px; }
+.livebox { padding: 6px 8px; border-top: 1px solid var(--line); font-size: 13px; }
+.result.wrap { flex-wrap: wrap; }

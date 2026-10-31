@@ -43,14 +43,34 @@ export interface MatchDto {
   code: string; bracket: 'W' | 'L' | 'GF'; round: number; position: number; roundLabel: string;
   a: EntryDto; b: EntryDto; status: 'pending' | 'ready' | 'live' | 'done' | 'bye' | 'skipped';
   winner: 'a' | 'b' | null; bestOf: number; scoreA: number; scoreB: number; forced: boolean;
+  matchId?: number;
+  server?: { id: number; name: string; host: string; port: number } | null;
+  live?: boolean;
+  paused?: boolean;
+  note?: string | null;
+  seriesA?: number;
+  seriesB?: number;
+  curMap?: { no: number; name: string | null; scoreA: number; scoreB: number } | null;
+  playedMaps?: { no: number; name: string | null; scoreA: number; scoreB: number; winner: 'a' | 'b' | null }[];
 }
 
 export interface TournamentDetails extends Omit<TournamentSummary, 'teamCount'> {
   defaultBestOf: number;
   boConfig: Record<string, number>;
   grandFinalReset: boolean;
+  autoDispatch: boolean;
   champion: { id: number; name: string } | null;
   teams: { id: number; name: string; seed: number | null; roster: number[] }[];
   maps: MapItem[];
   matches: MatchDto[];
+}
+
+export interface ServerStatus {
+  online: boolean;
+  error?: string;
+  gamestate?: string;
+  paused?: boolean;
+  serverMatchId?: number | null;
+  panelMatch: { code: string; tournament_id: number } | null;
+  lastError: string | null;
 }
