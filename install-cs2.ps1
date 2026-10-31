@@ -584,13 +584,10 @@ const uri = require('node:url').pathToFileURL(process.argv[1]).href + '?immutabl
 const db = new DatabaseSync(uri, { readOnly: true });
 const admin = db.prepare('SELECT COUNT(*) AS n FROM admins').get().n > 0;
 const server = db.prepare('SELECT rcon_password FROM game_servers WHERE host = ? AND port = ?').get(process.argv[2], Number(process.argv[3]));
-let configMatches = true;
-if (process.argv[4] && require('node:fs').existsSync(process.argv[4])) {
-    const match = require('node:fs').readFileSync(process.argv[4], 'utf8').match(/^\s*rcon_password\s+"([^"\r\n]*)"\s*$/m);
-    configMatches = !!match && !!server && match[1] === server.rcon_password;
-}
+// The RCON password in the database is authoritative: the panel may have changed it, and servers it manages get
+// their own cfg. A different password in arenapro-server.cfg does not make the database incomplete.
 db.close();
-console.log(admin && server && configMatches ? 'OK' : 'MISSING');
+console.log(admin && server ? 'OK' : 'MISSING');
 '@
     $encoded = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($code))
     try {
@@ -973,8 +970,11 @@ try {
     const rcon = server?.rcon_password ?? input.RconPassword;
     if (!rcon || /[";\r\n]/.test(rcon)) throw new Error('RCON password cannot be safely represented in the server config');
     if (input.ServerConfigPath && existsSync(input.ServerConfigPath)) {
-        const match = readFileSync(input.ServerConfigPath, 'utf8').match(/^\s*rcon_password\s+"([^"\r\n]*)"\s*$/m);
-        if (!match || match[1] !== rcon) throw new Error('Existing RCON config differs from the panel database; no passwords were changed');
+        const text = readFileSync(input.ServerConfigPath, 'utf8');
+        const match = text.match(/^\s*rcon_password\s+"([^"\r\n]*)"\s*$/m);
+        if (!match) throw new Error('Cannot safely read rcon_password from the existing server config');
+        // The database wins; bring the manual-start config in line with it
+        if (match[1] !== rcon) writeFileSync(input.ServerConfigPath, text.replace(match[0], () => match[0].replace(match[1], () => rcon)));
     }
     if (!hasAdmin) db.prepare('INSERT INTO admins (username, password_hash) VALUES (?, ?)').run('admin', await hashPassword(input.AdminPassword));
     if (!server) db.prepare('INSERT INTO game_servers (name, host, port, rcon_password) VALUES (?, ?, ?, ?)').run('Local ArenaPro', input.ServerAddress, input.ServerPort, rcon);

@@ -189,7 +189,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\install-cs2.ps1 -InstallRo
 | `Copying CS2 from the Steam client failed` | Посмотрите `logs\cs2-copy.log`. Можно запустить скрипт с `-NoClientCopy` |
 | `SteamCMD did not confirm successful CS2 installation` | Посмотрите `logs\steamcmd.log` и запустите скрипт ещё раз: загрузка продолжится |
 | `Stop this dedicated CS2 server...` | Остановите сервер и панель перед ремонтом |
-| `Existing RCON config differs from the panel database` | RCON-пароль в `cfg\arenapro-server.cfg` не совпадает с базой. Верните одинаковое значение и повторите запуск |
+| `Cannot safely read rcon_password from the existing server config` | В `cfg\arenapro-server.cfg` нет строки `rcon_password "..."`. Верните её и повторите запуск. Если пароль в файле отличается от пароля в базе панели, установщик приведёт файл к паролю из базы |
 | `has local changes` (при `-Update`) | В `panel\` изменены файлы проекта. Сохраните их отдельно или отмените (`git -C <папка>\panel status`) и повторите |
 | `There is no installation to update` | В папке нет установки. Запустите скрипт без `-Update` |
 
