@@ -3,7 +3,7 @@ import { E } from '../errors.js';
 import { z } from 'zod';
 import { db } from '../db.js';
 import { config } from '../config.js';
-import { createSession, destroySession, getSession, verifyPassword } from '../auth.js';
+import { createSession, destroySession, getSession, hashPassword, requireAdmin, verifyPassword } from '../auth.js';
 import { fetchSteamProfile, steamLoginUrl, verifySteamCallback } from '../steam.js';
 
 const loginBody = z.object({ username: z.string().min(1), password: z.string().min(1) });
@@ -18,6 +18,31 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     if (!admin || !ok) return reply.code(401).send(E('badCredentials'));
     createSession(reply, 'admin', admin.id);
     return { kind: 'admin', username: admin.username };
+  });
+
+  // Смена логина и/или пароля текущего администратора (нужен текущий пароль)
+  app.post('/api/auth/admin/account', { preHandler: requireAdmin }, async (req, reply) => {
+    const body = z.object({
+      currentPassword: z.string().min(1),
+      newUsername: z.string().trim().min(3).max(40).optional(),
+      newPassword: z.string().min(8).max(200).optional(),
+    }).safeParse(req.body);
+    if (!body.success || (!body.data.newUsername && !body.data.newPassword)) return reply.code(400).send(E('badAccount'));
+    const adminId = getSession(req)!.userId;
+    const admin = db.prepare('SELECT id, username, password_hash FROM admins WHERE id = ?')
+      .get(adminId) as { id: number; username: string; password_hash: string } | undefined;
+    if (!admin || !(await verifyPassword(body.data.currentPassword, admin.password_hash))) {
+      return reply.code(401).send(E('wrongPassword'));
+    }
+    try {
+      if (body.data.newUsername) db.prepare('UPDATE admins SET username = ? WHERE id = ?').run(body.data.newUsername, admin.id);
+    } catch {
+      return reply.code(409).send(E('usernameTaken'));
+    }
+    if (body.data.newPassword) {
+      db.prepare('UPDATE admins SET password_hash = ? WHERE id = ?').run(await hashPassword(body.data.newPassword), admin.id);
+    }
+    return { username: body.data.newUsername ?? admin.username };
   });
 
   app.get('/api/auth/steam', async (_req, reply) => reply.redirect(steamLoginUrl()));

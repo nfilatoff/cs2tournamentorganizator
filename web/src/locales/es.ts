@@ -302,4 +302,16 @@ export const es: Dict = {
   'e.badPlayoffOrder': 'El orden de los play-offs debe contener exactamente {n} equipos distintos del torneo',
   'e.playoffNotCreated': 'Los play-offs aún no se han creado',
   'e.playoffStarted': 'Ya se han jugado partidos en los play-offs',
+
+  // Аккаунт
+  'account.title': 'Cuenta de administrador',
+  'account.current': 'Usuario actual: {name}',
+  'account.newUsername': 'Nuevo usuario (opcional)',
+  'account.newPassword': 'Nueva contraseña (mínimo 8 caracteres, opcional)',
+  'account.currentPassword': 'Contraseña actual',
+  'account.save': 'Guardar',
+  'account.saved': 'Guardado.',
+  'e.badAccount': 'Indica un nuevo usuario (3+ caracteres) y/o una nueva contraseña (8+ caracteres)',
+  'e.wrongPassword': 'Contraseña actual incorrecta',
+  'e.usernameTaken': 'Este usuario ya está en uso',
 };

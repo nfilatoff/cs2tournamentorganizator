@@ -301,6 +301,18 @@ export const ru = {
   'e.badPlayoffOrder': 'Порядок плей-офф должен содержать ровно {n} разных команд турнира',
   'e.playoffNotCreated': 'Плей-офф ещё не сформирован',
   'e.playoffStarted': 'В плей-офф уже есть сыгранные матчи',
+
+  // Аккаунт
+  'account.title': 'Аккаунт администратора',
+  'account.current': 'Текущий логин: {name}',
+  'account.newUsername': 'Новый логин (необязательно)',
+  'account.newPassword': 'Новый пароль (не короче 8 символов, необязательно)',
+  'account.currentPassword': 'Текущий пароль',
+  'account.save': 'Сохранить',
+  'account.saved': 'Сохранено.',
+  'e.badAccount': 'Укажите новый логин (от 3 символов) и/или новый пароль (от 8 символов)',
+  'e.wrongPassword': 'Неверный текущий пароль',
+  'e.usernameTaken': 'Такой логин уже занят',
 };
 
 export type Dict = Record<keyof typeof ru, string>;

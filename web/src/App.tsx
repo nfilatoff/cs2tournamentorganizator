@@ -8,6 +8,7 @@ import { Maps } from './pages/Maps';
 import { Home } from './pages/Home';
 import { Teams } from './pages/Teams';
 import { AdminTeams } from './pages/AdminTeams';
+import { Account } from './pages/Account';
 import { Tournaments } from './pages/Tournaments';
 import { TournamentForm } from './pages/TournamentForm';
 import { TournamentView } from './pages/TournamentView';
@@ -42,7 +43,7 @@ export function App() {
         <select value={lang} onChange={(e) => setLang(e.target.value as Lang)} aria-label={t('app.language')}>
           {LANGS.map((l) => <option key={l.id} value={l.id}>{l.label}</option>)}
         </select>
-        {me.kind === 'admin' && <span className="muted">{me.username}</span>}
+        {me.kind === 'admin' && <NavLink to="/account">{me.username}</NavLink>}
         {me.kind === 'player' && <span className="muted">{me.name}</span>}
         {me.kind ? (
           <button className="ghost" onClick={logout}>{t('app.logout')}</button>
@@ -59,6 +60,7 @@ export function App() {
           <Route path="/teams" element={me.kind === 'admin' ? <AdminTeams /> : me.kind === 'player' ? <Teams me={me} /> : <Navigate to="/login" />} />
           <Route path="/login" element={<Login onLogin={refresh} />} />
           <Route path="/servers" element={me.kind === 'admin' ? <Servers /> : <Navigate to="/login" />} />
+          <Route path="/account" element={me.kind === 'admin' ? <Account username={me.username} onChanged={refresh} /> : <Navigate to="/login" />} />
           <Route path="/maps" element={me.kind === 'admin' ? <Maps /> : <Navigate to="/login" />} />
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
