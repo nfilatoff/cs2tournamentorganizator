@@ -121,6 +121,8 @@ export const ru = {
   'match.unpause': 'Снять паузу',
   'match.restartMap': 'Переиграть карту',
   'match.confirmRestartMap': 'Переиграть текущую карту с первого раунда?',
+  'match.restoreRound': 'Откатить к раунду',
+  'match.confirmRestoreRound': 'Откатить карту к началу раунда {round}? Всё, что произошло в текущем раунде (урон, убийства, закупка), будет потеряно, даже если игроки уже получили урон. Игроки увидят сообщение сервера.',
   'match.restartMatch': 'Переиграть матч',
   'match.confirmRestartMatch': 'Переиграть матч целиком? Счёт серии сбросится.',
   'match.victory': 'Победа',

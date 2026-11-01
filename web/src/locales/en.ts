@@ -122,6 +122,8 @@ export const en: Dict = {
   'match.unpause': 'Unpause',
   'match.restartMap': 'Replay map',
   'match.confirmRestartMap': 'Replay the current map from the first round?',
+  'match.restoreRound': 'Roll back to round',
+  'match.confirmRestoreRound': 'Roll the map back to the start of round {round}? Everything that happened in the current round (damage, kills, purchases) will be lost, even if players have already taken damage.',
   'match.restartMatch': 'Replay match',
   'match.confirmRestartMatch': 'Replay the whole match? The series score will be reset.',
   'match.victory': 'Winner',

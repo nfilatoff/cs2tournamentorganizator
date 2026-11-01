@@ -122,6 +122,8 @@ export const es: Dict = {
   'match.unpause': 'Reanudar',
   'match.restartMap': 'Repetir mapa',
   'match.confirmRestartMap': '¿Repetir el mapa actual desde la primera ronda?',
+  'match.restoreRound': 'Volver a la ronda',
+  'match.confirmRestoreRound': '¿Volver el mapa al inicio de la ronda {round}? Se perderá todo lo ocurrido en la ronda actual (daño, bajas, compras), aunque los jugadores ya hayan recibido daño.',
   'match.restartMatch': 'Repetir partido',
   'match.confirmRestartMatch': '¿Repetir el partido completo? Se reiniciará el marcador de la serie.',
   'match.victory': 'Victoria',

@@ -10,6 +10,7 @@ export interface MatchActions {
   onDispatch: (code: string) => void;
   onPause: (code: string, paused: boolean) => void;
   onRestartMap: (code: string) => void;
+  onRestoreRound: (code: string, round: number) => void;
   onRestartMatch: (code: string) => void;
 }
 
@@ -32,6 +33,9 @@ export function MatchCard({ m, actions }: { m: MatchDto; actions?: MatchActions 
   const { id } = useParams();
   const [a, setA] = useState(0);
   const [b, setB] = useState(0);
+  const [round, setRound] = useState<number | null>(null);
+  // Бэкап N это состояние после N сыгранных раундов, последний есть у текущего раунда
+  const roundsPlayed = (m.curMap?.scoreA ?? 0) + (m.curMap?.scoreB ?? 0);
   const need = Math.ceil(m.bestOf / 2);
   const inPlay = m.status === 'ready' || m.status === 'live';
   return (
@@ -72,6 +76,16 @@ export function MatchCard({ m, actions }: { m: MatchDto; actions?: MatchActions 
         <div className="result wrap">
           <button className="ghost" onClick={() => actions.onPause(m.code, !m.paused)}>{m.paused ? t('match.unpause') : t('match.pause')}</button>
           {m.live && <button className="ghost" onClick={() => confirm(t('match.confirmRestartMap')) && actions.onRestartMap(m.code)}>{t('match.restartMap')}</button>}
+          {m.live && (
+            <span className="roundrestore">
+              <input type="number" min={0} max={roundsPlayed} value={round ?? roundsPlayed}
+                onChange={(e) => setRound(Math.max(0, Math.min(roundsPlayed, Number(e.target.value) || 0)))} />
+              <button className="ghost" onClick={() => {
+                const r = round ?? roundsPlayed;
+                if (confirm(t('match.confirmRestoreRound', { round: r }))) actions.onRestoreRound(m.code, r);
+              }}>{t('match.restoreRound')}</button>
+            </span>
+          )}
           <button className="ghost" onClick={() => confirm(t('match.confirmRestartMatch')) && actions.onRestartMatch(m.code)}>{t('match.restartMatch')}</button>
         </div>
       )}

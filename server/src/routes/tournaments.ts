@@ -399,6 +399,23 @@ export async function tournamentRoutes(app: FastifyInstance): Promise<void> {
     }
   });
 
+  // Откат к началу выбранного раунда карты (бэкап раунда плагина). Что случилось в текущем раунде, включая урон, теряется.
+  app.post<{ Params: { id: string; code: string } }>('/api/tournaments/:id/matches/:code/restore-round', ctrl, async (req, reply) => {
+    const { t, row, server } = liveMatch(req);
+    if (!t || !row) return reply.code(404).send(E('matchNotFound'));
+    if (!server || !row.live) return reply.code(409).send(E('mapNotStarted'));
+    const body = z.object({ round: z.number().int().min(0).max(200) }).safeParse(req.body);
+    // Бэкап N это состояние после N сыгранных раундов; позже текущего раунда бэкапов нет
+    if (!body.success || body.data.round > row.cur_score_a + row.cur_score_b) return reply.code(400).send(E('badRequest'));
+    try {
+      const out = await withRcon(server, (r) => r.exec(`css_restore ${body.data.round}`));
+      if (body.data.round === 0) db.prepare('UPDATE matches SET cur_score_a = 0, cur_score_b = 0 WHERE id = ?').run(row.id);
+      return { ...details(getTournament(t.id)!), serverReply: out.trim() };
+    } catch (e) {
+      return reply.code(502).send(E('serverNoReply', { reason: errBody(e) }));
+    }
+  });
+
   // Переиграть матч целиком: остановить на сервере, сбросить счёт серии и запустить заново.
   app.post<{ Params: { id: string; code: string } }>('/api/tournaments/:id/matches/:code/restart-match', ctrl, async (req, reply) => {
     const { t, row, server } = liveMatch(req);

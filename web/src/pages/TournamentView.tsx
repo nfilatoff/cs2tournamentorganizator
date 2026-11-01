@@ -88,6 +88,7 @@ export function TournamentView({ me }: { me: Me }) {
     onDispatch: (code) => act(() => api(url(code, 'dispatch'), { method: 'POST', body: {} })),
     onPause: (code, paused) => act(() => api(url(code, 'pause'), { method: 'POST', body: { paused } })),
     onRestartMap: (code) => act(() => api(url(code, 'restart-map'), { method: 'POST', body: {} })),
+    onRestoreRound: (code, round) => act(() => api(url(code, 'restore-round'), { method: 'POST', body: { round } })),
     onRestartMatch: (code) => act(() => api(url(code, 'restart-match'), { method: 'POST', body: {} })),
   } : undefined;
 

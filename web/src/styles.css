@@ -179,3 +179,5 @@ ol.steps li { margin-bottom: 4px; }
   .mscore { font-size: 32px; gap: 10px; }
 }
 .srvlog { margin: 0; max-height: 360px; overflow: auto; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 10px; font-size: 12px; white-space: pre-wrap; word-break: break-all; }
+.roundrestore { display: inline-flex; gap: 4px; align-items: center; }
+.roundrestore input { width: 56px; }
