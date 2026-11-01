@@ -4,7 +4,7 @@ import { db } from '../db.js';
 import { getSession, requireAdmin } from '../auth.js';
 import { E, errBody } from '../errors.js';
 import { tournamentMapPool } from '../arenapro.js';
-import { dispatchAll } from '../dispatcher.js';
+import { dispatchAll, endMatchOnServer, getServer, release } from '../dispatcher.js';
 import { getMatchRowByCode, getTournament, teamName, type MatchRow, type TournamentRow } from '../tournamentStore.js';
 import { loadVeto, saveVeto, vetoApplies } from '../vetoStore.js';
 import { mapImageUrl } from '../mapImages.js';
@@ -47,6 +47,8 @@ function dto(req: FastifyRequest, t: TournamentRow, row: MatchRow, state: VetoSt
     bestOf: row.best_of,
     status: done ? 'done' as const : 'veto' as const,
     locked: row.server_id !== null || row.status !== 'ready',
+    // Матч уже идёт на сервере: админ может сбросить вето, тогда матч останавливается
+    running: row.status === 'live' && row.server_id !== null,
     teams: { a: { id: a, name: teamName(a) }, b: { id: b, name: teamName(b) } },
     pool: state.poolIds.map((id) => ({ id, name: byId.get(id)?.name ?? `#${id}`, imageUrl: images.get(id) ?? null })),
     template: vetoTemplate(state.poolIds.length, state.bestOf),
@@ -118,11 +120,18 @@ export async function vetoRoutes(app: FastifyInstance): Promise<void> {
     }
   });
 
-  // Админ: начать вето заново
+  // Админ: начать вето заново. Если матч уже запущен на сервере, он останавливается и возвращается в "готов".
   app.post<Params>('/api/tournaments/:id/matches/:code/veto/reset', { preHandler: requireAdmin }, async (req, reply) => {
     const r = await load(req);
     if (!r.ok) return reply.code(r.code).send(r.error);
-    const { t, row } = r;
+    const { t } = r;
+    let row = r.row;
+    if (row.status === 'live' && row.server_id !== null) {
+      const server = getServer(row.server_id);
+      if (server) await endMatchOnServer(server);
+      release(t.id, row.id);
+      row = getMatchRowByCode(t.id, row.code)!;
+    }
     if (row.server_id !== null || row.status !== 'ready') return reply.code(409).send(E('vetoLocked'));
     saveVeto(row.id, null);
     return dto(req, t, { ...row, veto_json: null }, loadVeto(t, { ...row, veto_json: null }));

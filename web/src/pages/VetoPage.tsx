@@ -139,10 +139,10 @@ export function VetoPage() {
         </div>
       )}
 
-      {v.you === 'admin' && !v.locked && (
+      {v.you === 'admin' && (!v.locked || v.running) && (
         <p>
-          <button className="ghost" onClick={() => send('/auto', {})}>{t('veto.auto')}</button>{' '}
-          <button className="ghost" onClick={() => confirm(t('veto.confirmReset')) && send('/reset', {})}>{t('veto.reset')}</button>
+          {!v.locked && <><button className="ghost" onClick={() => send('/auto', {})}>{t('veto.auto')}</button>{' '}</>}
+          <button className="ghost" onClick={() => confirm(t(v.running ? 'veto.confirmResetRunning' : 'veto.confirmReset')) && send('/reset', {})}>{t('veto.reset')}</button>
         </p>
       )}
     </>

@@ -344,6 +344,7 @@ export const es: Dict = {
   'veto.auto': 'Terminar al azar',
   'veto.reset': 'Reiniciar el veto',
   'veto.confirmReset': '¿Reiniciar el veto de este partido?',
+  'veto.confirmResetRunning': 'El partido ya está en curso en un servidor. ¿Detenerlo y reiniciar el veto? Se perderá el marcador actual.',
   'form.vetoEnabled': 'Los capitanes vetan mapas antes del partido',
   'form.vetoSides': 'El rival elige el lado (CT/T) tras un pick; si no, los mapas elegidos empiezan con ronda de cuchillos',
   'form.vetoHint': 'Vetos y elecciones por turnos: en BO1 vetos hasta que quede un mapa, en BO3 veto, veto, elección, elección, veto, veto, en BO5 veto, veto y cuatro elecciones. Tras una elección el rival escoge el lado y el mapa decisivo se juega con ronda de cuchillo. Sin veto se usan los primeros mapas del grupo.',

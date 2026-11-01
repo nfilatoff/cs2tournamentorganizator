@@ -138,6 +138,7 @@ export interface VetoDto {
   bestOf: number;
   status: 'veto' | 'done';
   locked: boolean;
+  running: boolean;
   teams: { a: { id: number; name: string }; b: { id: number; name: string } };
   pool: { id: number; name: string; imageUrl: string | null }[];
   template: { kind: 'ban' | 'pick' | 'decider'; team: 'a' | 'b' | null }[];

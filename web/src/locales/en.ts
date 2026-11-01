@@ -344,6 +344,7 @@ export const en: Dict = {
   'veto.auto': 'Finish randomly',
   'veto.reset': 'Restart the veto',
   'veto.confirmReset': 'Reset the veto of this match?',
+  'veto.confirmResetRunning': 'The match is already running on a server. Stop it and restart the veto? The current match score will be lost.',
   'form.vetoEnabled': 'Captains veto maps before the match',
   'form.vetoSides': 'The opponent picks the side (CT/T) after a map pick; otherwise picked maps start with a knife round',
   'form.vetoHint': 'Bans and picks in turns: in BO1 bans until one map is left, in BO3 ban, ban, pick, pick, ban, ban, in BO5 ban, ban and four picks. After a pick the opponent chooses the side, the decider is played with a knife round. Without the veto the first maps of the pool are used.',
