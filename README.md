@@ -90,7 +90,7 @@ ArenaPro — это доработанный для панели плагин м
 
 ## Установка
 
-Подробная инструкция находится в [INSTALLATION.md](INSTALLATION.md). Коротко, установить всё можно двумя способами.
+Подробная инструкция находится в [INSTALLATION.md](INSTALLATION.md). Как проводить тренировки (раскидка гранат, боты) и товарищеские матчи без турнира, описано в [PRACTICE.md](PRACTICE.md). Коротко, установить всё можно двумя способами.
 
 **Автоматически.** Скачайте один файл [install-cs2.ps1](https://raw.githubusercontent.com/nfilatoff/cs2tournamentorganizator/main/install-cs2.ps1) и запустите его из PowerShell x64 от имени администратора:
 
@@ -290,6 +290,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts\build-plugin.ps1 -De
 | `scripts/build-plugin.ps1` | Сборка и установка ArenaPro на сервер |
 | `scripts/test-installer.ps1` | Offline-проверки установщика |
 | `install-cs2.ps1` | Установщик (описание в INSTALLATION.md) |
+| `PRACTICE.md` | Тренировки и товарищеские матчи: команды ArenaPro в игре |
 
 `global.json` выбирает стабильный .NET SDK 10 с установленным обновлением. В `package.json` закреплены исправленные версии `glob/minimatch`, пока `@fastify/static` использует более старую ветку, и разрешён установочный скрипт `esbuild@0.28.2`, необходимый для сборки. При обновлении esbuild это разрешение нужно пересмотреть. Проверка зависимостей: `npm.cmd audit` и `dotnet list plugin/ArenaPro.csproj package --vulnerable --include-transitive`.
 

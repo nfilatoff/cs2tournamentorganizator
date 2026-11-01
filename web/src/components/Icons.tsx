@@ -22,3 +22,6 @@ export const IconLogin = () => (
 export const IconLogout = () => (
   <svg {...base}><path d="M10 4H5v16h5" /><path d="M15 8l4 4-4 4M19 12H9" /></svg>
 );
+export const IconShield = () => (
+  <svg {...base}><path d="M12 3 4.5 6v5.5c0 4.6 3.2 8.4 7.5 9.5 4.3-1.1 7.5-4.9 7.5-9.5V6L12 3Z" /><path d="m9 12 2 2 4-4" /></svg>
+);

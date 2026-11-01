@@ -14,7 +14,8 @@ import { Tournaments } from './pages/Tournaments';
 import { TournamentForm } from './pages/TournamentForm';
 import { TournamentView } from './pages/TournamentView';
 import { MatchPage } from './pages/MatchPage';
-import { IconHome, IconLogin, IconLogout, IconMap, IconServer, IconTrophy, IconUsers } from './components/Icons';
+import { GameAdmins } from './pages/GameAdmins';
+import { IconHome, IconLogin, IconLogout, IconMap, IconServer, IconShield, IconTrophy, IconUsers } from './components/Icons';
 
 // Вето теперь идёт в комнате матча: старые ссылки ведут туда же
 function VetoRedirect() {
@@ -48,6 +49,7 @@ export function App() {
           {me.kind !== null && <NavLink to="/teams" className="navitem"><IconUsers />{t('nav.teams')}</NavLink>}
           {me.kind === 'admin' && <NavLink to="/servers" className="navitem"><IconServer />{t('nav.servers')}</NavLink>}
           {me.kind === 'admin' && <NavLink to="/maps" className="navitem"><IconMap />{t('nav.maps')}</NavLink>}
+          {me.kind === 'admin' && <NavLink to="/game-admins" className="navitem"><IconShield />{t('nav.gameAdmins')}</NavLink>}
         </nav>
         <div className="grow" />
         <select value={lang} onChange={(e) => setLang(e.target.value as Lang)} aria-label={t('app.language')}>
@@ -82,6 +84,7 @@ export function App() {
           <Route path="/servers" element={me.kind === 'admin' ? <Servers /> : <Navigate to="/login" />} />
           <Route path="/account" element={me.kind === 'admin' ? <Account username={me.username} onChanged={refresh} /> : <Navigate to="/login" />} />
           <Route path="/profile" element={me.kind === 'player' ? <Profile me={me} onChanged={refresh} /> : <Navigate to="/login" />} />
+          <Route path="/game-admins" element={me.kind === 'admin' ? <GameAdmins /> : <Navigate to="/login" />} />
           <Route path="/maps" element={me.kind === 'admin' ? <Maps /> : <Navigate to="/login" />} />
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>

@@ -429,3 +429,5 @@ details.mbox[open] > summary::after { transform: rotate(180deg); }
 .vtimer.hot b { color: var(--danger); }
 .vtimer.hot .bar > i { background: var(--danger); }
 .veto-head .teamstate { text-align: left; }
+.tablewrap { overflow-x: auto; }
+.tablewrap td { white-space: nowrap; }

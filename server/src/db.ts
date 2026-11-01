@@ -241,3 +241,12 @@ addColumn('matches', 'dispatched_at', 'INTEGER');
 addColumn('matches', 'walkover', 'INTEGER NOT NULL DEFAULT 0');
 // Длина матча в режиме «Напарники» (1v1 и 2v2): 16 раундов как в «Напарниках» или 24, как в соревновательном (половины по 12)
 addColumn('tournaments', 'wingman_rounds', 'INTEGER NOT NULL DEFAULT 16');
+
+// Админы ArenaPro на игровых серверах (по SteamID64). Панель пишет их в cfg/ArenaPro/admins.json.
+// flags: пусто — полный админ, иначе флаги CounterStrikeSharp через пробел (например, только тренировки)
+db.exec(`CREATE TABLE IF NOT EXISTS game_admins (
+  steam_id TEXT PRIMARY KEY,
+  name TEXT NOT NULL DEFAULT '',
+  flags TEXT NOT NULL DEFAULT '',
+  created_at INTEGER NOT NULL DEFAULT (unixepoch())
+)`);
