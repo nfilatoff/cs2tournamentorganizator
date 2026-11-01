@@ -24,9 +24,10 @@ export function Login({ onLogin }: { onLogin: () => void }) {
 
   return (
     <div className="center">
+      <img src="/logo.png" alt="Arena Pro Gaming Club" style={{ display: 'block', width: 220, margin: '0 auto 28px' }} />
       <div className="card">
         <h1>{t('login.playerTitle')}</h1>
-        <a href="/api/auth/steam"><button type="button">{t('login.steam')}</button></a>
+        <a className="btn big" style={{ width: '100%' }} href="/api/auth/steam">{t('login.steam')}</a>
       </div>
       <form className="card" onSubmit={submit}>
         <h1>{t('login.adminTitle')}</h1>

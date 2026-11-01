@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { NavLink, Navigate, Route, Routes } from 'react-router-dom';
+import { Link, NavLink, Navigate, Route, Routes, useParams } from 'react-router-dom';
 import { api, type Me } from './api';
 import { LANGS, useI18n, type Lang } from './i18n';
 import { Login } from './pages/Login';
@@ -13,8 +13,14 @@ import { Profile } from './pages/Profile';
 import { Tournaments } from './pages/Tournaments';
 import { TournamentForm } from './pages/TournamentForm';
 import { TournamentView } from './pages/TournamentView';
-import { VetoPage } from './pages/VetoPage';
 import { MatchPage } from './pages/MatchPage';
+import { IconHome, IconLogin, IconLogout, IconMap, IconServer, IconTrophy, IconUsers } from './components/Icons';
+
+// Вето теперь идёт в комнате матча: старые ссылки ведут туда же
+function VetoRedirect() {
+  const { id, code } = useParams();
+  return <Navigate to={`/tournaments/${id}/matches/${code}`} replace />;
+}
 
 export function App() {
   const { t, lang, setLang } = useI18n();
@@ -33,34 +39,43 @@ export function App() {
   };
 
   return (
-    <>
-      <header>
-        <span className="brand">{t('app.brand')}</span>
+    <div className="shell">
+      <aside className="sidebar">
+        <Link to="/" className="logo" title="Arena Pro"><img src="/logo-mark.png" alt="Arena Pro" /></Link>
         <nav>
-          <NavLink to="/">{t('nav.home')}</NavLink>
-          <NavLink to="/tournaments">{t('nav.tournaments')}</NavLink>
-          {me.kind !== null && <NavLink to="/teams">{t('nav.teams')}</NavLink>}
-          {me.kind === 'admin' && <NavLink to="/servers">{t('nav.servers')}</NavLink>}
-          {me.kind === 'admin' && <NavLink to="/maps">{t('nav.maps')}</NavLink>}
+          <NavLink to="/" end className="navitem"><IconHome />{t('nav.home')}</NavLink>
+          <NavLink to="/tournaments" className="navitem"><IconTrophy />{t('nav.tournaments')}</NavLink>
+          {me.kind !== null && <NavLink to="/teams" className="navitem"><IconUsers />{t('nav.teams')}</NavLink>}
+          {me.kind === 'admin' && <NavLink to="/servers" className="navitem"><IconServer />{t('nav.servers')}</NavLink>}
+          {me.kind === 'admin' && <NavLink to="/maps" className="navitem"><IconMap />{t('nav.maps')}</NavLink>}
         </nav>
+        <div className="grow" />
         <select value={lang} onChange={(e) => setLang(e.target.value as Lang)} aria-label={t('app.language')}>
-          {LANGS.map((l) => <option key={l.id} value={l.id}>{l.label}</option>)}
+          {LANGS.map((l) => <option key={l.id} value={l.id}>{l.id.toUpperCase()}</option>)}
         </select>
-        {me.kind === 'admin' && <NavLink to="/account">{me.username}</NavLink>}
-        {me.kind === 'player' && <NavLink to="/profile">{me.name}</NavLink>}
+        {me.kind === 'admin' && <NavLink to="/account" className="userchip" title={me.username}>{me.username.slice(0, 1).toUpperCase()}</NavLink>}
+        {me.kind === 'player' && <NavLink to="/profile" className="userchip" title={me.name}>{me.name.slice(0, 1).toUpperCase()}</NavLink>}
         {me.kind ? (
-          <button className="ghost" onClick={logout}>{t('app.logout')}</button>
+          <button className="iconbtn" onClick={logout} title={t('app.logout')} aria-label={t('app.logout')}><IconLogout /></button>
         ) : (
-          <NavLink to="/login">{t('app.login')}</NavLink>
+          <NavLink to="/login" className="navitem"><IconLogin />{t('app.login')}</NavLink>
         )}
-      </header>
+      </aside>
+      <div className="content">
+        <header className="topbar">
+          <Link to="/" className="wordmark">Arena <b>Pro</b><small>Gaming Club · CS2</small></Link>
+          <span className="spacer" />
+          {me.kind === 'admin' && <span className="who">{t('app.admin')}: <b>{me.username}</b></span>}
+          {me.kind === 'player' && <span className="who"><b>{me.name}</b></span>}
+          {!me.kind && <NavLink to="/login"><button>{t('app.login')}</button></NavLink>}
+        </header>
       <main>
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/tournaments" element={<Tournaments me={me} />} />
           <Route path="/tournaments/new" element={me.kind === 'admin' ? <TournamentForm /> : <Navigate to="/login" />} />
           <Route path="/tournaments/:id" element={<TournamentView me={me} />} />
-          <Route path="/tournaments/:id/matches/:code/veto" element={<VetoPage />} />
+          <Route path="/tournaments/:id/matches/:code/veto" element={<VetoRedirect />} />
           <Route path="/tournaments/:id/matches/:code" element={<MatchPage />} />
           <Route path="/teams" element={me.kind === 'admin' ? <AdminTeams /> : me.kind === 'player' ? <Teams me={me} /> : <Navigate to="/login" />} />
           <Route path="/login" element={<Login onLogin={refresh} />} />
@@ -71,6 +86,7 @@ export function App() {
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </main>
-    </>
+      </div>
+    </div>
   );
 }

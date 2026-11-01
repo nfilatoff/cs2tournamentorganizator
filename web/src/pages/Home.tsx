@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { api, type HomeDto, type HomeMatch } from '../api';
 import { copyText } from '../clipboard';
 import { useI18n } from '../i18n';
+import { TournamentRows } from '../components/TournamentRows';
 
 function Copy({ text }: { text: string }) {
   const { t } = useI18n();
@@ -18,40 +19,46 @@ function Copy({ text }: { text: string }) {
 function MyMatch({ m }: { m: HomeMatch }) {
   const { t } = useI18n();
   const mine = m.state === 'veto' && m.veto?.yourTurn;
+  const room = `/tournaments/${m.tournamentId}/matches/${m.code}`;
   return (
-    <div className={`card${mine ? ' mine' : ''}`}>
-      <div className="between">
-        <h2>{m.team} <span className="muted">vs</span> {m.opponent ?? t('match.tbd')}</h2>
-        <span className="muted">BO{m.bestOf} · <Link to={`/tournaments/${m.tournamentId}/matches/${m.code}`}>{m.code}</Link></span>
-      </div>
-      <p className="muted"><Link to={`/tournaments/${m.tournamentId}`}>{m.tournamentName}</Link></p>
-
-      {m.state === 'veto' && m.veto && (
-        <p>
-          <b>{mine ? t('home.yourTurn') : t('home.state.veto', { step: m.veto.step, total: m.veto.total })}</b>{' '}
-          <Link to={`/tournaments/${m.tournamentId}/matches/${m.code}/veto`}><button>{t('home.openVeto')}</button></Link>
-        </p>
-      )}
-      {m.state === 'queued' && <p>{t('home.state.queued')}</p>}
-      {m.state === 'waiting' && <p className="muted">{t('home.state.waiting')}</p>}
-      {m.state === 'live' && (
-        <>
-          <p>
-            {m.started && m.map
-              ? t('match.playing', { map: m.map, a: m.score?.a ?? 0, b: m.score?.b ?? 0 })
-              : t('match.waiting')}
-            {m.paused && ` · ${t('match.paused')}`}
-          </p>
-          {m.server && (
-            <p>
-              {t('home.connect')} <code>connect {m.server.host}:{m.server.port}</code>{' '}
-              <Copy text={`connect ${m.server.host}:${m.server.port}`} />
-              <span className="muted"> · {m.server.name}</span>
-            </p>
+    <div className={`card mymatch${mine ? ' mine' : ''}`}>
+      <div>
+        <div className="vs">{m.team} <span className="muted">vs</span> {m.opponent ?? t('match.tbd')}</div>
+        <div className="meta">
+          <span className={`pill ${m.state}`}>{t(`mp.phase.${m.state}`)}</span>
+          <Link to={`/tournaments/${m.tournamentId}`}>{m.tournamentName}</Link>
+          <span>BO{m.bestOf} · {m.code}</span>
+        </div>
+        <div className="state">
+          {m.state === 'veto' && m.veto && (
+            <b className={mine ? '' : 'muted'} style={mine ? { color: 'var(--accent)' } : undefined}>
+              {mine ? t('home.yourTurn') : t('home.state.veto', { step: m.veto.step, total: m.veto.total })}
+            </b>
           )}
-          <p><Link to={`/tournaments/${m.tournamentId}/matches/${m.code}`}><button>{t('home.openMatch')}</button></Link></p>
-        </>
-      )}
+          {m.state === 'queued' && <span>{t('home.state.queued')}</span>}
+          {m.state === 'waiting' && <span className="muted">{t('home.state.waiting')}</span>}
+          {m.state === 'live' && (
+            <>
+              <div>
+                {m.started && m.map
+                  ? t('match.playing', { map: m.map, a: m.score?.a ?? 0, b: m.score?.b ?? 0 })
+                  : t('match.waiting')}
+                {m.paused && ` · ${t('match.paused')}`}
+              </div>
+              {m.server && (
+                <div style={{ marginTop: 8, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <code>connect {m.server.host}:{m.server.port}</code>
+                  <Copy text={`connect ${m.server.host}:${m.server.port}`} />
+                  <span className="muted small">{m.server.name}</span>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+      <Link className={`btn${mine || m.state === 'live' ? ' big' : ' ghost'}`} to={room}>
+        {m.state === 'veto' ? t('home.openVeto') : t('home.openMatch')}
+      </Link>
     </div>
   );
 }
@@ -79,21 +86,7 @@ export function Home() {
   if (!d) return null;
 
   // Регистрация открыта только у ещё не начатых турниров; идущие показываются отдельно (админу они уже есть в «Идущих турнирах»)
-  const tournamentTable = (list: typeof d.tournaments, empty: string) => (
-    <table>
-      <tbody>
-        {list.map((x) => (
-          <tr key={x.id}>
-            <td><Link to={`/tournaments/${x.id}`}>{x.name}</Link></td>
-            <td className="muted">{t(`format.${x.format}`)}, {x.teamSize}v{x.teamSize}</td>
-            <td>{x.teamCount}/{x.maxTeams}</td>
-            <td>{t(`status.${x.status}`)}</td>
-          </tr>
-        ))}
-        {list.length === 0 && <tr><td className="muted">{empty}</td></tr>}
-      </tbody>
-    </table>
-  );
+  const tournamentTable = (list: typeof d.tournaments, empty: string) => <TournamentRows list={list} empty={empty} />;
   const registering = d.tournaments.filter((x) => x.status === 'registration');
   const started = d.tournaments.filter((x) => x.status === 'running');
   const tournaments = (
@@ -114,10 +107,14 @@ export function Home() {
   if (d.kind === 'guest') {
     return (
       <>
-        <div className="card">
-          <h1>{t('app.brand')}</h1>
-          <p className="muted">{t('home.guest')}</p>
-          <a href="/api/auth/steam"><button>{t('login.steam')}</button></a>
+        <div className="hero">
+          <div>
+            <h1>Arena <b>Pro</b> · CS2</h1>
+            <p>{t('home.heroTag')}</p>
+            <p className="muted small">{t('home.guest')}</p>
+            <a className="btn big" href="/api/auth/steam">{t('login.steam')}</a>
+          </div>
+          <img className="heroimg" src="/logo.png" alt="Arena Pro Gaming Club" />
         </div>
         {tournaments}
       </>
@@ -128,7 +125,7 @@ export function Home() {
     const p = d.player;
     return (
       <>
-        <h1>{t('home.myMatches')}</h1>
+        <div className="pagehead"><h1>{t('home.myMatches')}</h1></div>
         {p.matches.length === 0 && <div className="card"><p className="muted">{t('home.noMatches')}</p></div>}
         {p.matches.map((m) => <MyMatch key={`${m.tournamentId}-${m.code}`} m={m} />)}
 
@@ -188,7 +185,7 @@ export function Home() {
         <ul className="attention">
           {a.attention.map((x, i) => {
             const link = 'tournamentId' in x
-              ? (x.type === 'veto' ? `/tournaments/${x.tournamentId}/matches/${x.code}/veto` : `/tournaments/${x.tournamentId}`)
+              ? (x.type === 'veto' ? `/tournaments/${x.tournamentId}/matches/${x.code}` : `/tournaments/${x.tournamentId}`)
               : '/servers';
             const text = t(attentionKey(x) as 'home.att.veto', {
               n: 'count' in x ? x.count : 1,
@@ -210,13 +207,13 @@ export function Home() {
             <h2>{t('home.servers')}</h2>
             <Link to="/servers"><button className="ghost">{t('nav.servers')}</button></Link>
           </div>
-          <p>{t('home.serversSummary', { free: a.servers.free, busy: a.servers.busy, total: a.servers.total })}</p>
+          <p className="muted">{t('home.serversSummary', { free: a.servers.free, busy: a.servers.busy, total: a.servers.total })}</p>
           <table>
             <tbody>
               {a.servers.list.map((s) => (
                 <tr key={s.id}>
                   <td>{s.name} <span className="muted">{s.address}</span></td>
-                  <td className={s.state === 'problem' ? 'error' : ''}>{t(`home.server.${s.state}`)}</td>
+                  <td><span className={`pill ${s.state === 'busy' ? 'live' : s.state === 'free' ? 'done' : ''}`} style={s.state === 'problem' ? { color: 'var(--danger)' } : undefined}>{t(`home.server.${s.state}`)}</span></td>
                   <td className="muted">{s.match ?? ''}</td>
                 </tr>
               ))}

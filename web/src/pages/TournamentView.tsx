@@ -94,13 +94,18 @@ export function TournamentView({ me }: { me: Me }) {
 
   return (
     <>
-      <div className="between">
-        <h1>{tr.name}</h1>
-        {admin && <button className="danger" onClick={async () => { await api(`/api/tournaments/${tr.id}`, { method: 'DELETE' }); navigate('/tournaments'); }}>{t('common.delete')}</button>}
+      <div className="pagehero">
+        <div className="between" style={{ alignItems: 'flex-start' }}>
+          <div>
+            <span className={`pill ${tr.status}`}>{t(`status.${tr.status}`)}</span>
+            <h1 style={{ marginTop: 12 }}>{tr.name}</h1>
+            <div className="muted">
+              {t(`format.${tr.format}`)} · {tr.teamSize}v{tr.teamSize} · {t('view.upTo', { n: tr.maxTeams })}
+            </div>
+          </div>
+          {admin && <button className="danger" onClick={async () => { await api(`/api/tournaments/${tr.id}`, { method: 'DELETE' }); navigate('/tournaments'); }}>{t('common.delete')}</button>}
+        </div>
       </div>
-      <p className="muted">
-        {t(`format.${tr.format}`)}, {tr.teamSize}v{tr.teamSize}, {t('view.upTo', { n: tr.maxTeams })} · {t(`status.${tr.status}`)}
-      </p>
       {tr.champion && <div className="card champion">🏆 {t('view.winner')}: <b>{tr.champion.name}</b></div>}
       {error && <p className="error">{error}</p>}
 

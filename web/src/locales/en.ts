@@ -1,7 +1,8 @@
 import type { Dict } from './ru';
 
 export const en: Dict = {
-  'app.brand': 'CS2 Tournaments',
+  'app.brand': 'Arena Pro',
+  'app.admin': 'Admin',
   'app.language': 'Language',
   'app.login': 'Log in',
   'app.logout': 'Log out',
@@ -316,6 +317,10 @@ export const en: Dict = {
 
   // Вето карт
   'veto.title': 'Map veto',
+  'veto.banBtn': 'Ban',
+  'veto.pickBtn': 'Pick',
+  'veto.tag.decider': 'Decider',
+  'veto.yourTeam': 'Your team',
   'veto.back': 'Back to the tournament',
   'veto.firstNote': '{team} goes first',
   'veto.open': 'Map veto ({step}/{total})',
@@ -364,6 +369,7 @@ export const en: Dict = {
   'home.yourTurn': 'Your turn in the map veto!',
   'home.state.veto': 'Map veto: {step}/{total}',
   'home.openVeto': 'Open the veto',
+  'home.heroTag': 'CS2 tournaments at the Arena Pro gaming club. Register your team, run the map veto and play right at the club.',
   'home.state.queued': 'The veto is complete (or disabled). The match is waiting for a free server.',
   'home.state.waiting': 'Waiting for the opponent',
   'home.connect': 'Connect in the game console:',

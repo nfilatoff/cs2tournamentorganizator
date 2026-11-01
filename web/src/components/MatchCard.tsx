@@ -48,7 +48,7 @@ export function MatchCard({ m, actions }: { m: MatchDto; actions?: MatchActions 
       <Slot entry={m.b} score={m.status === 'live' ? m.seriesB ?? 0 : m.scoreB} won={m.winner === 'b' && m.status === 'done'} />
       {m.veto && (
         <div className="livebox">
-          <Link to={`/tournaments/${id}/matches/${m.code}/veto`}>
+          <Link to={`/tournaments/${id}/matches/${m.code}`}>
             {m.veto.done ? t('veto.view') : t('veto.open', { step: m.veto.step, total: m.veto.total })}
           </Link>
         </div>
