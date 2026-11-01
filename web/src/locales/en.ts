@@ -357,8 +357,8 @@ export const en: Dict = {
   'e.vetoLocked': 'The match is already started or played, the veto can no longer be changed',
 
   // Главная
-  'home.tournaments': 'Running and open for registration',
-  'home.noTournaments': 'No tournaments yet',
+  'home.tournaments': 'Open for registration',
+  'home.noTournaments': 'No tournaments are open for registration',
   'home.myMatches': 'My matches',
   'home.noMatches': 'You have no matches right now. Register a team for a tournament or wait for the next round.',
   'home.yourTurn': 'Your turn in the map veto!',

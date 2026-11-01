@@ -78,23 +78,37 @@ export function Home() {
 
   if (!d) return null;
 
+  // Регистрация открыта только у ещё не начатых турниров; идущие показываются отдельно (админу они уже есть в «Идущих турнирах»)
+  const tournamentTable = (list: typeof d.tournaments, empty: string) => (
+    <table>
+      <tbody>
+        {list.map((x) => (
+          <tr key={x.id}>
+            <td><Link to={`/tournaments/${x.id}`}>{x.name}</Link></td>
+            <td className="muted">{t(`format.${x.format}`)}, {x.teamSize}v{x.teamSize}</td>
+            <td>{x.teamCount}/{x.maxTeams}</td>
+            <td>{t(`status.${x.status}`)}</td>
+          </tr>
+        ))}
+        {list.length === 0 && <tr><td className="muted">{empty}</td></tr>}
+      </tbody>
+    </table>
+  );
+  const registering = d.tournaments.filter((x) => x.status === 'registration');
+  const started = d.tournaments.filter((x) => x.status === 'running');
   const tournaments = (
-    <div className="card">
-      <h2>{t('home.tournaments')}</h2>
-      <table>
-        <tbody>
-          {d.tournaments.map((x) => (
-            <tr key={x.id}>
-              <td><Link to={`/tournaments/${x.id}`}>{x.name}</Link></td>
-              <td className="muted">{t(`format.${x.format}`)}, {x.teamSize}v{x.teamSize}</td>
-              <td>{x.teamCount}/{x.maxTeams}</td>
-              <td>{t(`status.${x.status}`)}</td>
-            </tr>
-          ))}
-          {d.tournaments.length === 0 && <tr><td className="muted">{t('home.noTournaments')}</td></tr>}
-        </tbody>
-      </table>
-    </div>
+    <>
+      <div className="card">
+        <h2>{t('home.tournaments')}</h2>
+        {tournamentTable(registering, t('home.noTournaments'))}
+      </div>
+      {d.kind !== 'admin' && started.length > 0 && (
+        <div className="card">
+          <h2>{t('home.running')}</h2>
+          {tournamentTable(started, '')}
+        </div>
+      )}
+    </>
   );
 
   if (d.kind === 'guest') {
