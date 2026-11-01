@@ -317,6 +317,13 @@ export const es: Dict = {
 
   // Вето карт
   'veto.title': 'Veto de mapas',
+  'veto.readyTitle': 'Confirma que estás listo para el veto',
+  'veto.readyHint': 'El veto empieza cuando ambos capitanes pulsan «Listo». Cada turno tiene {sec} segundos; si no, se elige al azar.',
+  'veto.readyBtn': 'Listo',
+  'veto.readyOk': 'listo',
+  'veto.readyWait': 'esperando',
+  'veto.forceStart': 'Iniciar veto',
+  'veto.youReady': 'Estás listo. Esperando al rival.',
   'veto.banBtn': 'Ban',
   'veto.pickBtn': 'Pick',
   'veto.tag.decider': 'Decisivo',
@@ -355,6 +362,7 @@ export const es: Dict = {
   'form.vetoHint': 'Vetos y elecciones por turnos: en BO1 vetos hasta que quede un mapa, en BO3 veto, veto, elección, elección, veto, veto, en BO5 veto, veto y cuatro elecciones. Tras una elección el rival escoge el lado y el mapa decisivo se juega con ronda de cuchillo. Sin veto se usan los primeros mapas del grupo.',
   'e.vetoNotAvailable': 'El veto no está disponible para este partido: está desactivado o aún no se conocen los rivales',
   'e.vetoNotYourTurn': 'No es tu turno',
+  'e.vetoNotStarted': 'El veto aún no ha empezado: ambos capitanes deben pulsar «Listo»',
   'e.vetoBadMap': 'Este mapa no se puede elegir',
   'e.vetoBadSide': 'Elige un lado (CT o T)',
   'e.vetoDone': 'El veto ya está terminado',

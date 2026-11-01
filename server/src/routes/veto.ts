@@ -6,10 +6,10 @@ import { E, errBody } from '../errors.js';
 import { tournamentMapPool } from '../arenapro.js';
 import { dispatchAll, endMatchOnServer, getServer, release } from '../dispatcher.js';
 import { getMatchRowByCode, getTournament, teamName, type MatchRow, type TournamentRow } from '../tournamentStore.js';
-import { loadVeto, saveVeto, vetoApplies } from '../vetoStore.js';
+import { expireVetoTurns, loadVeto, saveVeto, VETO_TURN_S, vetoApplies } from '../vetoStore.js';
 import { mapImageUrl } from '../mapImages.js';
 import {
-  applyAction, autoComplete, isDone, nextAction, remaining, vetoResult, vetoTemplate, type Team, type VetoState,
+  applyAction, autoComplete, isDone, markReady, nextAction, remaining, vetoResult, vetoStarted, vetoTemplate, type Team, type VetoState,
 } from '../veto.js';
 
 type Params = { Params: { id: string; code: string } };
@@ -43,6 +43,7 @@ function dto(req: FastifyRequest, t: TournamentRow, row: MatchRow, state: VetoSt
   const a = teamIdOf(row.entry_a);
   const b = teamIdOf(row.entry_b);
   const done = isDone(state);
+  const started = vetoStarted(state);
   return {
     bestOf: row.best_of,
     status: done ? 'done' as const : 'veto' as const,
@@ -56,7 +57,13 @@ function dto(req: FastifyRequest, t: TournamentRow, row: MatchRow, state: VetoSt
     remaining: remaining(state),
     next,
     you: role,
-    canAct: next.type !== 'done' && (role === 'admin' || role === next.team),
+    // До начала вето капитаны подтверждают готовность, потом у каждого хода есть ограничение по времени
+    started,
+    ready: { a: started || !!state.ready?.a, b: started || !!state.ready?.b },
+    deadline: started && !done && state.turnStartedAt !== undefined ? state.turnStartedAt + VETO_TURN_S * 1000 : null,
+    turnSeconds: VETO_TURN_S,
+    now: Date.now(),
+    canAct: started && next.type !== 'done' && (role === 'admin' || role === next.team),
     result: done ? vetoResult(state).map((p) => ({ ...p, name: byId.get(p.mapId)?.name ?? `#${p.mapId}` })) : null,
   };
 }
@@ -92,10 +99,11 @@ export async function vetoRoutes(app: FastifyInstance): Promise<void> {
     if (!body.success) return reply.code(400).send(E('badRequest'));
     try {
       const state = loadVeto(t, row);
+      if (!vetoStarted(state)) return reply.code(409).send(E('vetoNotStarted'));
       const next = nextAction(state);
       if (next.type === 'done') return reply.code(409).send(E('vetoDone'));
       const team: Team = role === 'admin' ? next.team : (role as Team);
-      const updated = applyAction(state, team, body.data);
+      const updated = { ...applyAction(state, team, body.data), turnStartedAt: Date.now() };
       saveVeto(row.id, updated);
       if (isDone(updated)) void dispatchAll();
       return dto(req, t, { ...row, veto_json: JSON.stringify(updated) }, updated);
@@ -103,6 +111,32 @@ export async function vetoRoutes(app: FastifyInstance): Promise<void> {
       return reply.code(409).send(errBody(e));
     }
   });
+
+  // Капитан подтверждает готовность к вето; админ запускает вето сразу за обе команды
+  app.post<Params>('/api/tournaments/:id/matches/:code/veto/ready', async (req, reply) => {
+    const r = await load(req);
+    if (!r.ok) return reply.code(r.code).send(r.error);
+    const { t, row } = r;
+    const role = actingRole(req, row);
+    if (!role) return reply.code(403).send(E('vetoNotYourTurn'));
+    if (row.server_id !== null || row.status !== 'ready') return reply.code(409).send(E('vetoLocked'));
+    try {
+      const updated = markReady(loadVeto(t, row), role === 'admin' ? 'both' : role, Date.now());
+      saveVeto(row.id, updated);
+      return dto(req, t, { ...row, veto_json: JSON.stringify(updated) }, updated);
+    } catch (e) {
+      return reply.code(409).send(errBody(e));
+    }
+  });
+
+  // Ход, на который у капитана вышло время, делается случайно, даже если страницу никто не открыл
+  setInterval(() => {
+    try {
+      if (expireVetoTurns()) void dispatchAll();
+    } catch (e) {
+      app.log.error({ err: e }, 'veto timeout');
+    }
+  }, 1000).unref();
 
   // Админ: завершить вето случайными ходами
   app.post<Params>('/api/tournaments/:id/matches/:code/veto/auto', { preHandler: requireAdmin }, async (req, reply) => {

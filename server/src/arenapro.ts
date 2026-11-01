@@ -49,7 +49,8 @@ interface RosterPlayer { steamId: string; name: string }
 
 // Сколько секунд у игроков есть, чтобы зайти на сервер и начать матч. Потом побеждает команда, у которой
 // больше игроков на сервере (поровну: случайная). См. arenapro_ready_mode 2 в плагине.
-export const JOIN_TIME_S = 600;
+// JOIN_TIME_S в окружении меняет время (например, для тестов).
+export const JOIN_TIME_S = Number(process.env.JOIN_TIME_S) || 600;
 // Обратный отсчёт после .ready обоих капитанов до старта матча
 export const START_DELAY_S = 10;
 

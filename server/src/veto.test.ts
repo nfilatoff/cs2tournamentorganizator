@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { AppError } from './errors.js';
 import {
-  applyAction, autoComplete, isDone, newVeto, nextAction, remaining, vetoResult, vetoTemplate,
+  applyAction, autoComplete, isDone, markReady, newVeto, nextAction, randomStep, remaining, vetoResult, vetoStarted, vetoTemplate,
 } from './veto.js';
 
 const pool = (n: number) => Array.from({ length: n }, (_, i) => i + 1);
@@ -110,4 +110,21 @@ test('без выбора стороны пики идут сразу дальш
   assert.equal(nextAction(t).type, 'pick');
   t = applyAction(t, 'b', { mapId: 4 });
   assert.equal(nextAction(t).type, 'ban');
+});
+
+test('вето начинается после готовности обоих капитанов', () => {
+  let s = newVeto(pool(7), 1);
+  assert.equal(vetoStarted(s), false);
+  s = markReady(s, 'a', 100);
+  assert.equal(vetoStarted(s), false);
+  assert.equal(s.turnStartedAt, undefined);
+  s = markReady(s, 'b', 200);
+  assert.equal(vetoStarted(s), true);
+  assert.equal(s.turnStartedAt, 200);
+  assert.equal(vetoStarted({ ...newVeto(pool(7), 1), ready: undefined }), false);
+});
+
+test('случайный ход делается за команду, чья очередь', () => {
+  const s = randomStep(markReady(newVeto(pool(7), 1), 'both', 0), () => 0);
+  assert.deepEqual(s.actions, [{ mapId: 1, kind: 'ban', by: 'a' }]);
 });

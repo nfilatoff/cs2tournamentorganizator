@@ -317,6 +317,13 @@ export const en: Dict = {
 
   // Вето карт
   'veto.title': 'Map veto',
+  'veto.readyTitle': 'Confirm you are ready for the veto',
+  'veto.readyHint': 'The veto starts when both captains press Ready. Each turn has {sec} seconds, otherwise a random choice is made.',
+  'veto.readyBtn': 'Ready',
+  'veto.readyOk': 'ready',
+  'veto.readyWait': 'waiting',
+  'veto.forceStart': 'Start veto',
+  'veto.youReady': 'You are ready. Waiting for the opponent.',
   'veto.banBtn': 'Ban',
   'veto.pickBtn': 'Pick',
   'veto.tag.decider': 'Decider',
@@ -355,6 +362,7 @@ export const en: Dict = {
   'form.vetoHint': 'Bans and picks in turns: in BO1 bans until one map is left, in BO3 ban, ban, pick, pick, ban, ban, in BO5 ban, ban and four picks. After a pick the opponent chooses the side, the decider is played with a knife round. Without the veto the first maps of the pool are used.',
   'e.vetoNotAvailable': 'The veto is not available for this match: it is disabled or the opponents are not decided yet',
   'e.vetoNotYourTurn': 'It is not your turn',
+  'e.vetoNotStarted': 'The veto has not started yet: both captains must press Ready',
   'e.vetoBadMap': 'This map cannot be chosen',
   'e.vetoBadSide': 'Choose a side (CT or T)',
   'e.vetoDone': 'The veto is already complete',

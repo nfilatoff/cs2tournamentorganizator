@@ -21,8 +21,13 @@ export interface VetoAction {
   side?: Side;
 }
 
-// sides: false отключает выбор стороны, тогда пики играются на ноже (в старых сохранённых вето поля нет, это значит true)
-export interface VetoState { poolIds: number[]; bestOf: number; actions: VetoAction[]; sides?: boolean }
+// sides: false отключает выбор стороны, тогда пики играются на ноже (в старых сохранённых вето поля нет, это значит true).
+// ready: какие капитаны подтвердили готовность; вето начинается, когда готовы оба.
+// turnStartedAt: когда начался текущий ход (мс), от него считается время на ход.
+export interface VetoState {
+  poolIds: number[]; bestOf: number; actions: VetoAction[]; sides?: boolean;
+  ready?: { a?: boolean; b?: boolean }; turnStartedAt?: number;
+}
 
 export type Next =
   | { type: 'ban' | 'pick' | 'side'; team: Team }
@@ -49,7 +54,18 @@ export function vetoTemplate(poolSize: number, bestOf: number): TemplateStep[] {
 }
 
 export function newVeto(poolIds: number[], bestOf: number, sides = true): VetoState {
-  return { poolIds: [...poolIds], bestOf, actions: [], ...(sides ? {} : { sides: false }) };
+  return { poolIds: [...poolIds], bestOf, actions: [], ...(sides ? {} : { sides: false }), ready: {} };
+}
+
+// Вето началось, когда оба капитана готовы. В старых сохранённых вето готовности нет: там начавшимся считается вето с ходами.
+export const vetoStarted = (s: VetoState): boolean => (s.ready ? !!s.ready.a && !!s.ready.b : s.actions.length > 0);
+
+// Капитан (или админ за обе команды) подтверждает готовность. С готовностью второго начинается первый ход.
+export function markReady(s: VetoState, team: Team | 'both', now: number): VetoState {
+  if (vetoStarted(s)) return s;
+  const ready = { ...s.ready, ...(team === 'both' ? { a: true, b: true } : { [team]: true }) };
+  const next = { ...s, ready };
+  return vetoStarted(next) ? { ...next, turnStartedAt: now } : next;
 }
 
 const hasSides = (s: VetoState): boolean => s.sides !== false;
@@ -105,19 +121,20 @@ export function applyAction(s: VetoState, team: Team, input: { mapId?: number; s
   return settleDecider({ ...base, actions: [...base.actions, { mapId: input.mapId, kind: next.type, by: team }] });
 }
 
+// Случайный ход за команду, чья сейчас очередь (вышло время на ход или админ завершает вето)
+export function randomStep(s: VetoState, rnd: () => number = Math.random): VetoState {
+  const cur = settleDecider(s);
+  const next = nextAction(cur);
+  if (next.type === 'done') return cur;
+  if (next.type === 'side') return applyAction(cur, next.team, { side: rnd() < 0.5 ? 'ct' : 't' });
+  const left = remaining(cur);
+  return applyAction(cur, next.team, { mapId: left[Math.floor(rnd() * left.length)]! });
+}
+
 // Админ завершает вето случайными ходами за обе команды
 export function autoComplete(s: VetoState, rnd: () => number = Math.random): VetoState {
   let cur = settleDecider(s);
-  for (let guard = 0; guard < 50; guard++) {
-    const next = nextAction(cur);
-    if (next.type === 'done') break;
-    if (next.type === 'side') {
-      cur = applyAction(cur, next.team, { side: rnd() < 0.5 ? 'ct' : 't' });
-    } else {
-      const left = remaining(cur);
-      cur = applyAction(cur, next.team, { mapId: left[Math.floor(rnd() * left.length)]! });
-    }
-  }
+  for (let guard = 0; guard < 50 && nextAction(cur).type !== 'done'; guard++) cur = randomStep(cur, rnd);
   return cur;
 }
 

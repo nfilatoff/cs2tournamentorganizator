@@ -39,6 +39,20 @@ export function VetoPanel({ base, active, version, onChange }: {
     if (active && status === 'done') onChange();
   }, [active, status, onChange]);
 
+  // Таймер хода: часы браузера сверяем с часами панели
+  const [tick, setTick] = useState(Date.now());
+  const [offset, setOffset] = useState(0);
+  const serverNow = v?.now;
+  useEffect(() => {
+    if (serverNow !== undefined) setOffset(serverNow - Date.now());
+  }, [serverNow]);
+  const ticking = active && !!v?.deadline;
+  useEffect(() => {
+    if (!ticking) return;
+    const timer = setInterval(() => setTick(Date.now()), 250);
+    return () => clearInterval(timer);
+  }, [ticking]);
+
   const send = async (path: string, body: unknown) => {
     setError('');
     try {
@@ -57,6 +71,10 @@ export function VetoPanel({ base, active, version, onChange }: {
   const picking = v.next.type === 'ban' || v.next.type === 'pick';
   const lastPick = [...v.actions].reverse().find((a) => a.kind === 'pick');
   const mapName = (mapId: number) => v.pool.find((m) => m.id === mapId)?.name ?? `#${mapId}`;
+
+  const leftMs = v.deadline ? Math.max(0, v.deadline - (tick + offset)) : null;
+  const mySide = v.you === 'a' || v.you === 'b' ? v.you : null;
+  const needReady = !v.started && mySide !== null && !v.ready[mySide];
 
   let banner: string;
   if (v.status === 'done') banner = t('veto.done');
@@ -140,9 +158,45 @@ export function VetoPanel({ base, active, version, onChange }: {
     );
   }
 
+  // До начала вето: капитаны подтверждают готовность
+  if (!v.started) {
+    return (
+      <>
+        <div className={`mbox veto-head${needReady ? ' mine' : ''}`}>
+          <div className="who">{t('veto.readyTitle')}</div>
+          <div className="sub">{t('veto.readyHint', { sec: v.turnSeconds })}</div>
+          <div className="teamstate">
+            {(['a', 'b'] as const).map((side) => (
+              <div key={side}>
+                <b>{teamName(side)}</b>
+                <span className={v.ready[side] ? 'ok' : 'muted'}>{v.ready[side] ? t('veto.readyOk') : t('veto.readyWait')}</span>
+              </div>
+            ))}
+          </div>
+          {needReady && !v.locked && <button className="big" style={{ width: '100%', marginTop: 12 }} onClick={() => send('/ready', {})}>{t('veto.readyBtn')}</button>}
+          {mySide && v.ready[mySide] && <div className="sub">{t('veto.youReady')}</div>}
+          {v.you === 'admin' && !v.locked && (
+            <div className="vadmin" style={{ justifyContent: 'center' }}>
+              <button className="ghost" onClick={() => send('/ready', {})}>{t('veto.forceStart')}</button>
+            </div>
+          )}
+        </div>
+        {error && <p className="error">{error}</p>}
+        {list}
+        {admin}
+      </>
+    );
+  }
+
   return (
     <>
       <div className={`mbox veto-head${v.canAct ? ' mine' : ''}`}>
+        {leftMs !== null && v.status !== 'done' && (
+          <div className={`vtimer${leftMs < 10_000 ? ' hot' : ''}`}>
+            <b>{Math.ceil(leftMs / 1000)}</b>
+            <div className="bar"><i style={{ width: `${(leftMs / (v.turnSeconds * 1000)) * 100}%` }} /></div>
+          </div>
+        )}
         <div className="who">{banner}</div>
         <div className="sub">
           BO{v.bestOf} · {t('veto.firstNote', { team: teamName('a') })}

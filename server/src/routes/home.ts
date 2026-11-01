@@ -6,7 +6,7 @@ import {
   loadMatchRows, teamName, type MatchRow, type TournamentRow,
 } from '../tournamentStore.js';
 import { loadVeto, vetoApplies } from '../vetoStore.js';
-import { isDone, nextAction } from '../veto.js';
+import { isDone, nextAction, vetoStarted } from '../veto.js';
 import { tournamentMapPool } from '../arenapro.js';
 import { publicHost } from '../network.js';
 
@@ -23,13 +23,16 @@ function vetoInfo(t: TournamentRow, row: MatchRow, playerId: number | null) {
   const state = loadVeto(t, row);
   const done = isDone(state);
   let yourTurn = false;
-  if (playerId !== null && !done) {
+  const captain = (json: string) => {
+    const teamId = teamIdOf(json);
+    return teamId === null ? null : (db.prepare('SELECT captain_id FROM teams WHERE id = ?').get(teamId) as { captain_id: number } | undefined)?.captain_id;
+  };
+  if (playerId !== null && !done && !vetoStarted(state)) {
+    // До начала вето ход за капитаном, который ещё не подтвердил готовность
+    yourTurn = (!state.ready?.a && captain(row.entry_a) === playerId) || (!state.ready?.b && captain(row.entry_b) === playerId);
+  } else if (playerId !== null && !done) {
     const next = nextAction(state);
-    if (next.type !== 'done') {
-      const teamId = teamIdOf(next.team === 'a' ? row.entry_a : row.entry_b);
-      const cap = teamId === null ? null : (db.prepare('SELECT captain_id FROM teams WHERE id = ?').get(teamId) as { captain_id: number } | undefined)?.captain_id;
-      yourTurn = cap === playerId;
-    }
+    if (next.type !== 'done') yourTurn = captain(next.team === 'a' ? row.entry_a : row.entry_b) === playerId;
   }
   return { done, step: state.actions.length, total: tournamentMapPool(t.id).length, yourTurn };
 }

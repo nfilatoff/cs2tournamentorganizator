@@ -1,8 +1,12 @@
 import { db } from './db.js';
 import { AppError } from './errors.js';
 import { pickMaps, tournamentMapPool, type MapRef } from './arenapro.js';
-import { isDone, newVeto, vetoResult, type VetoState } from './veto.js';
+import { isDone, newVeto, randomStep, vetoResult, vetoStarted, type VetoState } from './veto.js';
 import type { MatchRow, TournamentRow } from './tournamentStore.js';
+
+// Сколько секунд у капитана на ход в вето. Потом ход делается случайно.
+// VETO_TURN_S в окружении меняет время (например, для тестов).
+export const VETO_TURN_S = Number(process.env.VETO_TURN_S) || 30;
 
 // Вето проводится, когда оно включено в турнире и известны обе команды матча
 export function vetoApplies(t: TournamentRow, row: MatchRow): boolean {
@@ -40,4 +44,25 @@ export function vetoSummary(t: TournamentRow, row: MatchRow, poolSize: number) {
   if (!vetoApplies(t, row)) return null;
   const state = row.veto_json ? (JSON.parse(row.veto_json) as VetoState) : null;
   return { done: state ? isDone(state) : false, step: state?.actions.length ?? 0, total: poolSize };
+}
+
+// Делает случайный ход за капитанов, у которых вышло время. Возвращает true, если какое-то вето завершилось.
+export function expireVetoTurns(now = Date.now()): boolean {
+  const rows = db.prepare(`SELECT m.* FROM matches m JOIN tournaments t ON t.id = m.tournament_id
+    WHERE t.veto_enabled = 1 AND m.status = 'ready' AND m.server_id IS NULL AND m.veto_json IS NOT NULL`).all() as unknown as MatchRow[];
+  let finished = false;
+  for (const row of rows) {
+    const state = JSON.parse(row.veto_json!) as VetoState;
+    if (!vetoStarted(state) || isDone(state)) continue;
+    // Вето, начатое до появления таймера: отсчёт идёт с этого момента
+    if (state.turnStartedAt === undefined) {
+      saveVeto(row.id, { ...state, turnStartedAt: now });
+      continue;
+    }
+    if (now < state.turnStartedAt + VETO_TURN_S * 1000) continue;
+    const updated = { ...randomStep(state), turnStartedAt: now };
+    saveVeto(row.id, updated);
+    if (isDone(updated)) finished = true;
+  }
+  return finished;
 }

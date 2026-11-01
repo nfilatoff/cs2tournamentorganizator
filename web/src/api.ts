@@ -146,6 +146,11 @@ export interface VetoDto {
   remaining: number[];
   next: { type: 'ban' | 'pick' | 'side'; team: 'a' | 'b' } | { type: 'done' };
   you: 'a' | 'b' | 'admin' | null;
+  started: boolean;
+  ready: { a: boolean; b: boolean };
+  deadline: number | null;
+  turnSeconds: number;
+  now: number;
   canAct: boolean;
   result: { mapId: number; name: string; side: string; pickedBy: 'a' | 'b' | null }[] | null;
 }
