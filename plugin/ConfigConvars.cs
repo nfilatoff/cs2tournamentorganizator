@@ -81,7 +81,7 @@ namespace ArenaPro
             resetCvarsOnSeriesEnd = ParseBoolSetting(args, resetCvarsOnSeriesEnd);
         }
 
-        [ConsoleCommand("arenapro_kick_on_series_end_delay", "Seconds after a series ends before all players are kicked. 0 = players are not kicked. Default: 0")]
+        [ConsoleCommand("arenapro_kick_on_series_end_delay", "Seconds after a series ends before all players are kicked. 0 = players are not kicked. Default: 5")]
         public void ArenaProKickOnSeriesEndDelayConvar(CCSPlayerController? player, CommandInfo command)
         {
             if (player != null) return;

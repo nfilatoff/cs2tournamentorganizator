@@ -20,9 +20,9 @@ namespace ArenaPro
         public bool matchModeOnly = false;
 
         public bool resetCvarsOnSeriesEnd = true;
-        // Seconds after a series ends before every player is kicked (0 = nobody is kicked). A panel that shuts the
-        // server down after the match sets it, so players leave with a clear "match is over" instead of a lost connection.
-        public int kickOnSeriesEndDelay = 0;
+        // Seconds after a series ends before every player is kicked (0 = nobody is kicked), so players leave with a clear
+        // "match is over" instead of a lost connection when the server is shut down after the match.
+        public int kickOnSeriesEndDelay = 5;
 
         public string loadedConfigFile = "";
 
