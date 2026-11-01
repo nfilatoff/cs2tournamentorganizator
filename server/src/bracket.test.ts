@@ -138,16 +138,18 @@ test('undoResult отменяет пропуск переигровки гран
   assert.equal(ms.find((m) => m.code === 'GF-2')!.status, 'ready');
 });
 
-test('forceWinner продвигает победителя без счёта, и его можно отменить', () => {
+test('forceWinner продвигает победителя со счётом серии всухую, и его можно отменить', () => {
   const ms = buildBracket(ids(4), 'single', { bestOf: () => 3 });
   forceWinner(ms, 'W1-1', 'b');
   const m = ms.find((x) => x.code === 'W1-1')!;
   assert.equal(m.status, 'done');
   assert.equal(m.forced, true);
+  assert.deepEqual([m.scoreA, m.scoreB], [0, 2]);
   assert.deepEqual(ms.find((x) => x.code === 'W2-1')!.a, { k: 'team', id: 4 });
   assert.throws(() => forceWinner(ms, 'W1-1', 'a'));
   undoResult(ms, 'W1-1');
   assert.equal(m.forced, false);
+  assert.deepEqual([m.scoreA, m.scoreB], [0, 0]);
   assert.equal(m.status, 'ready');
 });
 

@@ -28,7 +28,7 @@ namespace ArenaPro
             "arenapro_pause_after_restore", "arenapro_use_pause_command_for_tactical_pause",
             "arenapro_reset_cvars_on_series_end", "arenapro_stop_command_available",
             "arenapro_time_to_start", "get5_time_to_start", "arenapro_time_to_start_veto", "get5_time_to_start_veto",
-            "arenapro_ready_mode", "arenapro_join_start_delay",
+            "arenapro_ready_mode", "arenapro_join_start_delay", "arenapro_kick_on_series_end_delay",
             "arenapro_max_tech_pauses", "get5_max_tech_pauses", "arenapro_tech_pause_time", "get5_tech_pause_time", "get5_allow_technical_pause",
         };
 

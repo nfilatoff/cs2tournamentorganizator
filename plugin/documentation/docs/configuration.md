@@ -73,6 +73,9 @@ Again, inside `csgo/cfg/ArenaPro`, a file named `config.cfg` should be present. 
 ####`arenapro_join_start_delay`
 :   With `arenapro_ready_mode 1`: seconds between all players having joined and the match starting. Set to 0 to start right away.<br>**`Default: 10`**
 
+####`arenapro_kick_on_series_end_delay`
+:   Seconds after a series ends before every player (not bots or GOTV) is kicked with "The match is over". Set to 0 to keep players on the server. Useful when the server is shut down after the match.<br>**`Default: 0`**
+
 ####`arenapro_stop_command_available`
 :   Whether !stop/.stop command to restore the backup of the current round is enabled by default or not.<br>**`Default: false`**
 

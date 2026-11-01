@@ -100,7 +100,9 @@ export function TournamentView({ me }: { me: Me }) {
             <span className={`pill ${tr.status}`}>{t(`status.${tr.status}`)}</span>
             <h1 style={{ marginTop: 12 }}>{tr.name}</h1>
             <div className="muted">
-              {t(`format.${tr.format}`)} · {tr.teamSize}v{tr.teamSize} · {t('view.upTo', { n: tr.maxTeams })}
+              {t(`format.${tr.format}`)} · {tr.teamSize}v{tr.teamSize}
+              {tr.teamSize === 2 && <> · {t(tr.wingmanRounds === 24 ? 'form.rounds24' : 'form.rounds16')}</>}
+              {' · '}{t('view.upTo', { n: tr.maxTeams })}
             </div>
           </div>
           {admin && <button className="danger" onClick={async () => { await api(`/api/tournaments/${tr.id}`, { method: 'DELETE' }); navigate('/tournaments'); }}>{t('common.delete')}</button>}

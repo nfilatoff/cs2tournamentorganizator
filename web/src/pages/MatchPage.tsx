@@ -116,9 +116,11 @@ export function MatchPage() {
   const name = (s: Side) => d.teams[s]?.name ?? t('match.tbd');
   const done = d.phase === 'done';
   const live = d.phase === 'live' || d.phase === 'warmup';
-  const score = (s: Side) => (done ? (s === 'a' ? d.scoreA : d.scoreB) : d.series[s]);
+  const technical = done && (d.forced || d.walkover);
+  // Техническая победа засчитывается серией всухую: 1:0 в BO1, 2:0 в BO3
+  const score = (s: Side) => (technical ? (d.winner === s ? Math.ceil(d.bestOf / 2) : 0) : done ? (s === 'a' ? d.scoreA : d.scoreB) : d.series[s]);
   // В BO1 вместо счёта серии интереснее счёт карты
-  const single = d.bestOf === 1 && d.maps[0]?.score;
+  const single = !technical && d.bestOf === 1 && d.maps[0]?.score;
   const bigScore = (s: Side) => (single ? d.maps[0]!.score![s] : score(s));
   const heroMap = d.maps.find((m) => m.current) ?? d.maps[0];
   const round = d.stage === 'group'

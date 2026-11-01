@@ -84,6 +84,9 @@ export const en: Dict = {
 
   'form.title': 'New tournament',
   'form.teamSize': 'Players per team',
+  'form.wingmanRounds': 'Rounds per map',
+  'form.rounds16': 'Short: 16 rounds (like Wingman)',
+  'form.rounds24': 'Long: 24 rounds (halves of 12)',
   'form.series': 'Series (BO)',
   'form.defaultBo': 'Default',
   'form.roundsHint': 'Rounds are counted from the end of the bracket, so the settings stay valid even if fewer teams sign up.',

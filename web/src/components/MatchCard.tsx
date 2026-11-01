@@ -38,14 +38,25 @@ export function MatchCard({ m, actions }: { m: MatchDto; actions?: MatchActions 
   const roundsPlayed = (m.curMap?.scoreA ?? 0) + (m.curMap?.scoreB ?? 0);
   const need = Math.ceil(m.bestOf / 2);
   const inPlay = m.status === 'ready' || m.status === 'live';
+  // В BO1 вместо счёта серии (1:0) показываем счёт карты; техническая победа всегда засчитывается серией всухую
+  const shown = (side: 'a' | 'b') => {
+    const pick = (a: number, b: number) => (side === 'a' ? a : b);
+    if (m.status === 'live') {
+      return m.bestOf === 1 && m.live && m.curMap ? pick(m.curMap.scoreA, m.curMap.scoreB) : pick(m.seriesA ?? 0, m.seriesB ?? 0);
+    }
+    if (m.status !== 'done') return pick(m.scoreA, m.scoreB);
+    if (m.forced || m.walkover) return m.winner === side ? need : 0;
+    const map = m.playedMaps?.length === 1 ? m.playedMaps[0] : undefined;
+    return m.bestOf === 1 && map ? pick(map.scoreA, map.scoreB) : pick(m.scoreA, m.scoreB);
+  };
   return (
     <div className={`match ${m.status}`}>
       <div className="mhead">
         {m.matchId !== undefined && id ? <Link to={`/tournaments/${id}/matches/${m.code}`}>{m.code}</Link> : <span>{m.code}</span>}
         <span>{m.walkover ? t('mp.walkoverShort') : m.forced ? t('match.byAdmin') : `BO${m.bestOf}`}</span>
       </div>
-      <Slot entry={m.a} score={m.status === 'live' ? m.seriesA ?? 0 : m.scoreA} won={m.winner === 'a' && m.status === 'done'} />
-      <Slot entry={m.b} score={m.status === 'live' ? m.seriesB ?? 0 : m.scoreB} won={m.winner === 'b' && m.status === 'done'} />
+      <Slot entry={m.a} score={shown('a')} won={m.winner === 'a' && m.status === 'done'} />
+      <Slot entry={m.b} score={shown('b')} won={m.winner === 'b' && m.status === 'done'} />
       {m.veto && (
         <div className="livebox">
           <Link to={`/tournaments/${id}/matches/${m.code}`}>

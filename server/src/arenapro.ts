@@ -51,6 +51,8 @@ interface RosterPlayer { steamId: string; name: string }
 // больше игроков на сервере (поровну: случайная). См. arenapro_ready_mode 2 в плагине.
 // JOIN_TIME_S в окружении меняет время (например, для тестов).
 export const JOIN_TIME_S = Number(process.env.JOIN_TIME_S) || 600;
+// Через сколько секунд после конца серии плагин кикает игроков (успевают увидеть итог, сервер ещё не выключен)
+export const KICK_AFTER_SERIES_S = 5;
 // Обратный отсчёт после .ready обоих капитанов до старта матча
 export const START_DELAY_S = 10;
 
@@ -85,6 +87,8 @@ export interface MatchConfigInput {
   teamB: { id: number; name: string; players: RosterPlayer[]; captain?: string };
   maps: MapRef[];
   pauses: { tactical: number; tacticalTime: number; technical: number };
+  // Раундов на карте в wingman (2v2): 16 или 24
+  wingmanRounds: number;
   // Адрес панели, по которому этот сервер шлёт события (см. panelUrlFor)
   panelUrl: string;
 }
@@ -100,6 +104,15 @@ function pauseCvars(p: MatchConfigInput['pauses']): Record<string, string> {
   if (p.tactical === 0) {
     Object.assign(cvars, { mp_team_timeout_ot_max: '0', mp_team_timeout_ot_add_each: '0', mp_team_timeout_ot_add_once: '0' });
   }
+  return cvars;
+}
+
+// Ничьих в турнире не бывает: овертаймы идут, пока кто-то не выиграет (без лимита на их число).
+// Значения перекрывают live-конфиг и настройку playout в плагине, так как применяются после них.
+function roundCvars(wingmanRounds: number | null): Record<string, string> {
+  const cvars: Record<string, string> = { mp_overtime_enable: '1', mp_match_can_clinch: '1' };
+  if (wingmanRounds === 24) Object.assign(cvars, { mp_maxrounds: '24', mp_overtime_maxrounds: '6' });
+  else if (wingmanRounds === 16) Object.assign(cvars, { mp_maxrounds: '16', mp_overtime_maxrounds: '4' });
   return cvars;
 }
 
@@ -122,11 +135,14 @@ export function buildMatchConfig(i: MatchConfigInput) {
     min_players_to_ready: i.teamSize,
     cvars: {
       ...pauseCvars(i.pauses),
+      ...roundCvars(i.teamSize === 2 ? i.wingmanRounds : null),
       // Все игроки зашли и оба капитана написали .ready: отсчёт START_DELAY_S и старт.
       // Через JOIN_TIME_S без старта побеждает команда, у которой больше игроков на сервере.
       arenapro_ready_mode: '2',
       arenapro_join_start_delay: String(START_DELAY_S),
       arenapro_time_to_start: String(JOIN_TIME_S),
+      // После конца серии плагин выкидывает игроков, а панель через STOP_DELAY_MS выключает сервер (см. serverProcess)
+      arenapro_kick_on_series_end_delay: String(KICK_AFTER_SERIES_S),
       arenapro_remote_log_url: `${i.panelUrl}/api/arenapro/events`,
       arenapro_remote_log_header_key: 'Authorization',
       arenapro_remote_log_header_value: `Bearer ${eventToken()}`,

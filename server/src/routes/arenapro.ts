@@ -112,6 +112,7 @@ export async function arenaproRoutes(app: FastifyInstance): Promise<void> {
       teamB: { id: b.id!, name: teamName(b.id!), players: rosterOf(t.id, b.id!), captain: captainSteamId(t.id, b.id!) },
       maps: JSON.parse(row.maps_json) as MapRef[],
       pauses: { tactical: t.tactical_pauses, tacticalTime: t.tactical_pause_time, technical: t.tech_pauses },
+      wingmanRounds: t.wingman_rounds,
       panelUrl: (() => {
         const server = row.server_id ? getServer(row.server_id) : undefined;
         return server ? panelUrlFor(server.host) : config.publicUrl;

@@ -48,6 +48,7 @@ const tournamentBody = z.object({
   hasPlayoff: z.boolean().default(true),
   vetoEnabled: z.boolean().default(true),
   vetoSides: z.boolean().default(true),
+  wingmanRounds: z.union([z.literal(16), z.literal(24)]).default(16),
   pauses: pausesBody.default({ tactical: 3, tacticalTime: 30, technical: 0 }),
 });
 
@@ -149,12 +150,12 @@ export async function tournamentRoutes(app: FastifyInstance): Promise<void> {
       const res = db.prepare(`INSERT INTO tournaments
         (name, format, team_size, max_teams, default_best_of, bo_config, grand_final_reset, auto_dispatch,
         stage_mode, group_format, groups_count, advance, swiss_rounds, group_best_of, has_playoff, phase, veto_enabled, veto_sides,
-        tactical_pauses, tactical_pause_time, tech_pauses)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+        tactical_pauses, tactical_pause_time, tech_pauses, wingman_rounds)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
         .run(d.name, d.format, d.teamSize, d.maxTeams, d.defaultBestOf, JSON.stringify(d.boConfig), d.grandFinalReset ? 1 : 0, d.autoDispatch ? 1 : 0,
           d.stageMode, d.stageMode === 'groups' ? d.groupFormat ?? null : null, d.stageMode === 'groups' ? d.groupsCount : 1,
           d.advance, d.swissRounds ?? null, d.groupBestOf, d.hasPlayoff ? 1 : 0, d.stageMode === 'groups' ? 'groups' : 'playoff',
-          d.vetoEnabled ? 1 : 0, d.vetoSides ? 1 : 0, d.pauses.tactical, d.pauses.tacticalTime, d.pauses.technical);
+          d.vetoEnabled ? 1 : 0, d.vetoSides ? 1 : 0, d.pauses.tactical, d.pauses.tacticalTime, d.pauses.technical, d.wingmanRounds);
       const tid = Number(res.lastInsertRowid);
       if (!setMaps(tid, d.mapIds)) throw new Error('map');
       return tid;
@@ -184,11 +185,11 @@ export async function tournamentRoutes(app: FastifyInstance): Promise<void> {
       db.prepare(`UPDATE tournaments SET name = ?, format = ?, team_size = ?, max_teams = ?, default_best_of = ?,
         bo_config = ?, grand_final_reset = ?, auto_dispatch = ?, stage_mode = ?, group_format = ?, groups_count = ?, advance = ?,
         swiss_rounds = ?, group_best_of = ?, has_playoff = ?, phase = ?, veto_enabled = ?, veto_sides = ?,
-        tactical_pauses = ?, tactical_pause_time = ?, tech_pauses = ? WHERE id = ?`)
+        tactical_pauses = ?, tactical_pause_time = ?, tech_pauses = ?, wingman_rounds = ? WHERE id = ?`)
         .run(d.name, d.format, d.teamSize, d.maxTeams, d.defaultBestOf, JSON.stringify(d.boConfig), d.grandFinalReset ? 1 : 0, d.autoDispatch ? 1 : 0,
           d.stageMode, d.stageMode === 'groups' ? d.groupFormat ?? null : null, d.stageMode === 'groups' ? d.groupsCount : 1,
           d.advance, d.swissRounds ?? null, d.groupBestOf, d.hasPlayoff ? 1 : 0, d.stageMode === 'groups' ? 'groups' : 'playoff', d.vetoEnabled ? 1 : 0, d.vetoSides ? 1 : 0,
-          d.pauses.tactical, d.pauses.tacticalTime, d.pauses.technical, t.id);
+          d.pauses.tactical, d.pauses.tacticalTime, d.pauses.technical, d.wingmanRounds, t.id);
       if (!setMaps(t.id, d.mapIds)) throw new Error('map');
     });
     return details(getTournament(t.id)!);

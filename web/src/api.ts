@@ -80,6 +80,7 @@ export interface TournamentDetails extends Omit<TournamentSummary, 'teamCount'> 
   autoDispatch: boolean;
   vetoEnabled: boolean;
   vetoSides: boolean;
+  wingmanRounds: 16 | 24;
   pauses: PauseLimits;
   groupConfig: GroupConfig;
   groups: GroupsInfo | null;

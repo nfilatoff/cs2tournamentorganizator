@@ -84,6 +84,9 @@ export const es: Dict = {
 
   'form.title': 'Nuevo torneo',
   'form.teamSize': 'Jugadores por equipo',
+  'form.wingmanRounds': 'Rondas por mapa',
+  'form.rounds16': 'Corto: 16 rondas (como en Compañeros)',
+  'form.rounds24': 'Largo: 24 rondas (mitades de 12)',
   'form.series': 'Series (BO)',
   'form.defaultBo': 'Por defecto',
   'form.roundsHint': 'Las rondas se cuentan desde el final del cuadro, así que los ajustes siguen valiendo aunque se inscriban menos equipos.',

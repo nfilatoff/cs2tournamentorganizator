@@ -2008,6 +2008,16 @@ namespace ArenaPro
             return false;
         }
 
+        // Kicks every human player (not bots or GOTV), e.g. once the series is over and the server is about to shut down
+        public void KickAllPlayers()
+        {
+            foreach (var player in Utilities.GetPlayers())
+            {
+                if (!player.IsValid || player.IsBot || player.IsHLTV || !player.UserId.HasValue) continue;
+                Server.ExecuteCommand($"kickid {(ushort)player.UserId} \"The match is over\"");
+            }
+        }
+
         public void KickPlayer(CCSPlayerController player)
         {
             if (player.UserId.HasValue)

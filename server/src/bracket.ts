@@ -205,11 +205,15 @@ export function reportResult(matches: BMatch[], code: string, scoreA: number, sc
   finish(matches, m, scoreA > scoreB ? 'a' : 'b', false);
 }
 
-// Админ назначает победителя без счёта (например, при неявке или сбое сервера).
+// Техническая победа (неявка, решение админа, сбой сервера): победителю засчитывается серия всухую,
+// 1:0 в BO1, 2:0 в BO3, 3:0 в BO5.
 export function forceWinner(matches: BMatch[], code: string, winner: 'a' | 'b'): void {
   const m = matches.find((x) => x.code === code);
   if (!m) throw new AppError('matchNotFound');
   if (m.status !== 'ready' && m.status !== 'live') throw new AppError('matchNotReady');
+  const need = Math.ceil(m.bestOf / 2);
+  m.scoreA = winner === 'a' ? need : 0;
+  m.scoreB = winner === 'b' ? need : 0;
   finish(matches, m, winner, true);
 }
 

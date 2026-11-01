@@ -20,6 +20,9 @@ namespace ArenaPro
         public bool matchModeOnly = false;
 
         public bool resetCvarsOnSeriesEnd = true;
+        // Seconds after a series ends before every player is kicked (0 = nobody is kicked). A panel that shuts the
+        // server down after the match sets it, so players leave with a clear "match is over" instead of a lost connection.
+        public int kickOnSeriesEndDelay = 0;
 
         public string loadedConfigFile = "";
 
@@ -697,6 +700,8 @@ namespace ArenaPro
         {
             seriesEnded = true;
             long matchId = liveMatchId;
+            // Read before the match config's cvars are restored below
+            int kickDelay = kickOnSeriesEndDelay;
             (int team1Score, int team2Score) = (arenaproTeam1.seriesScore, arenaproTeam2.seriesScore);
             string? winnerName = winner?.teamName;
             if (cancelled)
@@ -732,6 +737,7 @@ namespace ArenaPro
 
             if (resetCvarsOnSeriesEnd) ResetChangedConvars();
             isMatchLive = false;
+            if (kickDelay > 0) AddTimer(kickDelay, KickAllPlayers);
             if (restartDelay <= 0)
             {
                 ResetMatch(warmupCfgRequired);

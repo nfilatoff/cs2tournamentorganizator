@@ -55,6 +55,7 @@ namespace ArenaPro
                 ["arenapro_time_to_start_veto"] = Int(() => timeToStartVeto, v => timeToStartVeto = Math.Max(0, v)),
                 ["arenapro_ready_mode"] = Int(() => readyMode, v => readyMode = v >= 0 && v <= 2 ? v : 0),
                 ["arenapro_join_start_delay"] = Int(() => joinStartDelay, v => joinStartDelay = Math.Max(0, v)),
+                ["arenapro_kick_on_series_end_delay"] = Int(() => kickOnSeriesEndDelay, v => kickOnSeriesEndDelay = Math.Max(0, v)),
                 ["arenapro_max_tech_pauses"] = Int(() => maxTechPauses, v => maxTechPauses = Math.Max(0, v)),
                 ["arenapro_tech_pause_time"] = Int(() => techPauseTime, v => techPauseTime = Math.Max(0, v)),
                 ["get5_allow_technical_pause"] = Bool(() => techPauseEnabled.Value, v => techPauseEnabled.Value = v),

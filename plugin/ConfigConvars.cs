@@ -81,6 +81,13 @@ namespace ArenaPro
             resetCvarsOnSeriesEnd = ParseBoolSetting(args, resetCvarsOnSeriesEnd);
         }
 
+        [ConsoleCommand("arenapro_kick_on_series_end_delay", "Seconds after a series ends before all players are kicked. 0 = players are not kicked. Default: 0")]
+        public void ArenaProKickOnSeriesEndDelayConvar(CCSPlayerController? player, CommandInfo command)
+        {
+            if (player != null) return;
+            if (int.TryParse(GetSettingArgument(command), out int seconds) && seconds >= 0) kickOnSeriesEndDelay = seconds;
+        }
+
         [ConsoleCommand("arenapro_minimum_ready_required", "Minimum ready players required to start the match. Default: 1")]
         public void ArenaProMinimumReadyRequired(CCSPlayerController? player, CommandInfo command)
         {
