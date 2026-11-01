@@ -12,11 +12,12 @@ public partial class ArenaPro
         {
             CCSPlayerController? player = @event.Userid;
 
-            if (!IsPlayerValid(player)) return HookResult.Continue;
-            Log($"[FULL CONNECT] Player ID: {player!.UserId}, Name: {player.PlayerName} has connected!");
+            // Joining players may not have a pawn until their first team is assigned.
+            if (player == null || !player.IsValid || player.IsBot || player.IsHLTV) return HookResult.Continue;
+            Log($"[FULL CONNECT] Player ID: {player.UserId}, Name: {player.PlayerName} has connected!");
 
             // Handling whitelisted players
-            if (!player.IsBot || !player.IsHLTV)
+            if (!player.IsBot && !player.IsHLTV)
             {
                 var steamId = player.SteamID;
 
@@ -62,6 +63,10 @@ public partial class ArenaPro
                     ExecUnpracCommands();
                     AutoStart();
                 }
+            }
+            if (isMatchSetup || isVeto)
+            {
+                SwitchPlayerTeam(player, GetPlayerTeam(player));
             }
             return HookResult.Continue;
 
