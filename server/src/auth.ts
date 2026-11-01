@@ -58,16 +58,32 @@ export function getSession(req: FastifyRequest): Session | null {
   return { kind: row.kind, userId: row.user_id };
 }
 
-// Права администратора панели: вход логином и паролем или вход через Steam игрока, которому их выдали в разделе «Админы»
-export function isPanelAdmin(s: Session | null): boolean {
-  if (!s) return false;
-  if (s.kind === 'admin') return true;
-  return !!db.prepare(`SELECT 1 FROM game_admins g JOIN players p ON p.steam_id = g.steam_id
-    WHERE p.id = ? AND g.panel = 1`).get(s.userId);
+// Уровень прав в панели у игрока, входящего через Steam (game_admins.panel)
+export const PANEL_NONE = 0;
+export const PANEL_ADMIN = 1;
+// Полный админ: как вход логином и паролем, в том числе выдаёт и снимает права админов
+export const PANEL_FULL = 2;
+
+function panelLevel(s: Session | null): number {
+  if (!s) return PANEL_NONE;
+  if (s.kind === 'admin') return PANEL_FULL;
+  const r = db.prepare(`SELECT g.panel FROM game_admins g JOIN players p ON p.steam_id = g.steam_id WHERE p.id = ?`)
+    .get(s.userId) as { panel: number } | undefined;
+  return r?.panel ?? PANEL_NONE;
 }
+
+// Права администратора панели: вход логином и паролем или вход через Steam игрока, которому их выдали в разделе «Админы»
+export const isPanelAdmin = (s: Session | null): boolean => panelLevel(s) >= PANEL_ADMIN;
+
+// Управлять админами (кому какие права) может только полный админ
+export const isFullAdmin = (s: Session | null): boolean => panelLevel(s) >= PANEL_FULL;
 
 export async function requireAdmin(req: FastifyRequest, reply: FastifyReply): Promise<void> {
   if (!isPanelAdmin(getSession(req))) await reply.code(401).send(E('needAdmin'));
+}
+
+export async function requireFullAdmin(req: FastifyRequest, reply: FastifyReply): Promise<void> {
+  if (!isFullAdmin(getSession(req))) await reply.code(403).send(E('needFullAdmin'));
 }
 
 // Только учётная запись администратора (логин и пароль): её настройки игрок-админ менять не может
