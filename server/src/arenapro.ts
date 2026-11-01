@@ -87,7 +87,7 @@ export interface MatchConfigInput {
   teamB: { id: number; name: string; players: RosterPlayer[]; captain?: string };
   maps: MapRef[];
   pauses: { tactical: number; tacticalTime: number; technical: number };
-  // Раундов на карте в wingman (2v2): 16 или 24
+  // Раундов на карте в режиме «Напарники» (1v1 и 2v2): 16 или 24
   wingmanRounds: number;
   // Адрес панели, по которому этот сервер шлёт события (см. panelUrlFor)
   panelUrl: string;
@@ -131,11 +131,12 @@ export function buildMatchConfig(i: MatchConfigInput) {
     skip_veto: true,
     clinch_series: true,
     players_per_team: i.teamSize,
-    wingman: i.teamSize === 2,
+    // 1v1 и 2v2 играются в режиме «Напарники»: маленькие карты и свой live-конфиг
+    wingman: i.teamSize <= 2,
     min_players_to_ready: i.teamSize,
     cvars: {
       ...pauseCvars(i.pauses),
-      ...roundCvars(i.teamSize === 2 ? i.wingmanRounds : null),
+      ...roundCvars(i.teamSize <= 2 ? i.wingmanRounds : null),
       // Все игроки зашли и оба капитана написали .ready: отсчёт START_DELAY_S и старт.
       // Через JOIN_TIME_S без старта побеждает команда, у которой больше игроков на сервере.
       arenapro_ready_mode: '2',

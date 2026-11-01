@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { E, encode, errBody, type ErrorBody } from '../errors.js';
 import { z } from 'zod';
@@ -109,6 +110,41 @@ async function requireTournament(req: FastifyRequest<{ Params: { id: string } }>
   const t = getTournament(Number(req.params.id));
   if (!t) await reply.code(404).send(E('tournamentNotFound'));
   return t;
+}
+
+// Можно ли поставить в турнир состав roster (команды teamId, если она уже есть): есть слот, команда и игроки ещё не заявлены
+function entryError(t: TournamentRow, teamId: number | null, roster: number[]): ErrorBody | null {
+  const count = (db.prepare('SELECT COUNT(*) AS n FROM tournament_teams WHERE tournament_id = ?').get(t.id) as { n: number }).n;
+  if (count >= t.max_teams) return E('noSlots');
+  if (teamId !== null && db.prepare('SELECT 1 FROM tournament_teams WHERE tournament_id = ? AND team_id = ?').get(t.id, teamId)) {
+    return E('alreadyRegistered');
+  }
+  const others = db.prepare('SELECT roster FROM tournament_teams WHERE tournament_id = ?')
+    .all(t.id) as unknown as { roster: string }[];
+  const taken = new Set(others.flatMap((o) => JSON.parse(o.roster) as number[]));
+  return roster.some((p) => taken.has(p)) ? E('playerTaken') : null;
+}
+
+function insertEntry(t: TournamentRow, teamId: number, roster: number[]): void {
+  db.prepare(`INSERT INTO tournament_teams (tournament_id, team_id, roster, seed)
+    VALUES (?, ?, ?, (SELECT COALESCE(MAX(seed), 0) + 1 FROM tournament_teams WHERE tournament_id = ?))`)
+    .run(t.id, teamId, JSON.stringify(roster), t.id);
+}
+
+// Личная команда игрока для 1v1: его команда, где он единственный участник, иначе новая с его ником
+// (при совпадении имени с чужой командой добавляется номер)
+function soloTeam(playerId: number): number {
+  const own = db.prepare(`SELECT t.id FROM teams t WHERE t.captain_id = ?
+    AND (SELECT COUNT(*) FROM team_members m WHERE m.team_id = t.id) = 1 ORDER BY t.id LIMIT 1`).get(playerId) as { id: number } | undefined;
+  if (own) return own.id;
+  const nick = (db.prepare('SELECT name FROM players WHERE id = ?').get(playerId) as { name: string }).name.trim().slice(0, 26) || `player${playerId}`;
+  let name = nick;
+  for (let n = 2; db.prepare('SELECT 1 FROM teams WHERE name = ?').get(name); n++) name = `${nick} #${n}`;
+  const res = db.prepare('INSERT INTO teams (name, join_code, captain_id) VALUES (?, ?, ?)')
+    .run(name, randomBytes(5).toString('hex').toUpperCase(), playerId);
+  const teamId = Number(res.lastInsertRowid);
+  db.prepare('INSERT INTO team_members (team_id, player_id) VALUES (?, ?)').run(teamId, playerId);
+  return teamId;
 }
 
 export async function tournamentRoutes(app: FastifyInstance): Promise<void> {
@@ -543,20 +579,25 @@ export async function tournamentRoutes(app: FastifyInstance): Promise<void> {
     if (roster.length !== t.team_size || new Set(roster).size !== roster.length || !roster.every((p) => memberIds.includes(p))) {
       return reply.code(400).send(E('rosterSize', { n: t.team_size }));
     }
-    const count = (db.prepare('SELECT COUNT(*) AS n FROM tournament_teams WHERE tournament_id = ?').get(t.id) as { n: number }).n;
-    if (count >= t.max_teams) return reply.code(409).send(E('noSlots'));
-    if (db.prepare('SELECT 1 FROM tournament_teams WHERE tournament_id = ? AND team_id = ?').get(t.id, team.id)) {
-      return reply.code(409).send(E('alreadyRegistered'));
-    }
-    const others = db.prepare('SELECT roster FROM tournament_teams WHERE tournament_id = ?')
-      .all(t.id) as unknown as { roster: string }[];
-    const taken = new Set(others.flatMap((o) => JSON.parse(o.roster) as number[]));
-    if (roster.some((p) => taken.has(p))) {
-      return reply.code(409).send(E('playerTaken'));
-    }
-    db.prepare(`INSERT INTO tournament_teams (tournament_id, team_id, roster, seed)
-      VALUES (?, ?, ?, (SELECT COALESCE(MAX(seed), 0) + 1 FROM tournament_teams WHERE tournament_id = ?))`)
-      .run(t.id, team.id, JSON.stringify(roster), t.id);
+    const error = entryError(t, team.id, roster);
+    if (error) return reply.code(409).send(error);
+    insertEntry(t, team.id, roster);
+    return reply.code(201).send(details(t));
+  });
+
+  // Турнир 1v1: игрок участвует сам, без команды. Под него заводится личная команда из одного игрока
+  // (или берётся уже существующая), она и стоит в сетке под его ником.
+  app.post<{ Params: { id: string } }>('/api/tournaments/:id/solo', async (req, reply) => {
+    const session = getSession(req);
+    if (!session) return reply.code(401).send(E('needLogin'));
+    if (session.kind !== 'player') return reply.code(403).send(E('soloPlayersOnly'));
+    const t = await requireTournament(req, reply);
+    if (!t) return;
+    if (t.status !== 'registration') return reply.code(409).send(E('registrationClosed'));
+    if (t.team_size !== 1) return reply.code(409).send(E('soloOnly'));
+    const error = entryError(t, null, [session.userId]);
+    if (error) return reply.code(409).send(error);
+    tx(() => insertEntry(t, soloTeam(session.userId), [session.userId]));
     return reply.code(201).send(details(t));
   });
 

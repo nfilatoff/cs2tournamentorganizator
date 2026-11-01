@@ -96,7 +96,7 @@ export function TournamentForm() {
             {[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{n}v{n}</option>)}
           </select>
         </label>
-        {teamSize === 2 && (
+        {teamSize <= 2 && (
           <label>{t('form.wingmanRounds')}
             <select value={wingmanRounds} onChange={(e) => setWingmanRounds(Number(e.target.value) === 24 ? 24 : 16)}>
               <option value={16}>{t('form.rounds16')}</option>

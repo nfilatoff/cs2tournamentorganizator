@@ -239,5 +239,5 @@ addColumn('game_servers', 'extra_cfg', 'TEXT');
 // Когда матч отправлен на сервер (от этого момента идёт время на подключение) и закончился ли он неявкой
 addColumn('matches', 'dispatched_at', 'INTEGER');
 addColumn('matches', 'walkover', 'INTEGER NOT NULL DEFAULT 0');
-// Длина матча в wingman (2v2): 16 раундов как в «Напарниках» или 24, как в соревновательном (половины по 12)
+// Длина матча в режиме «Напарники» (1v1 и 2v2): 16 раундов как в «Напарниках» или 24, как в соревновательном (половины по 12)
 addColumn('tournaments', 'wingman_rounds', 'INTEGER NOT NULL DEFAULT 16');

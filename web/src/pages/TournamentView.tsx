@@ -68,6 +68,7 @@ export function TournamentView({ me }: { me: Me }) {
   const chosen = selectable.find((x) => x.id === teamId) ?? selectable[0];
   const effectiveRoster = roster.length > 0 ? roster : chosen?.members.slice(0, tr.teamSize).map((m) => m.id) ?? [];
 
+  const mine = me.kind === 'player' ? tr.teams.find((x) => x.roster.includes(me.id)) : undefined;
   const register = () => chosen && act(() => api(`/api/tournaments/${tr.id}/teams`, {
     method: 'POST', body: { teamId: chosen.id, playerIds: effectiveRoster },
   }));
@@ -101,7 +102,7 @@ export function TournamentView({ me }: { me: Me }) {
             <h1 style={{ marginTop: 12 }}>{tr.name}</h1>
             <div className="muted">
               {t(`format.${tr.format}`)} · {tr.teamSize}v{tr.teamSize}
-              {tr.teamSize === 2 && <> · {t(tr.wingmanRounds === 24 ? 'form.rounds24' : 'form.rounds16')}</>}
+              {tr.teamSize <= 2 && <> · {t(tr.wingmanRounds === 24 ? 'form.rounds24' : 'form.rounds16')}</>}
               {' · '}{t('view.upTo', { n: tr.maxTeams })}
             </div>
           </div>
@@ -113,7 +114,7 @@ export function TournamentView({ me }: { me: Me }) {
 
       <div className="grid2">
         <div className="card">
-          <h2>{t('view.teams', { n: tr.teams.length, max: tr.maxTeams })}</h2>
+          <h2>{t(tr.teamSize === 1 ? 'view.players' : 'view.teams', { n: tr.teams.length, max: tr.maxTeams })}</h2>
           <table>
             <tbody>
               {tr.teams.map((x, i) => (
@@ -140,7 +141,21 @@ export function TournamentView({ me }: { me: Me }) {
               <span className="muted"> {t('seeding.hint')}</span>
             </p>
           )}
-          {tr.status === 'registration' && me.kind !== null && (
+          {tr.status === 'registration' && me.kind === 'player' && tr.teamSize === 1 && (
+            // 1v1: игрок участвует сам, команда не нужна
+            mine ? (
+              <p>
+                <span className="muted">{t('view.soloJoined')}</span>{' '}
+                <button className="ghost" onClick={() => act(() => api(`/api/tournaments/${tr.id}/teams/${mine.id}`, { method: 'DELETE' }))}>{t('view.soloLeave')}</button>
+              </p>
+            ) : (
+              <div style={{ marginTop: 12 }}>
+                <p className="muted">{t('view.soloHint')}</p>
+                <button className="big" onClick={() => act(() => api(`/api/tournaments/${tr.id}/solo`, { method: 'POST', body: {} }))}>{t('view.soloJoin')}</button>
+              </div>
+            )
+          )}
+          {tr.status === 'registration' && me.kind !== null && !(me.kind === 'player' && tr.teamSize === 1) && (
             selectable.length > 0 && chosen ? (
               <div style={{ marginTop: 12 }}>
                 <label>{admin ? t('view.pickTeam') : t('view.yourTeam')}
