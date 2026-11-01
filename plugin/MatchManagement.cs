@@ -422,9 +422,7 @@ namespace ArenaPro
             SetTeamNames();
             UpdatePlayersMap();
             UpdateHostname();
-            // Players are put on their teams when they join a team, which they do again after a map change. When the map does
-            // not change (the match is on the current map, or the maps are vetoed first), move those already here (Get5:
-            // CheckTeamsPostMatchConfigLoad).
+            // A map change assigns teams on full connect. On the current map, also assign players already here.
             if (!mapChangesOnLoad) PlacePlayersOnMatchTeams();
 
             var seriesStartedEvent = new ArenaProSeriesStartedEvent
@@ -476,14 +474,12 @@ namespace ArenaPro
             }
         }
 
-        // Moves the players on the server to their match team. Players who have not picked a team yet are left alone: they are
-        // put on their team when they pick one.
+        // Includes players still on the initial team selection screen.
         private void PlacePlayersOnMatchTeams()
         {
             foreach (var player in playerData.Values)
             {
                 if (!player.IsValid || player.IsBot || player.IsHLTV || player.Connected != PlayerConnectedState.Connected) continue;
-                if (player.Team == CsTeam.None) continue;
                 SwitchPlayerTeam(player, GetPlayerTeam(player));
             }
         }

@@ -2170,7 +2170,11 @@ namespace ArenaPro
                 }
                 else
                 {
-                    player.SwitchTeam(team);
+                    // Initial join must follow the game's jointeam path to finish team selection and create a playing pawn.
+                    if (player.Team == CsTeam.None || player.Team == CsTeam.Spectator)
+                        player.ChangeTeam(team);
+                    else
+                        player.SwitchTeam(team);
                     var gameRules = GetGameRules();
                     if (gameRules.WarmupPeriod)
                     {

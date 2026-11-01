@@ -1,6 +1,7 @@
 // Русский словарь: источник ключей. В en.ts и es.ts должен быть тот же набор ключей (проверяет TypeScript).
 export const ru = {
-  'app.brand': 'CS2 Турниры',
+  'app.brand': 'Arena Pro',
+  'app.admin': 'Администратор',
   'app.language': 'Язык',
   'app.login': 'Войти',
   'app.logout': 'Выйти',
@@ -315,6 +316,10 @@ export const ru = {
 
   // Вето карт
   'veto.title': 'Вето карт',
+  'veto.banBtn': 'Бан',
+  'veto.pickBtn': 'Пик',
+  'veto.tag.decider': 'Решающая',
+  'veto.yourTeam': 'Ваша команда',
   'veto.back': 'К турниру',
   'veto.firstNote': 'первой ходит {team}',
   'veto.open': 'Вето карт ({step}/{total})',
@@ -363,6 +368,7 @@ export const ru = {
   'home.yourTurn': 'Ваш ход в вето карт!',
   'home.state.veto': 'Вето карт: {step}/{total}',
   'home.openVeto': 'Открыть вето',
+  'home.heroTag': 'Турниры по CS2 в компьютерном клубе Arena Pro. Регистрируйте команду, проходите вето и играйте прямо в клубе.',
   'home.state.queued': 'Вето завершено (или отключено). Матч ждёт свободный сервер.',
   'home.state.waiting': 'Ждём соперника',
   'home.connect': 'Подключитесь в консоли игры:',

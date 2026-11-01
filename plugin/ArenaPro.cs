@@ -287,9 +287,9 @@ namespace ArenaPro
 
                 CCSPlayerController? player = @event.Userid;
 
-                if (!IsPlayerValid(player)) return HookResult.Continue;
+                if (player == null || !player.IsValid) return HookResult.Continue;
 
-                if (player!.IsHLTV || player.IsBot)
+                if (player.IsHLTV || player.IsBot)
                 {
                     return HookResult.Continue;
                 }

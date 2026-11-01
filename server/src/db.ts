@@ -122,14 +122,20 @@ if (!matchCols.some((c) => c.name === 'forced')) {
   db.exec('ALTER TABLE matches ADD COLUMN forced INTEGER NOT NULL DEFAULT 0');
 }
 
+let nextSavepoint = 0;
+
+// SAVEPOINT also starts a transaction when there is no outer one. Releasing the
+// outermost savepoint commits; nested calls remain part of their caller's transaction.
 export function tx<T>(fn: () => T): T {
-  db.exec('BEGIN');
+  const savepoint = `tx_${++nextSavepoint}`;
+  db.exec(`SAVEPOINT ${savepoint}`);
   try {
     const result = fn();
-    db.exec('COMMIT');
+    db.exec(`RELEASE SAVEPOINT ${savepoint}`);
     return result;
   } catch (e) {
-    db.exec('ROLLBACK');
+    db.exec(`ROLLBACK TO SAVEPOINT ${savepoint}`);
+    db.exec(`RELEASE SAVEPOINT ${savepoint}`);
     throw e;
   }
 }

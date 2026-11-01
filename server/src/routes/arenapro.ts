@@ -45,9 +45,15 @@ export function handleEvent(ev: ArenaEvent): void {
 
     case 'map_result': {
       const winner = ev.winner?.team === 'team1' ? 'a' : ev.winner?.team === 'team2' ? 'b' : null;
-      db.prepare(`INSERT INTO match_maps (match_id, map_no, score_a, score_b, winner) VALUES (?, ?, ?, ?, ?)
-        ON CONFLICT(match_id, map_no) DO UPDATE SET score_a = excluded.score_a, score_b = excluded.score_b, winner = excluded.winner`)
-        .run(row.id, mapNo, ev.team1?.score ?? 0, ev.team2?.score ?? 0, winner);
+      tx(() => {
+        db.prepare(`INSERT INTO match_maps (match_id, map_no, score_a, score_b, winner) VALUES (?, ?, ?, ?, ?)
+          ON CONFLICT(match_id, map_no) DO UPDATE SET score_a = excluded.score_a, score_b = excluded.score_b, winner = excluded.winner`)
+          .run(row.id, mapNo, ev.team1?.score ?? 0, ev.team2?.score ?? 0, winner);
+        // The last round_end still has the series score from before this map was won.
+        db.prepare(`UPDATE matches SET cur_map_no = ?, cur_score_a = ?, cur_score_b = ?, series_a = ?, series_b = ? WHERE id = ?`)
+          .run(mapNo, ev.team1?.score ?? 0, ev.team2?.score ?? 0,
+            ev.team1?.series_score ?? row.series_a, ev.team2?.series_score ?? row.series_b, row.id);
+      });
       break;
     }
 

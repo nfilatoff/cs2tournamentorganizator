@@ -4,6 +4,7 @@ import { api, type MatchDetails, type MatchPlayer, type MatchTeam } from '../api
 import { copyText } from '../clipboard';
 import { useI18n } from '../i18n';
 import { roundLabel } from '../rounds';
+import { VetoPanel } from '../components/VetoPanel';
 
 type Side = 'a' | 'b';
 
@@ -37,8 +38,8 @@ const fmt = (ms: number) => {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 };
 
-function Avatar({ name, url, big }: { name: string; url: string | null; big?: boolean }) {
-  const cls = big ? 'mavatar big' : 'mavatar';
+function Avatar({ name, url, big, mine }: { name: string; url: string | null; big?: boolean; mine?: boolean }) {
+  const cls = `mavatar${big ? ' big' : ''}${mine ? ' mine' : ''}`;
   if (url) return <img className={cls} src={url} alt="" />;
   return <div className={`${cls} letter`}>{name.slice(0, 1).toUpperCase()}</div>;
 }
@@ -65,7 +66,12 @@ function TeamColumn({ team, side, teamSize }: { team: MatchTeam | null; side: Si
   const { t } = useI18n();
   return (
     <div className="mcol">
-      <h3>{team ? team.name : t('match.tbd')}</h3>
+      <h3>
+        <span>{team ? team.name : t('match.tbd')}</span>
+        {team && team.players.some((p) => p.online !== null) && (
+          <small>{team.players.filter((p) => p.online).length}/{teamSize}</small>
+        )}
+      </h3>
       {team
         ? team.players.map((p) => <PlayerRow key={p.id} p={p} side={side} />)
         : Array.from({ length: teamSize }, (_, i) => <div key={i} className="mplayer empty" />)}
@@ -122,6 +128,7 @@ export function MatchPage() {
   const yourSide = d.you?.side ?? null;
   const online = (s: Side) => d.teams[s]?.players.filter((p) => p.online).length ?? 0;
   const lobby = d.lobby;
+  const vetoVersion = d.veto ? `${d.veto.step}/${d.veto.done}/${d.phase}` : '';
   const left = lobby?.deadline ? lobby.deadline - now : null;
   const startsIn = lobby?.startsAt ? lobby.startsAt - now : null;
 
@@ -154,17 +161,19 @@ export function MatchPage() {
         <div className="mhero-main">
           <div className="mteam a">
             {done && d.winner === 'a' && <div className="wlabel">{t('mp.winner')}</div>}
+            {yourSide === 'a' && !done && <div className="you">{t('veto.yourTeam')}</div>}
             <span className="tname">{name('a')}</span>
           </div>
-          <Avatar name={name('a')} url={null} big />
+          <Avatar name={name('a')} url={null} big mine={yourSide === 'a'} />
           <div className="mscore">
             <span className={done && d.winner === 'a' ? 'win' : done ? 'lose' : ''}>{d.phase === 'waiting' || d.phase === 'veto' || d.phase === 'queued' ? '–' : bigScore('a')}</span>
             <span className="vs">vs</span>
             <span className={done && d.winner === 'b' ? 'win' : done ? 'lose' : ''}>{d.phase === 'waiting' || d.phase === 'veto' || d.phase === 'queued' ? '–' : bigScore('b')}</span>
           </div>
-          <Avatar name={name('b')} url={null} big />
+          <Avatar name={name('b')} url={null} big mine={yourSide === 'b'} />
           <div className="mteam b">
             {done && d.winner === 'b' && <div className="wlabel">{t('mp.winner')}</div>}
+            {yourSide === 'b' && !done && <div className="you">{t('veto.yourTeam')}</div>}
             <span className="tname">{name('b')}</span>
           </div>
         </div>
@@ -231,11 +240,7 @@ export function MatchPage() {
           )}
 
           {d.phase === 'veto' && d.veto && (
-            <div className="mbox">
-              <h4>{t('mp.veto')}</h4>
-              <p>{t('veto.open', { step: d.veto.step, total: d.veto.total })}</p>
-              <Link className="btn" to={`/tournaments/${d.tournament.id}/matches/${d.code}/veto`}>{t('home.openVeto')}</Link>
-            </div>
+            <VetoPanel base={base} active version={vetoVersion} onChange={load} />
           )}
           {(d.phase === 'queued' || d.phase === 'waiting') && (
             <div className="mbox"><p style={{ margin: 0 }}>{d.phase === 'queued' ? t('mp.queuedHint') : t('home.state.waiting')}</p></div>
@@ -243,10 +248,7 @@ export function MatchPage() {
 
           {d.maps.length > 0 && (
             <div className="mbox">
-              <div className="between">
-                <h4>{d.maps.length > 1 ? t('mp.maps') : t('mp.map')}</h4>
-                {d.veto?.done && <Link className="small" to={`/tournaments/${d.tournament.id}/matches/${d.code}/veto`}>{t('mp.vetoLink')}</Link>}
-              </div>
+              <h4>{d.maps.length > 1 ? t('mp.maps') : t('mp.map')}</h4>
               {d.maps.map((m) => (
                 <div key={m.no} className={`mmap${m.current ? ' current' : ''}`}>
                   {m.imageUrl ? <img src={m.imageUrl} alt="" /> : <div className="noimg" />}
@@ -269,11 +271,15 @@ export function MatchPage() {
             </div>
           )}
 
+          {d.veto && d.phase !== 'veto' && (
+            <VetoPanel base={base} active={false} version={vetoVersion} onChange={load} />
+          )}
+
           {d.admin && (
             <div className="mbox">
               <h4>{t('mp.admin')}</h4>
               {d.note && <p className="error">{err(d.note)}</p>}
-              <div className="result wrap" style={{ border: 0, padding: 0 }}>
+              <div className="adminbar">
                 {d.status === 'ready' && <button onClick={() => act('dispatch')}>{t('match.dispatch')}</button>}
                 {d.status === 'live' && (
                   <>

@@ -1,7 +1,8 @@
 import type { Dict } from './ru';
 
 export const es: Dict = {
-  'app.brand': 'Torneos de CS2',
+  'app.brand': 'Arena Pro',
+  'app.admin': 'Administrador',
   'app.language': 'Idioma',
   'app.login': 'Iniciar sesión',
   'app.logout': 'Cerrar sesión',
@@ -316,6 +317,10 @@ export const es: Dict = {
 
   // Вето карт
   'veto.title': 'Veto de mapas',
+  'veto.banBtn': 'Ban',
+  'veto.pickBtn': 'Pick',
+  'veto.tag.decider': 'Decisivo',
+  'veto.yourTeam': 'Tu equipo',
   'veto.back': 'Volver al torneo',
   'veto.firstNote': 'empieza {team}',
   'veto.open': 'Veto de mapas ({step}/{total})',
@@ -364,6 +369,7 @@ export const es: Dict = {
   'home.yourTurn': '¡Tu turno en el veto de mapas!',
   'home.state.veto': 'Veto de mapas: {step}/{total}',
   'home.openVeto': 'Abrir el veto',
+  'home.heroTag': 'Torneos de CS2 en el club de gaming Arena Pro. Inscribe a tu equipo, haz el veto de mapas y juega en el club.',
   'home.state.queued': 'El veto ha terminado (o está desactivado). El partido espera un servidor libre.',
   'home.state.waiting': 'Esperando al rival',
   'home.connect': 'Conéctate en la consola del juego:',
