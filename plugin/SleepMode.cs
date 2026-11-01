@@ -40,6 +40,23 @@ namespace ArenaPro
             Log($"[StartSleepMode] ArenaPro deactivated!");
         }
 
+        // Free play (deathmatch, casual...): like sleep mode, ArenaPro stays out of the way, but no cfg is executed so the
+        // game mode's own settings (respawns, bots) stay as they are. An admin can still start practice or match mode.
+        public void StartFreePlay()
+        {
+            if (matchStarted) return;
+            unreadyPlayerMessageTimer?.Kill();
+            unreadyPlayerMessageTimer = null;
+            isSleep = true;
+            isPractice = false;
+            isDryRun = false;
+            isWarmup = false;
+            readyAvailable = false;
+            isSideSelectionPhase = false;
+            isMatchLive = false;
+            Log($"[StartFreePlay] game_type {GetGameType()}, game_mode {GetGameMode()}: no match mode, ArenaPro stays inactive");
+        }
+
         [ConsoleCommand("css_sleep", "Starts sleep mode")]
         public void OnSleepCommand(CCSPlayerController? player, CommandInfo? command)
         {

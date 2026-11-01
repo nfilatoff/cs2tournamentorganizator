@@ -1964,6 +1964,13 @@ namespace ArenaPro
         private void AutoStart()
         {
             Log($"[AutoStart] autoStartMode: {autoStartMode}");
+            // Deathmatch, casual and other modes are not for matches: without a loaded match the server is left as the
+            // game mode set it up (no warmup or .ready, bots are not kicked). Loading a match switches the mode itself.
+            if (!isMatchSetup && !IsMatchGameMode())
+            {
+                StartFreePlay();
+                return;
+            }
             if (autoStartMode == 0)
             {
                 StartSleepMode();
@@ -1978,6 +1985,13 @@ namespace ArenaPro
             {
                 StartPracticeMode();
             }
+        }
+
+        // Competitive (game_type 0, game_mode 1) or Wingman (0, 2): the modes ArenaPro runs matches in
+        public bool IsMatchGameMode()
+        {
+            int mode = GetGameMode();
+            return GetGameType() == 0 && (mode == 1 || mode == 2);
         }
 
         public int GetGameMode()

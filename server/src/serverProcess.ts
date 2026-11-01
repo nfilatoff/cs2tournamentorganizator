@@ -57,6 +57,8 @@ function cfgText(s: ManagedRow): string {
   if (!safe(s.rcon_password) || /\s/.test(s.rcon_password)) throw new AppError('badCfgValue', { field: 'rcon' });
   const lines = [
     '// Создано панелью турниров. Меняйте настройки в разделе «Серверы», а не в этом файле.',
+    // Этот файл заменяет server.cfg (servercfgfile), поэтому общий server.cfg выполняется отсюда
+    'execifexists server.cfg',
     `hostname "${s.hostname || s.name}"`,
     `rcon_password "${s.rcon_password}"`,
     `sv_password "${s.sv_password ?? ''}"`,
@@ -94,7 +96,9 @@ function launchArgs(s: ManagedRow, cfg: string): string[] {
   if (isIP(bind) === 4 && !bind.startsWith('127.')) args.push('-ip', bind);
   if (s.tv_enable) args.push('+tv_port', String(tvPortOf(s)));
   if (s.gslt) args.push('+sv_setsteamaccount', s.gslt);
-  args.push('+game_type', String(gm.type), '+game_mode', String(gm.mode), '+exec', cfg, ...mapArgs(s.start_map));
+  // servercfgfile: CS2 выполняет cfg сервера при каждой загрузке карты после конфига режима (gamemode_*.cfg),
+  // иначе режим перебивает дополнительные настройки (например, ботов и mp_teammates_are_enemies в бою насмерть)
+  args.push('+game_type', String(gm.type), '+game_mode', String(gm.mode), '+servercfgfile', cfg, '+exec', cfg, ...mapArgs(s.start_map));
   return args;
 }
 
