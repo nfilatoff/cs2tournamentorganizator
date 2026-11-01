@@ -12,3 +12,4 @@ installation.json
 .installer-test-*
 .plugin-build-*
 panel.local.json
+.claude
