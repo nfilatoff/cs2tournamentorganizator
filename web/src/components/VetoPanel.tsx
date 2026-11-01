@@ -75,10 +75,17 @@ export function VetoPanel({ base, active, version, onChange }: {
   const leftMs = v.deadline ? Math.max(0, v.deadline - (tick + offset)) : null;
   const mySide = v.you === 'a' || v.you === 'b' ? v.you : null;
   const needReady = !v.started && mySide !== null && !v.ready[mySide];
+  const isAdmin = v.you === 'admin';
+  // Админ с управлением ходит за ту команду, чья сейчас очередь
+  const forTeam = isAdmin && v.adminControl && v.next.type !== 'done' ? teamName(v.next.team) : null;
 
   let banner: string;
   if (v.status === 'done') banner = t('veto.done');
-  else if (v.next.type === 'side') {
+  else if (forTeam !== null && v.next.type !== 'done') {
+    banner = t(v.next.type === 'ban' ? 'veto.adminTurnBan' : v.next.type === 'pick' ? 'veto.adminTurnPick' : 'veto.adminTurnSide', {
+      team: forTeam, map: lastPick ? mapName(lastPick.mapId) : '',
+    });
+  } else if (v.next.type === 'side') {
     banner = v.canAct
       ? t('veto.yourTurnSide', { map: lastPick ? mapName(lastPick.mapId) : '' })
       : t('veto.waitingSide', { team: teamName(v.next.team) });
@@ -137,8 +144,13 @@ export function VetoPanel({ base, active, version, onChange }: {
     </div>
   );
 
-  const admin = v.you === 'admin' && (!v.locked || v.running) && (
+  const admin = isAdmin && (!v.locked || v.running) && (
     <div className="vadmin">
+      {!v.locked && v.status !== 'done' && (
+        <button className={v.adminControl ? '' : 'ghost'} onClick={() => send('/control', { on: !v.adminControl })}>
+          {v.adminControl ? t('veto.releaseControl') : t('veto.takeControl')}
+        </button>
+      )}
       {!v.locked && v.status !== 'done' && <button className="ghost" onClick={() => send('/auto', {})}>{t('veto.auto')}</button>}
       <button className="ghost" onClick={() => confirm(t(v.running ? 'veto.confirmResetRunning' : 'veto.confirmReset')) && send('/reset', {})}>{t('veto.reset')}</button>
     </div>
@@ -175,9 +187,12 @@ export function VetoPanel({ base, active, version, onChange }: {
           </div>
           {needReady && !v.locked && <button className="big" style={{ width: '100%', marginTop: 12 }} onClick={() => send('/ready', {})}>{t('veto.readyBtn')}</button>}
           {mySide && v.ready[mySide] && <div className="sub">{t('veto.youReady')}</div>}
-          {v.you === 'admin' && !v.locked && (
+          {isAdmin && !v.locked && (
             <div className="vadmin" style={{ justifyContent: 'center' }}>
-              <button className="ghost" onClick={() => send('/ready', {})}>{t('veto.forceStart')}</button>
+              {(['a', 'b'] as const).filter((side) => !v.ready[side]).map((side) => (
+                <button key={side} className="ghost" onClick={() => send('/ready', { team: side })}>{t('veto.forceReady', { team: teamName(side) })}</button>
+              ))}
+              <button onClick={() => send('/ready', {})}>{t('veto.forceReadyBoth')}</button>
             </div>
           )}
         </div>
@@ -202,6 +217,10 @@ export function VetoPanel({ base, active, version, onChange }: {
           BO{v.bestOf} · {t('veto.firstNote', { team: teamName('a') })}
           {v.locked && v.status !== 'done' && <> · {t('veto.locked')}</>}
         </div>
+        {v.status !== 'done' && !v.locked && v.adminControl && (
+          <div className="sub">{isAdmin ? t('veto.controlling') : t('veto.underAdmin')}</div>
+        )}
+        {v.status !== 'done' && !v.locked && isAdmin && !v.adminControl && <div className="sub">{t('veto.spectating')}</div>}
         {v.next.type === 'side' && v.canAct && !v.locked && (
           <div className="sides">
             <button className="ct" onClick={() => send('/act', { side: 'ct' })}>{t('veto.ct')}</button>

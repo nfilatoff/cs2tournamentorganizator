@@ -24,9 +24,10 @@ export interface VetoAction {
 // sides: false отключает выбор стороны, тогда пики играются на ноже (в старых сохранённых вето поля нет, это значит true).
 // ready: какие капитаны подтвердили готовность; вето начинается, когда готовы оба.
 // turnStartedAt: когда начался текущий ход (мс), от него считается время на ход.
+// adminControl: админ взял управление и ходит за обе команды; капитаны ждут, время на ход не идёт.
 export interface VetoState {
   poolIds: number[]; bestOf: number; actions: VetoAction[]; sides?: boolean;
-  ready?: { a?: boolean; b?: boolean }; turnStartedAt?: number;
+  ready?: { a?: boolean; b?: boolean }; turnStartedAt?: number; adminControl?: boolean;
 }
 
 export type Next =

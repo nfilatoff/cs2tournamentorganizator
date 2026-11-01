@@ -30,7 +30,7 @@ function vetoInfo(t: TournamentRow, row: MatchRow, playerId: number | null) {
   if (playerId !== null && !done && !vetoStarted(state)) {
     // До начала вето ход за капитаном, который ещё не подтвердил готовность
     yourTurn = (!state.ready?.a && captain(row.entry_a) === playerId) || (!state.ready?.b && captain(row.entry_b) === playerId);
-  } else if (playerId !== null && !done) {
+  } else if (playerId !== null && !done && !state.adminControl) {
     const next = nextAction(state);
     if (next.type !== 'done') yourTurn = captain(next.team === 'a' ? row.entry_a : row.entry_b) === playerId;
   }

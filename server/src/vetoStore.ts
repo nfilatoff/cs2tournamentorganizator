@@ -53,7 +53,7 @@ export function expireVetoTurns(now = Date.now()): boolean {
   let finished = false;
   for (const row of rows) {
     const state = JSON.parse(row.veto_json!) as VetoState;
-    if (!vetoStarted(state) || isDone(state)) continue;
+    if (!vetoStarted(state) || isDone(state) || state.adminControl) continue;
     // Вето, начатое до появления таймера: отсчёт идёт с этого момента
     if (state.turnStartedAt === undefined) {
       saveVeto(row.id, { ...state, turnStartedAt: now });

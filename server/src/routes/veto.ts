@@ -60,10 +60,12 @@ function dto(req: FastifyRequest, t: TournamentRow, row: MatchRow, state: VetoSt
     // До начала вето капитаны подтверждают готовность, потом у каждого хода есть ограничение по времени
     started,
     ready: { a: started || !!state.ready?.a, b: started || !!state.ready?.b },
-    deadline: started && !done && state.turnStartedAt !== undefined ? state.turnStartedAt + VETO_TURN_S * 1000 : null,
+    deadline: started && !done && !state.adminControl && state.turnStartedAt !== undefined ? state.turnStartedAt + VETO_TURN_S * 1000 : null,
     turnSeconds: VETO_TURN_S,
     now: Date.now(),
-    canAct: started && next.type !== 'done' && (role === 'admin' || role === next.team),
+    // Админ по умолчанию только наблюдает; ходить за команды он может, взяв управление
+    adminControl: !!state.adminControl,
+    canAct: started && next.type !== 'done' && (role === 'admin' ? !!state.adminControl : !state.adminControl && role === next.team),
     result: done ? vetoResult(state).map((p) => ({ ...p, name: byId.get(p.mapId)?.name ?? `#${p.mapId}` })) : null,
   };
 }
@@ -100,6 +102,8 @@ export async function vetoRoutes(app: FastifyInstance): Promise<void> {
     try {
       const state = loadVeto(t, row);
       if (!vetoStarted(state)) return reply.code(409).send(E('vetoNotStarted'));
+      if (role === 'admin' && !state.adminControl) return reply.code(409).send(E('vetoNoControl'));
+      if (role !== 'admin' && state.adminControl) return reply.code(409).send(E('vetoAdminControl'));
       const next = nextAction(state);
       if (next.type === 'done') return reply.code(409).send(E('vetoDone'));
       const team: Team = role === 'admin' ? next.team : (role as Team);
@@ -112,7 +116,7 @@ export async function vetoRoutes(app: FastifyInstance): Promise<void> {
     }
   });
 
-  // Капитан подтверждает готовность к вето; админ запускает вето сразу за обе команды
+  // Капитан подтверждает готовность к вето; админ ставит готовность за выбранную команду или сразу за обе
   app.post<Params>('/api/tournaments/:id/matches/:code/veto/ready', async (req, reply) => {
     const r = await load(req);
     if (!r.ok) return reply.code(r.code).send(r.error);
@@ -120,13 +124,32 @@ export async function vetoRoutes(app: FastifyInstance): Promise<void> {
     const role = actingRole(req, row);
     if (!role) return reply.code(403).send(E('vetoNotYourTurn'));
     if (row.server_id !== null || row.status !== 'ready') return reply.code(409).send(E('vetoLocked'));
+    const body = z.object({ team: z.enum(['a', 'b']).optional() }).safeParse(req.body ?? {});
+    if (!body.success) return reply.code(400).send(E('badRequest'));
     try {
-      const updated = markReady(loadVeto(t, row), role === 'admin' ? 'both' : role, Date.now());
+      const updated = markReady(loadVeto(t, row), role === 'admin' ? body.data.team ?? 'both' : role, Date.now());
       saveVeto(row.id, updated);
       return dto(req, t, { ...row, veto_json: JSON.stringify(updated) }, updated);
     } catch (e) {
       return reply.code(409).send(errBody(e));
     }
+  });
+
+  // Админ берёт управление вето (ходит за обе команды) или возвращает его капитанам
+  app.post<Params>('/api/tournaments/:id/matches/:code/veto/control', { preHandler: requireAdmin }, async (req, reply) => {
+    const r = await load(req);
+    if (!r.ok) return reply.code(r.code).send(r.error);
+    const { t, row } = r;
+    if (row.server_id !== null || row.status !== 'ready') return reply.code(409).send(E('vetoLocked'));
+    const body = z.object({ on: z.boolean() }).safeParse(req.body);
+    if (!body.success) return reply.code(400).send(E('badRequest'));
+    const state = loadVeto(t, row);
+    // Капитанам после возврата управления даём полное время на текущий ход
+    const updated: VetoState = body.data.on
+      ? { ...state, adminControl: true }
+      : { ...state, adminControl: false, ...(vetoStarted(state) ? { turnStartedAt: Date.now() } : {}) };
+    saveVeto(row.id, updated);
+    return dto(req, t, { ...row, veto_json: JSON.stringify(updated) }, updated);
   });
 
   // Ход, на который у капитана вышло время, делается случайно, даже если страницу никто не открыл

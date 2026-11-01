@@ -147,6 +147,7 @@ export interface VetoDto {
   next: { type: 'ban' | 'pick' | 'side'; team: 'a' | 'b' } | { type: 'done' };
   you: 'a' | 'b' | 'admin' | null;
   started: boolean;
+  adminControl: boolean;
   ready: { a: boolean; b: boolean };
   deadline: number | null;
   turnSeconds: number;
