@@ -21,7 +21,7 @@ export interface MatchRow {
   server_id: number | null; maps_json: string | null; live: number; paused: number;
   cur_map_no: number; cur_score_a: number; cur_score_b: number; series_a: number; series_b: number; note: string | null;
   stage: 'group' | 'playoff'; group_no: number | null; veto_json: string | null;
-  dispatched_at: number | null; walkover: number;
+  dispatched_at: number | null; walkover: number; admin_code: string | null;
 }
 
 export const getTournament = (id: number) =>

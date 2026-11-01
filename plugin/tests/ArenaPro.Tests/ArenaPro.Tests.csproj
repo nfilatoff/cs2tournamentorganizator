@@ -25,6 +25,7 @@
     <Compile Include="..\..\MatchConfigJson.cs" Link="Plugin\MatchConfigJson.cs" />
     <Compile Include="..\..\SeriesLogic.cs" Link="Plugin\SeriesLogic.cs" />
     <Compile Include="..\..\BotClaimLogic.cs" Link="Plugin\BotClaimLogic.cs" />
+    <Compile Include="..\..\AdminAuth.cs" Link="Plugin\AdminAuth.cs" />
     <Compile Include="..\..\BackupLogic.cs" Link="Plugin\BackupLogic.cs" />
     <Compile Include="..\..\LineupFormat.cs" Link="Plugin\LineupFormat.cs" />
     <Compile Include="..\..\ReadyTimeLogic.cs" Link="Plugin\ReadyTimeLogic.cs" />

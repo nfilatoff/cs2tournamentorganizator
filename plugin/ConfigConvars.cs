@@ -81,6 +81,32 @@ namespace ArenaPro
             resetCvarsOnSeriesEnd = ParseBoolSetting(args, resetCvarsOnSeriesEnd);
         }
 
+        [ConsoleCommand("arenapro_admin_auth_code", "Code admins type in their console (arenapro_auth <code>) before their admin commands work. Empty = no code needed. Default: empty")]
+        public void ArenaProAdminAuthCodeConvar(CCSPlayerController? player, CommandInfo command)
+        {
+            if (player != null) return;
+            adminAuth.Code = GetSettingArgument(command).Trim();
+        }
+
+        [ConsoleCommand("arenapro_auth", "Unlocks your admin commands: arenapro_auth <code>, typed in the client console")]
+        public void ArenaProAuthCommand(CCSPlayerController? player, CommandInfo command)
+        {
+            if (player == null || !player.IsValid) return;
+            long now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            AdminAuthResult result = adminAuth.TryAuthorize(player.SteamID, command.ArgString.Trim().Trim('"'), now);
+            // The answer goes to the player's console only: the code must not appear in chat
+            string message = result switch
+            {
+                AdminAuthResult.NotRequired => Localizer["arenapro.auth.notrequired"],
+                AdminAuthResult.Ok => Localizer["arenapro.auth.ok"],
+                AdminAuthResult.Locked => Localizer["arenapro.auth.locked", adminAuth.LockedFor(player.SteamID, now)],
+                _ => Localizer["arenapro.auth.wrong"],
+            };
+            Log($"[ArenaProAuthCommand] {player.PlayerName} ({player.SteamID}): {result}");
+            ReplyToUserCommand(player, message, console: true);
+            if (result == AdminAuthResult.Ok) PrintToPlayerChat(player, Localizer["arenapro.auth.ok"]);
+        }
+
         [ConsoleCommand("arenapro_kick_on_series_end_delay", "Seconds after a series ends before all players are kicked. 0 = players are not kicked. Default: 5")]
         public void ArenaProKickOnSeriesEndDelayConvar(CCSPlayerController? player, CommandInfo command)
         {

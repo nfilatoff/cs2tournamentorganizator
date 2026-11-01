@@ -62,6 +62,8 @@ namespace ArenaPro
 
         // Admin Data
         private Dictionary<string, string> loadedAdmins = new Dictionary<string, string>();
+        // arenapro_admin_auth_code: admins unlock their commands with arenapro_auth <code> in the client console
+        public readonly AdminAuth adminAuth = new();
 
         // Timers
         public CounterStrikeSharp.API.Modules.Timers.Timer? unreadyPlayerMessageTimer = null;
@@ -142,6 +144,8 @@ namespace ArenaPro
             // This sets default config ConVars
             Server.ExecuteCommand("execifexists ArenaPro/config.cfg");
             ExecOverrideCfg("ArenaPro/config.cfg");
+            // Written by a tournament panel (e.g. the admin code for this server), so it wins over config.cfg
+            Server.ExecuteCommand("execifexists ArenaPro/panel.cfg");
 
             teamSides[arenaproTeam1] = "CT";
             teamSides[arenaproTeam2] = "TERRORIST";

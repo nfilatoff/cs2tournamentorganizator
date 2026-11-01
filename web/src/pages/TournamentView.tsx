@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { api, type Me, type Preview, type Team, type TournamentDetails } from '../api';
+import { api, isAdmin, type Me, type Preview, type Team, type TournamentDetails } from '../api';
 import { useI18n } from '../i18n';
 import { BracketTree } from '../components/BracketTree';
 import type { MatchActions } from '../components/MatchCard';
@@ -34,10 +34,10 @@ export function TournamentView({ me }: { me: Me }) {
   }, [running, load]);
 
   useEffect(() => {
-    if (me.kind === 'player') {
-      api<Team[]>('/api/teams/mine').then((ts) => setMyTeams(ts.filter((x) => x.captainId === me.id))).catch(() => undefined);
-    } else if (me.kind === 'admin') {
+    if (isAdmin(me)) {
       api<Team[]>('/api/admin/teams').then(setAllTeams).catch(() => undefined);
+    } else if (me.kind === 'player') {
+      api<Team[]>('/api/teams/mine').then((ts) => setMyTeams(ts.filter((x) => x.captainId === me.id))).catch(() => undefined);
     }
   }, [me]);
 
@@ -62,7 +62,7 @@ export function TournamentView({ me }: { me: Me }) {
 
   if (!tr) return error ? <p className="error">{error}</p> : null;
 
-  const admin = me.kind === 'admin';
+  const admin = isAdmin(me);
   const registeredIds = new Set(tr.teams.map((x) => x.id));
   const selectable = (admin ? allTeams : myTeams).filter((x) => !registeredIds.has(x.id));
   const chosen = selectable.find((x) => x.id === teamId) ?? selectable[0];

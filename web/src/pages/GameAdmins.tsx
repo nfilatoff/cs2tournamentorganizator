@@ -5,7 +5,8 @@ import { useI18n } from '../i18n';
 type Role = 'full' | 'prac';
 
 interface GameAdminsDto {
-  admins: { steamId: string; name: string; role: Role }[];
+  admins: { steamId: string; name: string; role: Role; panel: boolean }[];
+  serverCode: string;
   players: { steamId: string; name: string }[];
   sync?: { file: string | null; reloaded: string[]; failed: string[] };
 }
@@ -16,6 +17,7 @@ export function GameAdmins() {
   const [d, setD] = useState<GameAdminsDto | null>(null);
   const [steamId, setSteamId] = useState('');
   const [role, setRole] = useState<Role>('full');
+  const [panel, setPanel] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -37,7 +39,7 @@ export function GameAdmins() {
     e.preventDefault();
     // Игрок, выбранный из списка, приходит как «ник (SteamID)»
     const id = steamId.match(/7656119\d{10}/)?.[0] ?? steamId.trim();
-    if (await run(() => api<GameAdminsDto>('/api/game-admins', { method: 'POST', body: { steamId: id, role } }))) setSteamId('');
+    if (await run(() => api<GameAdminsDto>('/api/game-admins', { method: 'POST', body: { steamId: id, role, panel } }))) setSteamId('');
   };
   const setAdminRole = (id: string, r: string) => run(() => api<GameAdminsDto>('/api/game-admins', { method: 'POST', body: { steamId: id, role: r } }));
 
@@ -67,8 +69,19 @@ export function GameAdmins() {
             <option value="prac">{t('gadmins.role.prac')}</option>
           </select>
         </label>
+        <label className="check"><input type="checkbox" checked={panel} onChange={(e) => setPanel(e.target.checked)} />{t('gadmins.panel')}</label>
         <button type="submit">{t('gadmins.add')}</button>
       </form>
+
+      <div className="card">
+        <h2>{t('gadmins.codeTitle')}</h2>
+        <p className="muted" style={{ marginTop: 0 }}>{t('gadmins.codeHint')}</p>
+        <div className="mconnect">
+          <code>arenapro_auth {d.serverCode}</code>
+          <button className="ghost" onClick={() => confirm(t('gadmins.confirmNewCode'))
+            && run(() => api<GameAdminsDto>('/api/game-admins/code', { method: 'POST', body: {} }))}>{t('gadmins.newCode')}</button>
+        </div>
+      </div>
       {error && <p className="error">{error}</p>}
 
       {sync && (
@@ -83,7 +96,7 @@ export function GameAdmins() {
 
       <div className="card tablewrap">
         <table>
-          <thead><tr><th>{t('gadmins.player')}</th><th>SteamID64</th><th>{t('gadmins.role')}</th><th /></tr></thead>
+          <thead><tr><th>{t('gadmins.player')}</th><th>SteamID64</th><th>{t('gadmins.role')}</th><th>{t('gadmins.panelShort')}</th><th /></tr></thead>
           <tbody>
             {d.admins.map((a) => (
               <tr key={a.steamId}>
@@ -95,13 +108,17 @@ export function GameAdmins() {
                     <option value="prac">{t('gadmins.role.prac')}</option>
                   </select>
                 </td>
+                <td>
+                  <input type="checkbox" checked={a.panel} title={t('gadmins.panel')}
+                    onChange={(e) => run(() => api<GameAdminsDto>('/api/game-admins', { method: 'POST', body: { steamId: a.steamId, role: a.role, panel: e.target.checked } }))} />
+                </td>
                 <td className="actions">
                   <button className="danger" onClick={() => confirm(t('gadmins.confirmRemove', { name: a.name || a.steamId }))
                     && run(() => api<GameAdminsDto>(`/api/game-admins/${a.steamId}`, { method: 'DELETE' }))}>{t('common.delete')}</button>
                 </td>
               </tr>
             ))}
-            {d.admins.length === 0 && <tr><td colSpan={4} className="muted">{t('gadmins.empty')}</td></tr>}
+            {d.admins.length === 0 && <tr><td colSpan={5} className="muted">{t('gadmins.empty')}</td></tr>}
           </tbody>
         </table>
       </div>

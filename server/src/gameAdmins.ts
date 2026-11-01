@@ -5,6 +5,7 @@ import { dirname, join } from 'node:path';
 import { db, getSetting, setSetting } from './db.js';
 import { withRcon, type ServerRow } from './dispatcher.js';
 import { cs2Root } from './serverProcess.js';
+import { newAdminCode } from './adminCodes.js';
 
 export type GameAdminRole = 'full' | 'prac';
 
@@ -13,14 +14,30 @@ const ROLE_FLAGS: Record<GameAdminRole, string> = { full: '', prac: '@custom/pra
 
 export const STEAM_ID = /^7656119\d{10}$/;
 
-export interface GameAdminRow { steam_id: string; name: string; flags: string }
+export interface GameAdminRow { steam_id: string; name: string; flags: string; panel: number }
 
 export const roleOf = (flags: string): GameAdminRole => (flags.trim() === '' ? 'full' : 'prac');
 export const flagsOf = (role: GameAdminRole): string => ROLE_FLAGS[role];
 
-function adminsFile(): string | null {
+function arenaproCfg(file: string): string | null {
   const root = cs2Root();
-  return root ? join(root, 'game', 'csgo', 'cfg', 'ArenaPro', 'admins.json') : null;
+  return root ? join(root, 'game', 'csgo', 'cfg', 'ArenaPro', file) : null;
+}
+const adminsFile = () => arenaproCfg('admins.json');
+
+// Код админа для серверов без матча (тренировки): общий для серверов в папке CS2 панели, плагин читает его из panel.cfg.
+// Во время матча действует код этого матча из его конфига.
+export function serverAdminCode(): string {
+  let code = getSetting('server_admin_code');
+  if (!code) {
+    code = newAdminCode();
+    setSetting('server_admin_code', code);
+  }
+  return code;
+}
+
+export function renewServerAdminCode(): void {
+  setSetting('server_admin_code', newAdminCode());
 }
 
 // Один раз переносит в панель админов, которые уже были вписаны в admins.json вручную
@@ -42,25 +59,36 @@ export function importExistingAdmins(): void {
 }
 
 export function listGameAdmins(): GameAdminRow[] {
-  return db.prepare('SELECT steam_id, name, flags FROM game_admins ORDER BY created_at, steam_id').all() as unknown as GameAdminRow[];
+  return db.prepare('SELECT steam_id, name, flags, panel FROM game_admins ORDER BY created_at, steam_id').all() as unknown as GameAdminRow[];
 }
 
 export interface SyncResult { file: string | null; reloaded: string[]; failed: string[] }
 
-// Записывает admins.json и просит работающие серверы перечитать его
+// Записывает admins.json и panel.cfg и просит работающие серверы применить их
 export async function syncGameAdmins(): Promise<SyncResult> {
   const file = adminsFile();
+  const code = serverAdminCode();
   if (file) {
     mkdirSync(dirname(file), { recursive: true });
     const data = Object.fromEntries(listGameAdmins().map((a) => [a.steam_id, a.flags]));
     writeFileSync(file, `${JSON.stringify(data, null, 2)}\n`, 'utf8');
+    writeFileSync(arenaproCfg('panel.cfg')!, [
+      '// Создано панелью турниров при изменении раздела «Админы». Не меняйте вручную: файл перезаписывается.',
+      `arenapro_admin_auth_code "${code}"`,
+      '',
+    ].join('\r\n'), 'utf8');
   }
-  const servers = db.prepare('SELECT * FROM game_servers ORDER BY id').all() as unknown as ServerRow[];
+  const servers = db.prepare(`SELECT s.*, (SELECT 1 FROM matches m WHERE m.server_id = s.id LIMIT 1) AS busy
+    FROM game_servers s ORDER BY s.id`).all() as unknown as (ServerRow & { busy: number | null })[];
   const reloaded: string[] = [];
   const failed: string[] = [];
   await Promise.all(servers.map(async (s) => {
     try {
-      await withRcon(s, (r) => r.exec('reload_admins'));
+      await withRcon(s, async (r) => {
+        await r.exec('reload_admins');
+        // На сервере с матчем действует код матча
+        if (!s.busy) await r.exec(`arenapro_admin_auth_code "${code}"`);
+      });
       reloaded.push(s.name);
     } catch {
       // Выключенный сервер прочитает файл при запуске; внешний сервер в другой папке нужно обновить вручную

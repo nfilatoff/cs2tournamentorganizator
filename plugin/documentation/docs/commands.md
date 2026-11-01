@@ -14,6 +14,10 @@ Most of the commands can also be used using ! prefix instead of . (like !ready)
 - `.coach <side>` Starts coaching the specified side. Example: `.coach t` to start coaching terrorist side!
 - `.uncoach` Leaves coaching slot
 
+# Admin authorization
+
+- `arenapro_auth <code>` (client console, not chat) Unlocks your admin commands when the server sets `arenapro_admin_auth_code`. The answer is printed in your console.
+
 # Practice Mode Commands
 
 - `.spawn <number>` Spawns to the provided competitive spawn number of same team

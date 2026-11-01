@@ -6,6 +6,7 @@ import { Rcon } from './rcon.js';
 import { eventToken } from './arenapro.js';
 import { ensureRunning, rconAlive } from './serverProcess.js';
 import { matchMaps, vetoComplete } from './vetoStore.js';
+import { newAdminCode } from './adminCodes.js';
 import {
   clearRuntime, getMatchRow, getTournament, loadMatches, saveMatches, teamName, type MatchRow,
 } from './tournamentStore.js';
@@ -61,8 +62,9 @@ function reserve(tid: number, row: MatchRow, serverId: number, mapsJson: string)
     if (!m || m.status !== 'ready') return false;
     m.status = 'live';
     saveMatches(tid, ms);
-    db.prepare('UPDATE matches SET server_id = ?, maps_json = ?, note = NULL, dispatched_at = ?, walkover = 0 WHERE id = ?')
-      .run(serverId, mapsJson, Date.now(), row.id);
+    // Свой код админа на каждый матч: его видят только админы в комнате матча (см. arenapro_admin_auth_code)
+    db.prepare('UPDATE matches SET server_id = ?, maps_json = ?, note = NULL, dispatched_at = ?, walkover = 0, admin_code = ? WHERE id = ?')
+      .run(serverId, mapsJson, Date.now(), newAdminCode(), row.id);
     return true;
   });
 }

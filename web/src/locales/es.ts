@@ -326,6 +326,12 @@ export const es: Dict = {
 
   // Вето карт
   'gadmins.title': 'Admins de los servidores',
+  'gadmins.panel': 'Admin del panel (inicio con Steam)',
+  'gadmins.panelShort': 'Panel',
+  'gadmins.codeTitle': 'Código de admin en el servidor',
+  'gadmins.codeHint': 'En un servidor de juego, los comandos de admin solo funcionan después de escribir el código en la consola del juego (~). Durante una partida se necesita el código de la partida: los admins lo ven en la sala de la partida. En un servidor sin partida (práctica) se usa este código.',
+  'gadmins.newCode': 'Código nuevo',
+  'gadmins.confirmNewCode': '¿Cambiar el código? Los admins en servidores sin partida necesitarán el nuevo.',
   'gadmins.hint': 'Jugadores con derechos de admin de ArenaPro en el juego: iniciar la práctica (.prac), cambiar el mapa, gestionar una partida. La lista se guarda en cfg/ArenaPro/admins.json y se aplica al momento en los servidores encendidos.',
   'gadmins.sync': 'Actualizar en servidores',
   'gadmins.steamId': 'SteamID64 o un jugador de la lista',
@@ -575,6 +581,7 @@ export const es: Dict = {
   'mp.vetoLink': 'Veto',
   'mp.knife': 'cuchillo',
   'mp.admin': 'Control del partido',
+  'mp.adminCode': 'Código de admin: escríbelo en la consola del juego (~) para desbloquear los comandos de admin',
   'mp.confirmWinner': '¿Dar la victoria a {team}?',
   'mp.back': 'Volver al torneo',
   'mp.open': 'Página del partido',

@@ -281,6 +281,15 @@ export function MatchPage() {
             <div className="mbox">
               <h4>{t('mp.admin')}</h4>
               {d.note && <p className="error">{err(d.note)}</p>}
+              {d.adminCode && (
+                <div style={{ marginBottom: 10 }}>
+                  <div className="muted small">{t('mp.adminCode')}</div>
+                  <div className="mconnect">
+                    <code>arenapro_auth {d.adminCode}</code>
+                    <Copy text={`arenapro_auth ${d.adminCode}`} label={t('home.copy')} />
+                  </div>
+                </div>
+              )}
               <div className="adminbar">
                 {d.status === 'ready' && <button onClick={() => act('dispatch')}>{t('match.dispatch')}</button>}
                 {d.status === 'live' && (

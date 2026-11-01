@@ -89,6 +89,8 @@ export interface MatchConfigInput {
   pauses: { tactical: number; tacticalTime: number; technical: number };
   // Раундов на карте в режиме «Напарники» (1v1 и 2v2): 16 или 24
   wingmanRounds: number;
+  // Код, без которого админы на сервере не могут пользоваться командами (arenapro_auth в консоли)
+  adminCode: string | null;
   // Адрес панели, по которому этот сервер шлёт события (см. panelUrlFor)
   panelUrl: string;
 }
@@ -144,6 +146,7 @@ export function buildMatchConfig(i: MatchConfigInput) {
       arenapro_time_to_start: String(JOIN_TIME_S),
       // После конца серии плагин выкидывает игроков, а панель через STOP_DELAY_MS выключает сервер (см. serverProcess)
       arenapro_kick_on_series_end_delay: String(KICK_AFTER_SERIES_S),
+      ...(i.adminCode ? { arenapro_admin_auth_code: i.adminCode } : {}),
       arenapro_remote_log_url: `${i.panelUrl}/api/arenapro/events`,
       arenapro_remote_log_header_key: 'Authorization',
       arenapro_remote_log_header_value: `Bearer ${eventToken()}`,

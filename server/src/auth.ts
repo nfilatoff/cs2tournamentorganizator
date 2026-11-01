@@ -58,7 +58,20 @@ export function getSession(req: FastifyRequest): Session | null {
   return { kind: row.kind, userId: row.user_id };
 }
 
+// Права администратора панели: вход логином и паролем или вход через Steam игрока, которому их выдали в разделе «Админы»
+export function isPanelAdmin(s: Session | null): boolean {
+  if (!s) return false;
+  if (s.kind === 'admin') return true;
+  return !!db.prepare(`SELECT 1 FROM game_admins g JOIN players p ON p.steam_id = g.steam_id
+    WHERE p.id = ? AND g.panel = 1`).get(s.userId);
+}
+
 export async function requireAdmin(req: FastifyRequest, reply: FastifyReply): Promise<void> {
+  if (!isPanelAdmin(getSession(req))) await reply.code(401).send(E('needAdmin'));
+}
+
+// Только учётная запись администратора (логин и пароль): её настройки игрок-админ менять не может
+export async function requireAccountAdmin(req: FastifyRequest, reply: FastifyReply): Promise<void> {
   if (getSession(req)?.kind !== 'admin') await reply.code(401).send(E('needAdmin'));
 }
 

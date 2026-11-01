@@ -326,6 +326,12 @@ export const en: Dict = {
 
   // Вето карт
   'gadmins.title': 'Server admins',
+  'gadmins.panel': 'Panel admin (Steam login)',
+  'gadmins.panelShort': 'Panel',
+  'gadmins.codeTitle': 'Admin code on the server',
+  'gadmins.codeHint': 'On a game server, admin commands only work after the code is typed in the game console (~). During a match the match code is needed: admins see it in the match room. On a server without a match (practice) this code applies.',
+  'gadmins.newCode': 'New code',
+  'gadmins.confirmNewCode': 'Change the code? Admins on servers without a match will need the new one.',
   'gadmins.hint': 'Players with ArenaPro admin rights in game: start practice (.prac), change the map, manage a match. The list is written to cfg/ArenaPro/admins.json and applied right away on running servers.',
   'gadmins.sync': 'Update on servers',
   'gadmins.steamId': 'SteamID64 or a player from the list',
@@ -575,6 +581,7 @@ export const en: Dict = {
   'mp.vetoLink': 'Veto',
   'mp.knife': 'knife',
   'mp.admin': 'Match controls',
+  'mp.adminCode': 'Admin code: type it in the game console (~) to unlock admin commands',
   'mp.confirmWinner': 'Award the win to {team}?',
   'mp.back': 'Back to tournament',
   'mp.open': 'Match page',

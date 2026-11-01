@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { db } from '../db.js';
-import { getSession } from '../auth.js';
+import { getSession, isPanelAdmin } from '../auth.js';
 import { decode } from '../errors.js';
 import {
   loadMatchRows, teamName, type MatchRow, type TournamentRow,
@@ -181,8 +181,8 @@ export async function homeRoutes(app: FastifyInstance): Promise<void> {
       id: t.id, name: t.name, format: t.format, teamSize: t.team_size, maxTeams: t.max_teams, status: t.status,
       teamCount: t.team_count, stageMode: t.stage_mode,
     }));
+    if (isPanelAdmin(s)) return { kind: 'admin' as const, tournaments, admin: adminBlock() };
     if (s?.kind === 'player') return { kind: 'player' as const, tournaments, player: playerBlock(s.userId) };
-    if (s?.kind === 'admin') return { kind: 'admin' as const, tournaments, admin: adminBlock() };
     return { kind: 'guest' as const, tournaments };
   });
 }

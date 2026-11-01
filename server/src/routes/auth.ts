@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { E } from '../errors.js';
 import { z } from 'zod';
 import { db } from '../db.js';
-import { createSession, destroySession, getSession, hashPassword, requireAdmin, verifyPassword } from '../auth.js';
+import { createSession, destroySession, getSession, hashPassword, isPanelAdmin, requireAccountAdmin, verifyPassword } from '../auth.js';
 import { fetchSteamProfile, siteOrigin, steamLoginUrl, verifySteamCallback } from '../steam.js';
 import { refreshName } from '../players.js';
 
@@ -21,7 +21,7 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
   });
 
   // Смена логина и/или пароля текущего администратора (нужен текущий пароль)
-  app.post('/api/auth/admin/account', { preHandler: requireAdmin }, async (req, reply) => {
+  app.post('/api/auth/admin/account', { preHandler: requireAccountAdmin }, async (req, reply) => {
     const body = z.object({
       currentPassword: z.string().min(1),
       newUsername: z.string().trim().min(3).max(40).optional(),
@@ -81,7 +81,10 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     const p = db.prepare('SELECT id, steam_id, name, steam_name, custom_name, admin_name, avatar_url FROM players WHERE id = ?')
       .get(s.userId) as { id: number; steam_id: string; name: string; steam_name: string | null; custom_name: string | null; admin_name: string | null; avatar_url: string | null } | undefined;
     return p
-      ? { kind: 'player', id: p.id, steamId: p.steam_id, name: p.name, steamName: p.steam_name, customName: p.custom_name, adminName: p.admin_name, avatarUrl: p.avatar_url }
+      ? {
+        kind: 'player', id: p.id, steamId: p.steam_id, name: p.name, steamName: p.steam_name, customName: p.custom_name,
+        adminName: p.admin_name, avatarUrl: p.avatar_url, admin: isPanelAdmin(s),
+      }
       : { kind: null };
   });
 

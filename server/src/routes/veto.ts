@@ -1,7 +1,7 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { db } from '../db.js';
-import { getSession, requireAdmin } from '../auth.js';
+import { getSession, isPanelAdmin, requireAdmin } from '../auth.js';
 import { E, errBody } from '../errors.js';
 import { tournamentMapPool } from '../arenapro.js';
 import { dispatchAll, endMatchOnServer, getServer, release } from '../dispatcher.js';
@@ -28,9 +28,10 @@ function actingRole(req: FastifyRequest, row: MatchRow): 'a' | 'b' | 'admin' | n
   const s = getSession(req);
   if (!s) return null;
   if (s.kind === 'admin') return 'admin';
+  // Игрок-админ, который сам играет в этом матче, ходит в вето как капитан своей команды
   if (captainOf(teamIdOf(row.entry_a)) === s.userId) return 'a';
   if (captainOf(teamIdOf(row.entry_b)) === s.userId) return 'b';
-  return null;
+  return isPanelAdmin(s) ? 'admin' : null;
 }
 
 function dto(req: FastifyRequest, t: TournamentRow, row: MatchRow, state: VetoState) {

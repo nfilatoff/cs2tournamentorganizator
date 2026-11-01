@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { db } from '../db.js';
-import { getSession, type Session } from '../auth.js';
+import { getSession, isPanelAdmin, type Session } from '../auth.js';
 import { decode, E } from '../errors.js';
 import { JOIN_TIME_S, START_DELAY_S, tournamentMapPool, type MapRef } from '../arenapro.js';
 import { roundFromEnd } from '../bracket.js';
@@ -130,8 +130,10 @@ export function matchDetails(t: TournamentRow, row: MatchRow, s: Session | null)
     } : null,
     now: Date.now(),
     you,
-    admin: s?.kind === 'admin',
-    note: s?.kind === 'admin' && row.note ? decode(row.note) : null,
+    admin: isPanelAdmin(s),
+    note: isPanelAdmin(s) && row.note ? decode(row.note) : null,
+    // Код для arenapro_auth в консоли игры: только админам и только пока матч на сервере
+    adminCode: isPanelAdmin(s) && row.server_id !== null ? row.admin_code : null,
   };
 }
 

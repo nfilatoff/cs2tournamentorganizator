@@ -73,6 +73,9 @@ Again, inside `csgo/cfg/ArenaPro`, a file named `config.cfg` should be present. 
 ####`arenapro_join_start_delay`
 :   With `arenapro_ready_mode 1`: seconds between all players having joined and the match starting. Set to 0 to start right away.<br>**`Default: 10`**
 
+####`arenapro_admin_auth_code`
+:   If set, ArenaPro admins (from `admins.json` or CounterStrikeSharp) can use admin commands only after typing `arenapro_auth <code>` in their client console (`~`). The authorization lasts until the player leaves the server or the code changes; 5 wrong codes lock the player out for 5 minutes. A match config can set it for the match. Leave empty to not require a code.<br>**`Default: ""`**
+
 ####`arenapro_kick_on_series_end_delay`
 :   Seconds after a series ends before every player (not bots or GOTV) is kicked with "The match is over". Set to 0 to keep players on the server. Useful when the server is shut down after the match.<br>**`Default: 5`**
 

@@ -250,3 +250,7 @@ db.exec(`CREATE TABLE IF NOT EXISTS game_admins (
   flags TEXT NOT NULL DEFAULT '',
   created_at INTEGER NOT NULL DEFAULT (unixepoch())
 )`);
+// Входящий через Steam игрок с panel = 1 получает в панели права администратора
+addColumn('game_admins', 'panel', 'INTEGER NOT NULL DEFAULT 0');
+// Код, который админ вводит в консоли игры (arenapro_auth), чтобы ему заработали команды админа в этом матче
+addColumn('matches', 'admin_code', 'TEXT');

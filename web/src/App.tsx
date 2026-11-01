@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, NavLink, Navigate, Route, Routes, useParams } from 'react-router-dom';
-import { api, type Me } from './api';
+import { api, isAdmin, type Me } from './api';
 import { LANGS, useI18n, type Lang } from './i18n';
 import { Login } from './pages/Login';
 import { Servers } from './pages/Servers';
@@ -33,6 +33,7 @@ export function App() {
   useEffect(refresh, [refresh]);
 
   if (!me) return null;
+  const admin = isAdmin(me);
 
   const logout = async () => {
     await api('/api/auth/logout', { method: 'POST', body: {} });
@@ -47,9 +48,9 @@ export function App() {
           <NavLink to="/" end className="navitem"><IconHome />{t('nav.home')}</NavLink>
           <NavLink to="/tournaments" className="navitem"><IconTrophy />{t('nav.tournaments')}</NavLink>
           {me.kind !== null && <NavLink to="/teams" className="navitem"><IconUsers />{t('nav.teams')}</NavLink>}
-          {me.kind === 'admin' && <NavLink to="/servers" className="navitem"><IconServer />{t('nav.servers')}</NavLink>}
-          {me.kind === 'admin' && <NavLink to="/maps" className="navitem"><IconMap />{t('nav.maps')}</NavLink>}
-          {me.kind === 'admin' && <NavLink to="/game-admins" className="navitem"><IconShield />{t('nav.gameAdmins')}</NavLink>}
+          {admin && <NavLink to="/servers" className="navitem"><IconServer />{t('nav.servers')}</NavLink>}
+          {admin && <NavLink to="/maps" className="navitem"><IconMap />{t('nav.maps')}</NavLink>}
+          {admin && <NavLink to="/game-admins" className="navitem"><IconShield />{t('nav.gameAdmins')}</NavLink>}
         </nav>
         <div className="grow" />
         <select value={lang} onChange={(e) => setLang(e.target.value as Lang)} aria-label={t('app.language')}>
@@ -68,24 +69,24 @@ export function App() {
           <Link to="/" className="wordmark">Arena <b>Pro</b><small>Gaming Club · CS2</small></Link>
           <span className="spacer" />
           {me.kind === 'admin' && <span className="who">{t('app.admin')}: <b>{me.username}</b></span>}
-          {me.kind === 'player' && <span className="who"><b>{me.name}</b></span>}
+          {me.kind === 'player' && <span className="who">{me.admin && <>{t('app.admin')}: </>}<b>{me.name}</b></span>}
           {!me.kind && <NavLink to="/login"><button>{t('app.login')}</button></NavLink>}
         </header>
       <main>
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/tournaments" element={<Tournaments me={me} />} />
-          <Route path="/tournaments/new" element={me.kind === 'admin' ? <TournamentForm /> : <Navigate to="/login" />} />
+          <Route path="/tournaments/new" element={admin ? <TournamentForm /> : <Navigate to="/login" />} />
           <Route path="/tournaments/:id" element={<TournamentView me={me} />} />
           <Route path="/tournaments/:id/matches/:code/veto" element={<VetoRedirect />} />
           <Route path="/tournaments/:id/matches/:code" element={<MatchPage />} />
-          <Route path="/teams" element={me.kind === 'admin' ? <AdminTeams /> : me.kind === 'player' ? <Teams me={me} /> : <Navigate to="/login" />} />
+          <Route path="/teams" element={admin ? <AdminTeams /> : me.kind === 'player' ? <Teams me={me} /> : <Navigate to="/login" />} />
           <Route path="/login" element={<Login onLogin={refresh} />} />
-          <Route path="/servers" element={me.kind === 'admin' ? <Servers /> : <Navigate to="/login" />} />
+          <Route path="/servers" element={admin ? <Servers /> : <Navigate to="/login" />} />
           <Route path="/account" element={me.kind === 'admin' ? <Account username={me.username} onChanged={refresh} /> : <Navigate to="/login" />} />
           <Route path="/profile" element={me.kind === 'player' ? <Profile me={me} onChanged={refresh} /> : <Navigate to="/login" />} />
-          <Route path="/game-admins" element={me.kind === 'admin' ? <GameAdmins /> : <Navigate to="/login" />} />
-          <Route path="/maps" element={me.kind === 'admin' ? <Maps /> : <Navigate to="/login" />} />
+          <Route path="/game-admins" element={admin ? <GameAdmins /> : <Navigate to="/login" />} />
+          <Route path="/maps" element={admin ? <Maps /> : <Navigate to="/login" />} />
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </main>

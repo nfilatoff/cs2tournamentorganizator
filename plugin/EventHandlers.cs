@@ -88,6 +88,8 @@ public partial class ArenaPro
             if (player == null || !player.IsValid) return HookResult.Continue;
             if (!player.UserId.HasValue) return HookResult.Continue;
             int userId = player.UserId.Value;
+            // The next visit needs the admin code again
+            adminAuth.Forget(player.SteamID);
 
             if (playerReadyStatus.ContainsKey(userId))
             {

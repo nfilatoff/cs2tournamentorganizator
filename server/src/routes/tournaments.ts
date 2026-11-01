@@ -3,7 +3,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { E, encode, errBody, type ErrorBody } from '../errors.js';
 import { z } from 'zod';
 import { db, tx } from '../db.js';
-import { getSession, requireAdmin } from '../auth.js';
+import { getSession, isPanelAdmin, requireAdmin } from '../auth.js';
 import {
   boFn, clearRuntime, getMatchRowByCode, getTournament, insertMatches, loadMatches, saveMatches,
   type MatchRow, type TournamentRow,
@@ -570,7 +570,7 @@ export async function tournamentRoutes(app: FastifyInstance): Promise<void> {
     const team = db.prepare('SELECT id, captain_id FROM teams WHERE id = ?')
       .get(body.data.teamId) as { id: number; captain_id: number } | undefined;
     if (!team) return reply.code(404).send(E('teamNotFound'));
-    if (session.kind === 'player' && team.captain_id !== session.userId) {
+    if (session.kind === 'player' && !isPanelAdmin(session) && team.captain_id !== session.userId) {
       return reply.code(403).send(E('onlyCaptainRegister'));
     }
     const memberIds = (db.prepare('SELECT player_id FROM team_members WHERE team_id = ? ORDER BY joined_at, player_id')
@@ -608,7 +608,7 @@ export async function tournamentRoutes(app: FastifyInstance): Promise<void> {
     if (!t) return reply.code(404).send(E('tournamentNotFound'));
     if (t.status !== 'registration') return reply.code(409).send(E('registrationClosed'));
     const teamId = Number(req.params.teamId);
-    if (session.kind === 'player') {
+    if (session.kind === 'player' && !isPanelAdmin(session)) {
       const team = db.prepare('SELECT captain_id FROM teams WHERE id = ?').get(teamId) as { captain_id: number } | undefined;
       if (team?.captain_id !== session.userId) return reply.code(403).send(E('onlyCaptainUnregister'));
     }

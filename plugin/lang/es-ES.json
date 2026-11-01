@@ -169,5 +169,10 @@
   "arenapro.pause.pauserequestcanceled": "{green}{0}{default} ha cancelado su petición de pausa.",
   "arenapro.pause.unpausedby": "{green}{0}{default} ha reanudado la partida.",
   "arenapro.pause.techhinttime": "Pausa técnica de {0} ({1}){2}. Tiempo restante hasta que cualquiera pueda reanudar: {3}",
-  "arenapro.pause.techhintawaiting": "Pausa técnica de {0} ({1}){2}. Esperando la reanudación."
+  "arenapro.pause.techhintawaiting": "Pausa técnica de {0} ({1}){2}. Esperando la reanudación.",
+  "arenapro.auth.required": "Los comandos de admin están bloqueados. Abre la consola ({green}~{default}) y escribe {green}arenapro_auth <código>{default} con el código de admin del panel.",
+  "arenapro.auth.ok": "{green}Acceso de admin desbloqueado.{default}",
+  "arenapro.auth.wrong": "Código de admin incorrecto.",
+  "arenapro.auth.locked": "Demasiados códigos incorrectos. Inténtalo de nuevo en {0} segundos.",
+  "arenapro.auth.notrequired": "Este servidor no necesita código de admin."
 }

@@ -127,9 +127,17 @@ namespace ArenaPro
             }
         }
 
+        // An admin's commands only work after the admin has typed the server's admin code (arenapro_admin_auth_code) in the
+        // client console, so a known SteamID alone is not enough to control the server.
         private bool IsPlayerAdmin(CCSPlayerController? player, string command = "", params string[] permissions)
         {
             if (everyoneIsAdmin.Value) return true; // Everyone is treated as admin if arenapro_everyone_is_admin is true.
+            if (!IsPlayerAdminIgnoringAuth(player, command, permissions)) return false;
+            return player == null || adminAuth.IsAuthorized(player.SteamID);
+        }
+
+        private bool IsPlayerAdminIgnoringAuth(CCSPlayerController? player, string command = "", params string[] permissions)
+        {
             string[] updatedPermissions = permissions.Concat(new[] { "@css/root" }).ToArray();
             RequiresPermissionsOr attr = new(updatedPermissions)
             {
@@ -1475,6 +1483,12 @@ namespace ArenaPro
         private void SendPlayerNotAdminMessage(CCSPlayerController? player)
         {
             // ReplyToUserCommand(player, "You do not have permission to use this command!");
+            // An admin who has not typed the admin code yet is told how to unlock the command instead
+            if (player != null && !everyoneIsAdmin.Value && !adminAuth.IsAuthorized(player.SteamID) && IsPlayerAdminIgnoringAuth(player, "", "@css/generic", "@custom/prac", "@css/map", "@css/config"))
+            {
+                ReplyToUserCommand(player, Localizer["arenapro.auth.required"]);
+                return;
+            }
             ReplyToUserCommand(player, Localizer["arenapro.utility.dontpermission"]);
         }
 

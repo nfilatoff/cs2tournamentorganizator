@@ -21,7 +21,12 @@ export type Me =
   | {
     kind: 'player'; id: number; steamId: string; name: string; avatarUrl: string | null;
     steamName: string | null; customName: string | null; adminName: string | null;
+    // Игроку выданы права администратора панели (раздел «Админы»)
+    admin?: boolean;
   };
+
+// Права администратора панели: вход логином и паролем или игрок, которому их выдали
+export const isAdmin = (me: Me): boolean => me.kind === 'admin' || (me.kind === 'player' && !!me.admin);
 
 export type GameMode = 'competitive' | 'wingman' | 'casual' | 'deathmatch';
 export interface ServerSettings {
@@ -186,6 +191,7 @@ export interface MatchDetails {
   you: { side: 'a' | 'b' | null; captain: boolean } | null;
   admin: boolean;
   note: { error: string; params?: Record<string, unknown> } | null;
+  adminCode: string | null;
 }
 
 export interface HomeTournament {

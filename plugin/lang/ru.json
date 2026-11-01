@@ -158,5 +158,10 @@
     "arenapro.pause.pauserequestcanceled": "{green}{0}{default} отменила запрос на паузу.",
     "arenapro.pause.unpausedby": "{green}{0}{default} сняла матч с паузы.",
     "arenapro.pause.techhinttime": "{0} ({1}): техническая пауза{2}. До снятия паузы любым игроком: {3}",
-    "arenapro.pause.techhintawaiting": "{0} ({1}): техническая пауза{2}. Ожидание снятия паузы."
+    "arenapro.pause.techhintawaiting": "{0} ({1}): техническая пауза{2}. Ожидание снятия паузы.",
+    "arenapro.auth.required": "Команды админа заблокированы. Откройте консоль ({green}~{default}) и введите {green}arenapro_auth <код>{default} с кодом админа из панели.",
+    "arenapro.auth.ok": "{green}Права админа разблокированы.{default}",
+    "arenapro.auth.wrong": "Неверный код админа.",
+    "arenapro.auth.locked": "Слишком много неверных кодов. Попробуйте снова через {0} с.",
+    "arenapro.auth.notrequired": "На этом сервере код админа не нужен."
 }

@@ -169,5 +169,10 @@
   "arenapro.pause.pauserequestcanceled": "{green}{0}{default} cancelou o pedido de pausa.",
   "arenapro.pause.unpausedby": "{green}{0}{default} retomou a partida.",
   "arenapro.pause.techhinttime": "Pausa técnica de {0} ({1}){2}. Tempo restante até qualquer um poder retomar: {3}",
-  "arenapro.pause.techhintawaiting": "Pausa técnica de {0} ({1}){2}. À espera de retomar."
+  "arenapro.pause.techhintawaiting": "Pausa técnica de {0} ({1}){2}. À espera de retomar.",
+  "arenapro.auth.required": "Admin commands are locked. Open the console ({green}~{default}) and type {green}arenapro_auth <code>{default} with the admin code from the panel.",
+  "arenapro.auth.ok": "{green}Admin access unlocked.{default}",
+  "arenapro.auth.wrong": "Wrong admin code.",
+  "arenapro.auth.locked": "Too many wrong admin codes. Try again in {0} seconds.",
+  "arenapro.auth.notrequired": "This server does not need an admin code."
 }
