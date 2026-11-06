@@ -2,12 +2,14 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode }
 import type { MatchDto } from '../api';
 import { useI18n } from '../i18n';
 import { roundLabel } from '../rounds';
+import { IconClose, IconExpand } from './Icons';
 import { MatchCard, type MatchActions } from './MatchCard';
 
 interface Props {
   matches: MatchDto[];
   format: 'single' | 'double';
   actions?: MatchActions;
+  title?: string;
 }
 
 interface Pos { col: number; row: number }
@@ -99,16 +101,22 @@ export function gslLayout(ms: MatchDto[], label: (round: number) => string): Lay
   };
 }
 
-function Canvas({ layout, actions }: { layout: Layout; actions?: MatchActions }) {
+interface Link { d: string; dashed: boolean; settled: boolean }
+
+function Canvas({ layout, actions, scale }: { layout: Layout; actions?: MatchActions; scale?: number }) {
   const wrap = useRef<HTMLDivElement>(null);
   const cards = useRef(new Map<string, HTMLDivElement>());
-  const [paths, setPaths] = useState<{ d: string; dashed: boolean }[]>([]);
+  const [paths, setPaths] = useState<Link[]>([]);
+  const statusOf = new Map(layout.ms.map((m) => [m.code, m.status]));
 
   // Линии строятся по реальным размерам карточек, поэтому не ломаются, когда карточка растёт
   const draw = () => {
-    const box = wrap.current?.getBoundingClientRect();
-    if (!box) return;
-    const out: { d: string; dashed: boolean }[] = [];
+    const el = wrap.current;
+    const box = el?.getBoundingClientRect();
+    if (!el || !box) return;
+    // На большом экране холст увеличен трансформацией, а координаты линий остаются в его собственном масштабе
+    const k = el.offsetWidth > 0 ? box.width / el.offsetWidth : 1;
+    const out: Link[] = [];
     for (const m of layout.ms) {
       const to = cards.current.get(m.code)?.getBoundingClientRect();
       if (!to) continue;
@@ -117,16 +125,16 @@ function Canvas({ layout, actions }: { layout: Layout; actions?: MatchActions })
         if (!f || !(f.kind === 'winner' || (f.kind === 'loser' && (m.bracket === 'GF' || layout.loserLinks)))) continue;
         const src = cards.current.get(f.code)?.getBoundingClientRect();
         if (!src) continue;
-        const x1 = src.right - box.left;
-        const y1 = src.top + src.height / 2 - box.top;
-        const x2 = to.left - box.left;
-        const y2 = to.top + to.height / 2 - box.top;
+        const x1 = (src.right - box.left) / k;
+        const y1 = (src.top + src.height / 2 - box.top) / k;
+        const x2 = (to.left - box.left) / k;
+        const y2 = (to.top + to.height / 2 - box.top) / k;
         const mid = (x1 + x2) / 2;
-        out.push({ d: `M${x1} ${y1} H${mid} V${y2} H${x2}`, dashed: f.kind === 'loser' });
+        out.push({ d: `M${x1} ${y1} H${mid} V${y2} H${x2}`, dashed: f.kind === 'loser', settled: statusOf.get(f.code) === 'done' });
       }
     }
     // Тот же набор линий не должен вызывать повторную отрисовку
-    const key = (p: { d: string; dashed: boolean }[]) => p.map((x) => x.d + x.dashed).join('|');
+    const key = (p: Link[]) => p.map((x) => x.d + x.dashed + x.settled).join('|');
     setPaths((prev) => (key(prev) === key(out) ? prev : out));
   };
 
@@ -144,10 +152,14 @@ function Canvas({ layout, actions }: { layout: Layout; actions?: MatchActions })
       <div
         className="tree"
         ref={wrap}
-        style={{ gridTemplateColumns: `repeat(${layout.cols}, 230px)`, gridTemplateRows: `repeat(${layout.rows}, minmax(24px, auto))` }}
+        style={{
+          gridTemplateColumns: `repeat(${layout.cols}, 240px)`,
+          gridTemplateRows: `repeat(${layout.rows}, minmax(24px, auto))`,
+          ...(scale ? { transform: `scale(${scale})`, transformOrigin: 'top left' } : {}),
+        }}
       >
         <svg className="links" aria-hidden>
-          {paths.map((p, i) => <path key={i} d={p.d} className={p.dashed ? 'dashed' : undefined} />)}
+          {paths.map((p, i) => <path key={i} d={p.d} className={`${p.dashed ? 'dashed' : ''}${p.settled ? ' settled' : ''}`} />)}
         </svg>
         {layout.heads.map((h, i) => (
           <div key={i} className="roundname treehead" style={{ gridColumn: h.col, gridRow: h.row }}>{h.label}</div>
@@ -169,8 +181,48 @@ function Canvas({ layout, actions }: { layout: Layout; actions?: MatchActions })
 
 // Сетка плей-офф деревом: линии от питающих матчей, у команд видны сиды.
 // Single elimination: колонки по раундам. Double elimination: верхняя и нижняя сетки на одном полотне.
-export function BracketTree({ matches, format, actions }: Props): ReactNode {
+// С title сетку можно вывести на большой экран: в полноэкранном режиме нет действий, а холст подгоняется под экран.
+export function BracketTree({ matches, format, actions, title }: Props): ReactNode {
   const { t } = useI18n();
+  const root = useRef<HTMLDivElement>(null);
+  const stageBody = useRef<HTMLDivElement>(null);
+  const [onStage, setOnStage] = useState(false);
+  const [scale, setScale] = useState(1);
+
+  // Режим показа работает и там, где браузер не даёт полноэкранный режим: сетка всё равно занимает всё окно
+  const enterStage = () => {
+    setOnStage(true);
+    root.current?.requestFullscreen?.().catch(() => undefined);
+  };
+  const exitStage = () => {
+    setOnStage(false);
+    if (document.fullscreenElement) void document.exitFullscreen();
+  };
+  useEffect(() => {
+    const sync = () => { if (!document.fullscreenElement) setOnStage(false); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOnStage(false); };
+    document.addEventListener('fullscreenchange', sync);
+    window.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('fullscreenchange', sync);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, []);
+
+  useLayoutEffect(() => {
+    const body = stageBody.current;
+    if (!onStage || !body) return;
+    const fit = () => {
+      const tree = body.querySelector<HTMLElement>('.tree');
+      if (!tree) return;
+      setScale(Math.min(body.clientWidth / tree.offsetWidth, body.clientHeight / tree.offsetHeight, 2.5));
+    };
+    fit();
+    const ro = new ResizeObserver(fit);
+    ro.observe(body);
+    return () => ro.disconnect();
+  }, [onStage, matches]);
+
   const visible = matches.filter((m) => m.status !== 'skipped' && m.bracket !== 'G');
   const layout = useMemo(() => {
     const w = visible.filter((m) => m.bracket === 'W');
@@ -187,8 +239,20 @@ export function BracketTree({ matches, format, actions }: Props): ReactNode {
 
   if (layout.ms.length === 0) return null;
   return (
-    <div className="card">
-      <Canvas layout={layout} actions={actions} />
+    <div className={`card bracketcard${onStage ? ' stage' : ''}`} ref={root}>
+      {title && (
+        <div className="stagehead">
+          {onStage && <img src="/logo-mark.png" alt="" />}
+          {onStage && <h1>{title}</h1>}
+          <span className="grow" />
+          {onStage
+            ? <button className="ghost" onClick={exitStage}><IconClose />{t('view.stageExit')}</button>
+            : <button className="ghost" onClick={enterStage}><IconExpand />{t('view.stage')}</button>}
+        </div>
+      )}
+      <div className="stagebody" ref={stageBody}>
+        <Canvas layout={layout} actions={onStage ? undefined : actions} scale={onStage ? scale : undefined} />
+      </div>
     </div>
   );
 }

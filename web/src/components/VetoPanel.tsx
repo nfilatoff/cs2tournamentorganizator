@@ -147,7 +147,7 @@ export function VetoPanel({ base, active, version, onChange }: {
   const admin = isAdmin && (!v.locked || v.running) && (
     <div className="vadmin">
       {!v.locked && v.status !== 'done' && (
-        <button className={v.adminControl ? '' : 'ghost'} onClick={() => send('/control', { on: !v.adminControl })}>
+        <button className="ghost" aria-pressed={v.adminControl} onClick={() => send('/control', { on: !v.adminControl })}>
           {v.adminControl ? t('veto.releaseControl') : t('veto.takeControl')}
         </button>
       )}
@@ -162,7 +162,7 @@ export function VetoPanel({ base, active, version, onChange }: {
       <details className="mbox">
         <summary>{t('veto.title')}</summary>
         {steps}
-        <div style={{ height: 10 }} />
+        <div className="gap" />
         {list}
         {error && <p className="error">{error}</p>}
         {admin}
@@ -185,14 +185,14 @@ export function VetoPanel({ base, active, version, onChange }: {
               </div>
             ))}
           </div>
-          {needReady && !v.locked && <button className="big" style={{ width: '100%', marginTop: 12 }} onClick={() => send('/ready', {})}>{t('veto.readyBtn')}</button>}
+          {needReady && !v.locked && <button className="big wide" onClick={() => send('/ready', {})}>{t('veto.readyBtn')}</button>}
           {mySide && v.ready[mySide] && <div className="sub">{t('veto.youReady')}</div>}
           {isAdmin && !v.locked && (
-            <div className="vadmin" style={{ justifyContent: 'center' }}>
+            <div className="vadmin">
               {(['a', 'b'] as const).filter((side) => !v.ready[side]).map((side) => (
                 <button key={side} className="ghost" onClick={() => send('/ready', { team: side })}>{t('veto.forceReady', { team: teamName(side) })}</button>
               ))}
-              <button onClick={() => send('/ready', {})}>{t('veto.forceReadyBoth')}</button>
+              <button className="ghost" onClick={() => send('/ready', {})}>{t('veto.forceReadyBoth')}</button>
             </div>
           )}
         </div>

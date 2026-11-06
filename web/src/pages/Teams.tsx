@@ -43,34 +43,36 @@ export function Teams({ me }: { me: Me }) {
 
   return (
     <>
-      <h1>{t('teams.title')}</h1>
+      <div className="pagehead"><h1>{t('teams.title')}</h1></div>
       <div className="grid2">
         <form className="card row" onSubmit={create}>
-          <label style={{ flex: 1 }}>{t('teams.createLabel')}<input value={name} onChange={(e) => setName(e.target.value)} placeholder={t('common.name')} required /></label>
+          <label className="fill">{t('teams.createLabel')}<input value={name} onChange={(e) => setName(e.target.value)} placeholder={t('common.name')} required /></label>
           <button type="submit">{t('teams.create')}</button>
         </form>
         <form className="card row" onSubmit={join}>
-          <label style={{ flex: 1 }}>{t('teams.joinLabel')}<input value={code} onChange={(e) => setCode(e.target.value)} placeholder={t('teams.codePlaceholder')} required /></label>
-          <button type="submit">{t('teams.join')}</button>
+          <label className="fill">{t('teams.joinLabel')}<input value={code} onChange={(e) => setCode(e.target.value)} placeholder={t('teams.codePlaceholder')} required /></label>
+          <button type="submit" className="ghost">{t('teams.join')}</button>
         </form>
       </div>
-      <p className="muted">{t('teams.hint')}</p>
+      <p className="muted lead">{t('teams.hint')}</p>
       {error && <p className="error">{error}</p>}
       {teams.map((team) => {
         const isCaptain = team.captainId === me.id;
         return (
           <div className="card" key={team.id}>
-            <h2>{team.name}</h2>
-            <p className="muted">{t('teams.inviteCode')}: <code>{team.joinCode}</code></p>
+            <div className="between">
+              <h2>{team.name}</h2>
+              <span className="muted small">{t('teams.inviteCode')}: <code>{team.joinCode}</code></span>
+            </div>
             <table>
               <tbody>
                 {team.members.map((m) => (
                   <tr key={m.id}>
-                    <td>{m.name}{m.id === team.captainId && ` (${t('teams.captain')})`}</td>
-                    <td style={{ textAlign: 'right' }}>
+                    <td>{m.name}{m.id === team.captainId && <span className="muted"> · {t('teams.captain')}</span>}</td>
+                    <td className="actions">
                       {isCaptain && m.id !== team.captainId && (
                         <>
-                          <button className="ghost" onClick={() => run(() => api(`/api/teams/${team.id}/captain`, { method: 'POST', body: { playerId: m.id } }))}>{t('teams.makeCaptain')}</button>{' '}
+                          <button className="ghost" onClick={() => run(() => api(`/api/teams/${team.id}/captain`, { method: 'POST', body: { playerId: m.id } }))}>{t('teams.makeCaptain')}</button>
                           <button className="ghost" onClick={() => run(() => api(`/api/teams/${team.id}/kick`, { method: 'POST', body: { playerId: m.id } }))}>{t('teams.kick')}</button>
                         </>
                       )}
@@ -79,8 +81,8 @@ export function Teams({ me }: { me: Me }) {
                 ))}
               </tbody>
             </table>
-            <p>
-              <button className="ghost" onClick={() => run(() => api(`/api/teams/${team.id}/leave`, { method: 'POST', body: {} }))}>{t('teams.leave')}</button>{' '}
+            <p className="row">
+              <button className="ghost" onClick={() => run(() => api(`/api/teams/${team.id}/leave`, { method: 'POST', body: {} }))}>{t('teams.leave')}</button>
               {isCaptain && <button className="danger" onClick={() => run(() => api(`/api/teams/${team.id}`, { method: 'DELETE' }))}>{t('teams.deleteTeam')}</button>}
             </p>
           </div>

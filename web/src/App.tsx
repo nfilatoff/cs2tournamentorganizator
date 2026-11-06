@@ -43,34 +43,37 @@ export function App() {
 
   return (
     <div className="shell">
-      <aside className="sidebar">
-        <Link to="/" className="logo" title="Arena Pro"><img src="/logo-mark.png" alt="Arena Pro" /></Link>
+      <aside className="rail">
+        <Link to="/" className="logo" aria-label="Arena Pro">
+          <img src="/logo-mark.png" alt="" />
+          <span className="wordmark">Arena Pro<small>Gaming Club · CS2</small></span>
+        </Link>
         <nav>
-          <NavLink to="/" end className="navitem"><IconHome />{t('nav.home')}</NavLink>
-          <NavLink to="/tournaments" className="navitem"><IconTrophy />{t('nav.tournaments')}</NavLink>
-          {me.kind !== null && <NavLink to="/teams" className="navitem"><IconUsers />{t('nav.teams')}</NavLink>}
-          {admin && <NavLink to="/servers" className="navitem"><IconServer />{t('nav.servers')}</NavLink>}
-          {admin && <NavLink to="/maps" className="navitem"><IconMap />{t('nav.maps')}</NavLink>}
-          {admin && <NavLink to="/game-admins" className="navitem"><IconShield />{t('nav.gameAdmins')}</NavLink>}
+          <NavLink to="/" end className="navitem" title={t('nav.home')}><IconHome /><span>{t('nav.home')}</span></NavLink>
+          <NavLink to="/tournaments" className="navitem" title={t('nav.tournaments')}><IconTrophy /><span>{t('nav.tournaments')}</span></NavLink>
+          {me.kind !== null && <NavLink to="/teams" className="navitem" title={t('nav.teams')}><IconUsers /><span>{t('nav.teams')}</span></NavLink>}
+          {admin && <NavLink to="/servers" className="navitem" title={t('nav.servers')}><IconServer /><span>{t('nav.servers')}</span></NavLink>}
+          {admin && <NavLink to="/maps" className="navitem" title={t('nav.maps')}><IconMap /><span>{t('nav.maps')}</span></NavLink>}
+          {admin && <NavLink to="/game-admins" className="navitem" title={t('nav.gameAdmins')}><IconShield /><span>{t('nav.gameAdmins')}</span></NavLink>}
         </nav>
-        <div className="grow" />
-        <LanguageSwitcher />
-        {me.kind === 'admin' && <NavLink to="/account" className="userchip" title={me.username}>{me.username.slice(0, 1).toUpperCase()}</NavLink>}
-        {me.kind === 'player' && <NavLink to="/profile" className="userchip" title={me.name}>{me.name.slice(0, 1).toUpperCase()}</NavLink>}
-        {me.kind ? (
-          <button className="iconbtn" onClick={logout} title={t('app.logout')} aria-label={t('app.logout')}><IconLogout /></button>
-        ) : (
-          <NavLink to="/login" className="navitem"><IconLogin />{t('app.login')}</NavLink>
-        )}
+        <div className="railfoot">
+          <LanguageSwitcher />
+          {me.kind ? (
+            <div className="whoami">
+              <NavLink to={me.kind === 'admin' ? '/account' : '/profile'} className="userchip" title={me.kind === 'admin' ? me.username : me.name}>
+                <span className="initial">{(me.kind === 'admin' ? me.username : me.name).slice(0, 1).toUpperCase()}</span>
+                <span className="userinfo">
+                  <b>{me.kind === 'admin' ? me.username : me.name}</b>
+                  {(me.kind === 'admin' || me.admin) && <small>{t('app.admin')}</small>}
+                </span>
+              </NavLink>
+              <button className="iconbtn" onClick={logout} title={t('app.logout')} aria-label={t('app.logout')}><IconLogout /></button>
+            </div>
+          ) : (
+            <NavLink to="/login" className="navitem" title={t('app.login')}><IconLogin /><span>{t('app.login')}</span></NavLink>
+          )}
+        </div>
       </aside>
-      <div className="content">
-        <header className="topbar">
-          <Link to="/" className="wordmark">Arena <b>Pro</b><small>Gaming Club · CS2</small></Link>
-          <span className="spacer" />
-          {me.kind === 'admin' && <Link to="/account" className="who">{t('app.admin')}: <b>{me.username}</b></Link>}
-          {me.kind === 'player' && <Link to="/profile" className="who">{me.admin && <>{t('app.admin')}: </>}<b>{me.name}</b></Link>}
-          {!me.kind && <NavLink to="/login"><button>{t('app.login')}</button></NavLink>}
-        </header>
       <main>
         <Routes>
           <Route path="/" element={<Home />} />
@@ -89,7 +92,6 @@ export function App() {
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </main>
-      </div>
     </div>
   );
 }

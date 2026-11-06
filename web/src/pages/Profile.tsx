@@ -29,9 +29,10 @@ export function Profile({ me, onChanged }: { me: Player; onChanged: () => void }
   };
 
   return (
-    <div className="card" style={{ maxWidth: 520 }}>
-      <h1>{t('profile.title')}</h1>
-      <table>
+    <>
+    <div className="pagehead"><h1>{t('profile.title')}</h1></div>
+    <div className="card narrow">
+      <table className="kv">
         <tbody>
           <tr><td className="muted">{t('profile.steamName')}</td><td>{me.steamName ?? '—'}</td></tr>
           <tr><td className="muted">{t('profile.steamId')}</td><td><code>{me.steamId}</code></td></tr>
@@ -40,16 +41,19 @@ export function Profile({ me, onChanged }: { me: Player; onChanged: () => void }
         </tbody>
       </table>
       {me.adminName && <p className="error">{t('profile.adminOverride', { name: me.adminName })}</p>}
-      <form onSubmit={submit}>
+      <form onSubmit={submit} className="stack">
         <label>{t('profile.nickname')}
           <input value={nick} onChange={(e) => setNick(e.target.value)} maxLength={32} placeholder={me.steamName ?? ''} />
         </label>
-        <p className="muted">{t('profile.nicknameHint')}</p>
+        <p className="muted flat">{t('profile.nicknameHint')}</p>
         {error && <p className="error">{error}</p>}
         {saved && <p>{t('profile.saved')}</p>}
-        <button type="submit">{t('profile.save')}</button>{' '}
-        {me.customName && <button type="button" className="ghost" onClick={() => save(null)}>{t('profile.clear')}</button>}
+        <div className="row">
+          <button type="submit">{t('profile.save')}</button>
+          {me.customName && <button type="button" className="ghost" onClick={() => save(null)}>{t('profile.clear')}</button>}
+        </div>
       </form>
     </div>
+    </>
   );
 }

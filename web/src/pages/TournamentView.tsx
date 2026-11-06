@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api, isAdmin, type Me, type Preview, type Team, type TournamentDetails } from '../api';
 import { useI18n } from '../i18n';
+import { ActionMenu } from '../components/ActionMenu';
+import { IconDown, IconShuffle, IconTrophy, IconUp } from '../components/Icons';
 import { BracketTree } from '../components/BracketTree';
 import type { MatchActions } from '../components/MatchCard';
 import { GroupAssignment, GroupsView, PlayoffPanel } from '../components/GroupsView';
@@ -93,140 +95,150 @@ export function TournamentView({ me }: { me: Me }) {
     onRestartMatch: (code) => act(() => api(url(code, 'restart-match'), { method: 'POST', body: {} })),
   } : undefined;
 
+  const inReg = tr.status === 'registration';
+  const teamsCard = (
+    <div className="card">
+      <h2>{t(tr.teamSize === 1 ? 'view.players' : 'view.teams', { n: tr.teams.length, max: tr.maxTeams })}</h2>
+      <div className="plainlist">
+        {tr.teams.map((x, i) => (
+          <div key={x.id} className="plainrow">
+            <span className="seed">{x.seed ?? ''}</span>
+            <b className="grow">{x.name}</b>
+            {admin && inReg && (
+              <span className="rowactions">
+                <button className="iconbtn" title={t('seeding.up')} aria-label={t('seeding.up')} disabled={i === 0} onClick={() => move(i, -1)}><IconUp /></button>
+                <button className="iconbtn" title={t('seeding.down')} aria-label={t('seeding.down')} disabled={i === tr.teams.length - 1} onClick={() => move(i, 1)}><IconDown /></button>
+                <button className="ghost small" onClick={() => act(() => api(`/api/tournaments/${tr.id}/teams/${x.id}`, { method: 'DELETE' }))}>{t('view.removeTeam')}</button>
+              </span>
+            )}
+          </div>
+        ))}
+        {tr.teams.length === 0 && <div className="emptybox">{t('view.noTeams')}</div>}
+      </div>
+      {admin && inReg && tr.teams.length > 1 && (
+        <div className="cardnote">
+          <button className="ghost" onClick={() => act(() => api(`/api/tournaments/${tr.id}/seeding/shuffle`, { method: 'POST', body: {} }))}><IconShuffle />{t('seeding.shuffle')}</button>
+          <span className="muted small">{t('seeding.hint')}</span>
+        </div>
+      )}
+      {admin && inReg && tr.teams.length < tr.maxTeams && <NewTeamForm tr={tr} onDone={setTr} />}
+      {inReg && me.kind === 'player' && tr.teamSize === 1 && (
+        // 1v1: игрок участвует сам, команда не нужна
+        mine ? (
+          <div className="cardnote">
+            <span className="muted">{t('view.soloJoined')}</span>
+            <button className="ghost" onClick={() => act(() => api(`/api/tournaments/${tr.id}/teams/${mine.id}`, { method: 'DELETE' }))}>{t('view.soloLeave')}</button>
+          </div>
+        ) : (
+          <div className="stack">
+            <p className="muted flat">{t('view.soloHint')}</p>
+            <div><button className="big" onClick={() => act(() => api(`/api/tournaments/${tr.id}/solo`, { method: 'POST', body: {} }))}>{t('view.soloJoin')}</button></div>
+          </div>
+        )
+      )}
+      {inReg && me.kind !== null && !(me.kind === 'player' && tr.teamSize === 1) && (
+        selectable.length > 0 && chosen ? (
+          <div className="stack">
+            <label>{admin ? t('view.pickTeam') : t('view.yourTeam')}
+              <select value={chosen.id} onChange={(e) => { setTeamId(Number(e.target.value)); setRoster([]); }}>
+                {selectable.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
+              </select>
+            </label>
+            {chosen.members.length > tr.teamSize && (
+              <div>
+                <span className="muted">{t('view.roster', { n: tr.teamSize })}:</span>
+                {chosen.members.map((m) => (
+                  <label key={m.id} className="check">
+                    <input type="checkbox" checked={effectiveRoster.includes(m.id)}
+                      onChange={(e) => setRoster(e.target.checked ? [...effectiveRoster, m.id] : effectiveRoster.filter((x) => x !== m.id))} />
+                    {m.name}
+                  </label>
+                ))}
+              </div>
+            )}
+            <div><button className={admin ? 'ghost' : ''} onClick={register}>{t('view.register')}</button></div>
+          </div>
+        ) : (
+          <p className="muted">{admin ? t('view.adminNeedTeam') : t('view.needTeam', { n: tr.teamSize })}</p>
+        )
+      )}
+    </div>
+  );
+
+  const mapsCard = (
+    <div className="card">
+      <h2>{t('view.mapPool')}</h2>
+      <div className="maps">
+        {tr.maps.map((m, i) => (
+          <div key={m.id} className="mapchip">
+            {m.imageUrl && <img className="thumb" src={m.imageUrl} alt="" />}
+            <span>{i + 1}. {m.name}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  const settings = admin && tr.status !== 'finished' && (
+    <PausesEditor value={tr.pauses}
+      onSave={(pauses) => act(() => api(`/api/tournaments/${tr.id}/pauses`, { method: 'PUT', body: pauses }))} />
+  );
+  const pausesNote = !admin && (
+    <p className="muted">{t('pauses.summary', { tactical: tr.pauses.tactical, time: tr.pauses.tacticalTime, technical: tr.pauses.technical || '∞' })}</p>
+  );
+
   return (
     <>
-      <div className="pagehero">
-        <div className="between" style={{ alignItems: 'flex-start' }}>
-          <div>
+      <div className="pagehead tourhead">
+        <div>
+          <h1>{tr.name}</h1>
+          <div className="sub">
             <span className={`pill ${tr.status}`}>{t(`status.${tr.status}`)}</span>
-            <h1 style={{ marginTop: 12 }}>{tr.name}</h1>
-            <div className="muted">
-              {t(`format.${tr.format}`)} · {tr.teamSize}v{tr.teamSize}
-              {tr.teamSize <= 2 && <> · {t(tr.wingmanRounds === 24 ? 'form.rounds24' : 'form.rounds16')}</>}
-              {' · '}{t('view.upTo', { n: tr.maxTeams })}
-            </div>
+            <span>{t(`format.${tr.format}`)}</span>
+            <span>{tr.teamSize}v{tr.teamSize}</span>
+            {tr.teamSize <= 2 && <span>{t(tr.wingmanRounds === 24 ? 'form.rounds24' : 'form.rounds16')}</span>}
+            <span>{t('view.upTo', { n: tr.maxTeams })}</span>
           </div>
-          {admin && <button className="danger" onClick={async () => { await api(`/api/tournaments/${tr.id}`, { method: 'DELETE' }); navigate('/tournaments'); }}>{t('common.delete')}</button>}
+        </div>
+        <div className="headactions">
+          {admin && tr.status === 'running' && (
+            <label className="check">
+              <input type="checkbox" checked={tr.autoDispatch}
+                onChange={(e) => act(() => api(`/api/tournaments/${tr.id}/auto-dispatch`, { method: 'POST', body: { enabled: e.target.checked } }))} />
+              {t('view.autoDispatch')}
+            </label>
+          )}
+          {admin && inReg && <button onClick={() => act(() => api(`/api/tournaments/${tr.id}/start`, { method: 'POST', body: {} }))}>{t('view.start')}</button>}
+          {admin && (
+            <ActionMenu label={t('match.actions')}>
+              <button className="menuitem dangertext" onClick={async () => { await api(`/api/tournaments/${tr.id}`, { method: 'DELETE' }); navigate('/tournaments'); }}>{t('common.delete')}</button>
+            </ActionMenu>
+          )}
         </div>
       </div>
-      {tr.champion && <div className="card champion">🏆 {t('view.winner')}: <b>{tr.champion.name}</b></div>}
+      {tr.champion && <div className="champion"><IconTrophy /><span className="muted">{t('view.winner')}</span><b>{tr.champion.name}</b></div>}
       {error && <p className="error">{error}</p>}
 
-      <div className="grid2">
-        <div className="card">
-          <h2>{t(tr.teamSize === 1 ? 'view.players' : 'view.teams', { n: tr.teams.length, max: tr.maxTeams })}</h2>
-          <table>
-            <tbody>
-              {tr.teams.map((x, i) => (
-                <tr key={x.id}>
-                  <td>{x.seed ? `#${x.seed} ` : ''}{x.name}</td>
-                  <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                    {admin && tr.status === 'registration' && (
-                      <>
-                        <button className="ghost" title={t('seeding.up')} disabled={i === 0} onClick={() => move(i, -1)}>▲</button>{' '}
-                        <button className="ghost" title={t('seeding.down')} disabled={i === tr.teams.length - 1} onClick={() => move(i, 1)}>▼</button>{' '}
-                        <button className="ghost" onClick={() => act(() => api(`/api/tournaments/${tr.id}/teams/${x.id}`, { method: 'DELETE' }))}>{t('view.removeTeam')}</button>
-                      </>
-                    )}
-                  </td>
-                </tr>
-              ))}
-              {tr.teams.length === 0 && <tr><td className="muted">{t('view.noTeams')}</td></tr>}
-            </tbody>
-          </table>
-          {admin && tr.status === 'registration' && tr.teams.length < tr.maxTeams && <NewTeamForm tr={tr} onDone={setTr} />}
-          {admin && tr.status === 'registration' && tr.teams.length > 1 && (
-            <p>
-              <button className="ghost" onClick={() => act(() => api(`/api/tournaments/${tr.id}/seeding/shuffle`, { method: 'POST', body: {} }))}>🎲 {t('seeding.shuffle')}</button>
-              <span className="muted"> {t('seeding.hint')}</span>
-            </p>
-          )}
-          {tr.status === 'registration' && me.kind === 'player' && tr.teamSize === 1 && (
-            // 1v1: игрок участвует сам, команда не нужна
-            mine ? (
-              <p>
-                <span className="muted">{t('view.soloJoined')}</span>{' '}
-                <button className="ghost" onClick={() => act(() => api(`/api/tournaments/${tr.id}/teams/${mine.id}`, { method: 'DELETE' }))}>{t('view.soloLeave')}</button>
-              </p>
-            ) : (
-              <div style={{ marginTop: 12 }}>
-                <p className="muted">{t('view.soloHint')}</p>
-                <button className="big" onClick={() => act(() => api(`/api/tournaments/${tr.id}/solo`, { method: 'POST', body: {} }))}>{t('view.soloJoin')}</button>
-              </div>
-            )
-          )}
-          {tr.status === 'registration' && me.kind !== null && !(me.kind === 'player' && tr.teamSize === 1) && (
-            selectable.length > 0 && chosen ? (
-              <div style={{ marginTop: 12 }}>
-                <label>{admin ? t('view.pickTeam') : t('view.yourTeam')}
-                  <select value={chosen.id} onChange={(e) => { setTeamId(Number(e.target.value)); setRoster([]); }}>
-                    {selectable.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
-                  </select>
-                </label>
-                {chosen.members.length > tr.teamSize && (
-                  <div style={{ marginTop: 8 }}>
-                    <span className="muted">{t('view.roster', { n: tr.teamSize })}:</span>
-                    {chosen.members.map((m) => (
-                      <label key={m.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                        <input type="checkbox" checked={effectiveRoster.includes(m.id)}
-                          onChange={(e) => setRoster(e.target.checked ? [...effectiveRoster, m.id] : effectiveRoster.filter((x) => x !== m.id))} />
-                        {m.name}
-                      </label>
-                    ))}
-                  </div>
-                )}
-                <p><button onClick={register}>{t('view.register')}</button></p>
-              </div>
-            ) : (
-              <p className="muted">{admin ? t('view.adminNeedTeam') : t('view.needTeam', { n: tr.teamSize })}</p>
-            )
-          )}
-        </div>
-        <div className="card">
-          <h2>{t('view.mapPool')}</h2>
-          <div className="maps">
-            {tr.maps.map((m, i) => (
-              <div key={m.id} className="mapchip on">
-                {m.imageUrl && <img className="thumb" src={m.imageUrl} alt="" />}
-                <span>{i + 1}. {m.name}</span>
-              </div>
-            ))}
-          </div>
-          {admin && tr.status === 'registration' && (
-            <p style={{ marginTop: 16 }}><button onClick={() => act(() => api(`/api/tournaments/${tr.id}/start`, { method: 'POST', body: {} }))}>{t('view.start')}</button></p>
-          )}
-        </div>
-      </div>
-
-      {admin && tr.status === 'running' && (
-        <label style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 }}>
-          <input type="checkbox" checked={tr.autoDispatch}
-            onChange={(e) => act(() => api(`/api/tournaments/${tr.id}/auto-dispatch`, { method: 'POST', body: { enabled: e.target.checked } }))} />
-          {t('view.autoDispatch')}
-        </label>
-      )}
-
-      {admin && tr.status !== 'finished' && (
-        <PausesEditor value={tr.pauses}
-          onSave={(pauses) => act(() => api(`/api/tournaments/${tr.id}/pauses`, { method: 'PUT', body: pauses }))} />
-      )}
-      {!admin && (
-        <p className="muted">{t('pauses.summary', { tactical: tr.pauses.tactical, time: tr.pauses.tacticalTime, technical: tr.pauses.technical || '∞' })}</p>
-      )}
-
-      {tr.status === 'registration' && (preview.groupAssignment || preview.matches.length > 0) && (
+      {inReg && (
         <>
-          <h2>{t('preview.title')}</h2>
-          <p className="muted">{preview.groupAssignment ? t('preview.groupsHint') : t('preview.hint')}</p>
-          {preview.groupAssignment
-            ? <GroupAssignment groups={preview.groupAssignment} />
-            : <BracketTree matches={preview.matches} format={tr.format} />}
+          <div className="grid2">{teamsCard}{mapsCard}</div>
+          {settings}
+          {pausesNote}
+          {(preview.groupAssignment || preview.matches.length > 0) && (
+            <section className="section">
+              <h2>{t('preview.title')}</h2>
+              <p className="muted lead">{preview.groupAssignment ? t('preview.groupsHint') : t('preview.hint')}</p>
+              {preview.groupAssignment
+                ? <GroupAssignment groups={preview.groupAssignment} />
+                : <BracketTree matches={preview.matches} format={tr.format} />}
+            </section>
+          )}
         </>
       )}
-      {tr.status !== 'registration' && (
+      {!inReg && (
         <>
-          {tr.groups && <p className="muted">{t(`phase.${tr.groupConfig.phase}` as 'phase.groups')}</p>}
-          {tr.groups && <GroupsView tr={tr} actions={actions} />}
+          {tr.groups && <p className="muted lead">{t(`phase.${tr.groupConfig.phase}` as 'phase.groups')}</p>}
+          {tr.matches.some((m) => m.stage === 'playoff') && <BracketTree title={tr.name} matches={tr.matches} format={tr.format} actions={actions} />}
           {admin && tr.groupConfig.phase === 'groups_done' && tr.groupConfig.hasPlayoff && <PlayoffPanel tr={tr} onDone={setTr} />}
           {admin && tr.groupConfig.stageMode === 'groups' && tr.groupConfig.phase === 'playoff' && (
             <p>
@@ -235,7 +247,15 @@ export function TournamentView({ me }: { me: Me }) {
               </button>
             </p>
           )}
-          {tr.matches.some((m) => m.stage === 'playoff') && <BracketTree matches={tr.matches} format={tr.format} actions={actions} />}
+          {tr.groups && <GroupsView tr={tr} actions={actions} />}
+          <details className="fold">
+            <summary>{t('view.details')}<IconDown /></summary>
+            <div className="foldbody">
+              <div className="grid2">{teamsCard}{mapsCard}</div>
+              {settings}
+              {pausesNote}
+            </div>
+          </details>
         </>
       )}
     </>

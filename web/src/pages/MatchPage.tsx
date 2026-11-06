@@ -5,6 +5,7 @@ import { copyText } from '../clipboard';
 import { useI18n } from '../i18n';
 import { roundLabel } from '../rounds';
 import { VetoPanel } from '../components/VetoPanel';
+import { IconStar } from '../components/Icons';
 
 type Side = 'a' | 'b';
 
@@ -38,8 +39,8 @@ const fmt = (ms: number) => {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 };
 
-function Avatar({ name, url, big, mine }: { name: string; url: string | null; big?: boolean; mine?: boolean }) {
-  const cls = `mavatar${big ? ' big' : ''}${mine ? ' mine' : ''}`;
+function Avatar({ name, url }: { name: string; url: string | null }) {
+  const cls = 'mavatar';
   if (url) return <img className={cls} src={url} alt="" />;
   return <div className={`${cls} letter`}>{name.slice(0, 1).toUpperCase()}</div>;
 }
@@ -51,7 +52,7 @@ function PlayerRow({ p, side }: { p: MatchPlayer; side: Side }) {
       <Avatar name={p.name} url={p.avatarUrl} />
       <div className="mpinfo">
         <span className="mpname">
-          {p.captain && <span className="cap" title={t('mp.captain')}>★</span>}
+          {p.captain && <span className="cap" title={t('mp.captain')} aria-label={t('mp.captain')}><IconStar /></span>}
           {p.name}
         </span>
         {p.online !== null && (
@@ -65,7 +66,7 @@ function PlayerRow({ p, side }: { p: MatchPlayer; side: Side }) {
 function TeamColumn({ team, side, teamSize }: { team: MatchTeam | null; side: Side; teamSize: number }) {
   const { t } = useI18n();
   return (
-    <div className="mcol">
+    <div className={`mcol ${side}`}>
       <h3>
         <span>{team ? team.name : t('match.tbd')}</span>
         {team && team.players.some((p) => p.online !== null) && (
@@ -146,13 +147,13 @@ export function MatchPage() {
 
   return (
     <>
-      <div className="mhero">
+      <div className={`mhero ${d.phase}`}>
         {heroMap?.imageUrl && <img className="mhero-bg" src={heroMap.imageUrl} alt="" />}
         <div className="mhero-top">
           <div className="crumbs">
             <Link to={`/tournaments/${d.tournament.id}`}>{d.tournament.name}</Link>
-            <span>/</span><span>{round}</span>
-            <span>/</span><span>{d.code}</span>
+            <span className="sep">/</span><span>{round}</span>
+            <span className="sep">/</span><span>{d.code}</span>
             <span className={`pill ${d.phase}`}>{phaseText[d.phase]}</span>
           </div>
           <div className="crumbs">
@@ -166,13 +167,10 @@ export function MatchPage() {
             {yourSide === 'a' && !done && <div className="you">{t('veto.yourTeam')}</div>}
             <span className="tname">{name('a')}</span>
           </div>
-          <Avatar name={name('a')} url={null} big mine={yourSide === 'a'} />
           <div className="mscore">
             <span className={done && d.winner === 'a' ? 'win' : done ? 'lose' : ''}>{d.phase === 'waiting' || d.phase === 'veto' || d.phase === 'queued' ? '–' : bigScore('a')}</span>
-            <span className="vs">vs</span>
             <span className={done && d.winner === 'b' ? 'win' : done ? 'lose' : ''}>{d.phase === 'waiting' || d.phase === 'veto' || d.phase === 'queued' ? '–' : bigScore('b')}</span>
           </div>
-          <Avatar name={name('b')} url={null} big mine={yourSide === 'b'} />
           <div className="mteam b">
             {done && d.winner === 'b' && <div className="wlabel">{t('mp.winner')}</div>}
             {yourSide === 'b' && !done && <div className="you">{t('veto.yourTeam')}</div>}
@@ -245,7 +243,7 @@ export function MatchPage() {
             <VetoPanel base={base} active version={vetoVersion} onChange={load} />
           )}
           {(d.phase === 'queued' || d.phase === 'waiting') && (
-            <div className="mbox"><p style={{ margin: 0 }}>{d.phase === 'queued' ? t('mp.queuedHint') : t('home.state.waiting')}</p></div>
+            <div className="mbox"><p className="flat">{d.phase === 'queued' ? t('mp.queuedHint') : t('home.state.waiting')}</p></div>
           )}
 
           {d.maps.length > 0 && (
@@ -282,7 +280,7 @@ export function MatchPage() {
               <h4>{t('mp.admin')}</h4>
               {d.note && <p className="error">{err(d.note)}</p>}
               {d.adminCode && (
-                <div style={{ marginBottom: 10 }}>
+                <div className="stack tight">
                   <div className="muted small">{t('mp.adminCode')}</div>
                   <div className="mconnect">
                     <code>arenapro_auth {d.adminCode}</code>
@@ -309,7 +307,7 @@ export function MatchPage() {
             </div>
           )}
 
-          <Link className="btn ghost" to={`/tournaments/${d.tournament.id}`}>{t('mp.back')}</Link>
+          <Link className="btn ghost backlink" to={`/tournaments/${d.tournament.id}`}>{t('mp.back')}</Link>
           {live && !d.server && <p className="muted small">{t('match.waiting')}</p>}
         </div>
 

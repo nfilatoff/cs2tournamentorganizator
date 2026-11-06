@@ -135,6 +135,10 @@ export const en: Dict = {
   'match.undo': 'Undo result',
 
   'view.upTo': 'up to {n} teams',
+  'match.actions': 'Match actions',
+  'view.stage': 'Show on big screen',
+  'view.stageExit': 'Close',
+  'view.details': 'Teams, maps and settings',
   'view.winner': 'Winner',
   'view.teams': 'Teams ({n}/{max})',
   'view.players': 'Players ({n}/{max})',

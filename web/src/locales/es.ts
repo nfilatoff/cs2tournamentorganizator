@@ -135,6 +135,10 @@ export const es: Dict = {
   'match.undo': 'Anular resultado',
 
   'view.upTo': 'hasta {n} equipos',
+  'match.actions': 'Acciones del partido',
+  'view.stage': 'Mostrar en pantalla grande',
+  'view.stageExit': 'Cerrar',
+  'view.details': 'Equipos, mapas y ajustes',
   'view.winner': 'Ganador',
   'view.teams': 'Equipos ({n}/{max})',
   'view.players': 'Participantes ({n}/{max})',

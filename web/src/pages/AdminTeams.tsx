@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { api, type Team } from '../api';
 import { useI18n } from '../i18n';
 import { ConfirmDeleteDialog } from '../components/ConfirmDeleteDialog';
+import { IconDown } from '../components/Icons';
 
 interface PlayerRow { steamId: string; name: string }
 const emptyRow = (): PlayerRow => ({ steamId: '', name: '' });
@@ -49,14 +50,14 @@ export function AdminTeams() {
 
   return (
     <>
-      <div className="between">
+      <div className="pagehead">
         <h1>{t('adminTeams.title')}</h1>
-        <div className="row">
-          <input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder={t('adminTeams.search')} style={{ maxWidth: 240 }} />
+        <div className="headactions">
+          <input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder={t('adminTeams.search')} aria-label={t('adminTeams.search')} />
           {teams.length > 0 && <button className="danger" onClick={() => setPendingDelete({ question: t('adminTeams.confirmDeleteAll', { count: teams.length }), action: deleteAll })}>{t('adminTeams.deleteAll')}</button>}
         </div>
       </div>
-      <p className="muted">{t('adminTeams.hint')}</p>
+      <p className="muted lead">{t('adminTeams.hint')}</p>
       {error && <p className="error">{error}</p>}
       {notice && <p>{notice}</p>}
 
@@ -65,24 +66,25 @@ export function AdminTeams() {
           <details key={team.id} className="teamrow">
             <summary>
               <b>{team.name}</b>
-              <span className="muted"> · {team.members.map((m) => m.name).join(', ')}</span>
+              <span className="muted teammembers">{team.members.map((m) => m.name).join(', ')}</span>
+              <IconDown />
             </summary>
             <table>
               <tbody>
                 {team.members.map((m) => (
                   <tr key={m.id}>
                     <td>
-                      {m.name}{m.id === team.captainId && ` (${t('teams.captain')})`}
-                      <div className="muted" style={{ fontSize: 12 }}>
+                      {m.name}{m.id === team.captainId && <span className="muted"> · {t('teams.captain')}</span>}
+                      <div className="muted small">
                         {[m.steamName && `${t('nick.steam')}: ${m.steamName}`, m.customName && `${t('nick.player')}: ${m.customName}`, m.adminName && `${t('nick.admin')}: ${m.adminName}`].filter(Boolean).join(' · ')}
                       </div>
                     </td>
-                    <td className="muted">{m.steamId}</td>
-                    <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                      <button className="ghost" onClick={() => { const v = prompt(t('nick.prompt'), m.adminName ?? ''); if (v !== null) void run(() => api(`/api/admin/players/${m.id}/nickname`, { method: 'PUT', body: { nickname: v.trim() || null } })); }}>{t('nick.setAdmin')}</button>{' '}
+                    <td className="muted num">{m.steamId}</td>
+                    <td className="actions">
+                      <button className="ghost" onClick={() => { const v = prompt(t('nick.prompt'), m.adminName ?? ''); if (v !== null) void run(() => api(`/api/admin/players/${m.id}/nickname`, { method: 'PUT', body: { nickname: v.trim() || null } })); }}>{t('nick.setAdmin')}</button>
                       {m.id !== team.captainId && (
                         <>
-                          <button className="ghost" onClick={() => run(() => api(`/api/admin/teams/${team.id}/captain`, { method: 'POST', body: { playerId: m.id } }))}>{t('teams.makeCaptain')}</button>{' '}
+                          <button className="ghost" onClick={() => run(() => api(`/api/admin/teams/${team.id}/captain`, { method: 'POST', body: { playerId: m.id } }))}>{t('teams.makeCaptain')}</button>
                           <button className="ghost" onClick={() => run(() => api(`/api/admin/teams/${team.id}/members/${m.id}`, { method: 'DELETE' }))}>{t('teams.kick')}</button>
                         </>
                       )}
@@ -91,7 +93,7 @@ export function AdminTeams() {
                 ))}
               </tbody>
             </table>
-            <div className="row" style={{ margin: '8px 0' }}>
+            <div className="row teamadd">
               <label>{t('adminTeams.steamId')}
                 <input value={adding[team.id]?.steamId ?? ''} onChange={(e) => setAdding((a) => ({ ...a, [team.id]: { ...(a[team.id] ?? emptyRow()), steamId: e.target.value } }))} placeholder="7656119…" />
               </label>
@@ -99,6 +101,7 @@ export function AdminTeams() {
                 <input value={adding[team.id]?.name ?? ''} onChange={(e) => setAdding((a) => ({ ...a, [team.id]: { ...(a[team.id] ?? emptyRow()), name: e.target.value } }))} />
               </label>
               <button className="ghost" type="button" onClick={() => addMember(team.id)}>{t('adminTeams.addMember')}</button>
+              <span className="grow" />
               <button className="danger" onClick={() => setPendingDelete({ question: t('adminTeams.confirmDelete', { name: team.name }), action: () => api(`/api/admin/teams/${team.id}`, { method: 'DELETE' }) })}>{t('teams.deleteTeam')}</button>
             </div>
           </details>

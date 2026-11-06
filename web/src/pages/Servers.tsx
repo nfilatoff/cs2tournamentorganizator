@@ -3,6 +3,7 @@ import {
   api, type GameMode, type GameServer, type LauncherInfo, type MapItem, type ServerSettings, type ServerStatus,
 } from '../api';
 import { useI18n } from '../i18n';
+import { ActionMenu } from '../components/ActionMenu';
 
 const GAME_MODES: GameMode[] = ['competitive', 'wingman', 'casual', 'deathmatch'];
 
@@ -37,7 +38,7 @@ function LauncherCard({ info, onSaved }: { info: LauncherInfo; onSaved: (i: Laun
     <form className="card" onSubmit={save}>
       <h2>{t('launcher.title')}</h2>
       <div className="row">
-        <label style={{ flex: 1, minWidth: 280 }}>{t('launcher.path')}
+        <label className="fill">{t('launcher.path')}
           <input value={path} onChange={(e) => setPath(e.target.value)} placeholder={info.detected ?? 'E:\\LAN Server\\cs2'} />
         </label>
         <button type="submit" className="ghost">{t('common.save')}</button>
@@ -85,7 +86,7 @@ function ServerEditor({ server, maps, onSaved }: { server: GameServer; maps: Map
       <div className="row">
         <label>{t('servers.name')}<input value={name} onChange={(e) => setName(e.target.value)} required /></label>
         <label>{t('servers.address')}<input value={host} onChange={(e) => setHost(e.target.value)} required /></label>
-        <label>{t('servers.port')}<input type="number" value={port} onChange={(e) => setPort(e.target.value)} required style={{ width: 90 }} /></label>
+        <label>{t('servers.port')}<input type="number" value={port} onChange={(e) => setPort(e.target.value)} required className="num" /></label>
         <label>{t('servers.rcon')}<input type="password" value={rcon} onChange={(e) => setRcon(e.target.value)} placeholder={t('srv.keepRcon')} /></label>
       </div>
       {check('managed', t('srv.managed'))}
@@ -101,11 +102,11 @@ function ServerEditor({ server, maps, onSaved }: { server: GameServer; maps: Map
               </select>
             </label>
             <label>{t('srv.maxPlayers')}
-              <input type="number" min={2} max={64} value={s.maxPlayers} onChange={(e) => set('maxPlayers', Number(e.target.value))} style={{ width: 80 }} />
+              <input type="number" min={2} max={64} value={s.maxPlayers} onChange={(e) => set('maxPlayers', Number(e.target.value))} className="num" />
             </label>
             <label>{t('srv.tvPort')}
               <input type="number" min={1} max={65535} value={s.tvPort ?? ''} placeholder={String(server.port + 100)} disabled={!s.tvEnable}
-                onChange={(e) => set('tvPort', e.target.value ? Number(e.target.value) : null)} style={{ width: 100 }} />
+                onChange={(e) => set('tvPort', e.target.value ? Number(e.target.value) : null)} className="num" />
             </label>
           </div>
           <div className="row">
@@ -116,7 +117,7 @@ function ServerEditor({ server, maps, onSaved }: { server: GameServer; maps: Map
 
           <h2>{t('srv.settings')}</h2>
           <div className="row">
-            <label style={{ flex: 1, minWidth: 220 }}>{t('srv.hostname')}<input value={s.hostname} placeholder={name} onChange={(e) => set('hostname', e.target.value)} maxLength={63} /></label>
+            <label className="fill">{t('srv.hostname')}<input value={s.hostname} placeholder={name} onChange={(e) => set('hostname', e.target.value)} maxLength={63} /></label>
             <label>{t('srv.svPassword')}<input value={s.svPassword} onChange={(e) => set('svPassword', e.target.value)} maxLength={63} /></label>
             <label>{t('srv.gslt')}<input value={s.gslt} onChange={(e) => set('gslt', e.target.value)} maxLength={64} /></label>
           </div>
@@ -232,27 +233,11 @@ export function Servers() {
 
   return (
     <>
-      <h1>{t('servers.title')}</h1>
-      <p className="muted">{t('servers.hint')}</p>
-      {launcher && <LauncherCard key={launcher.cs2Path} info={launcher} onSaved={setLauncher} />}
-
-      <form className="card" onSubmit={add}>
-        <h2>{t('srv.add')}</h2>
-        <div className="row">
-          <label>{t('servers.name')}<input value={name} onChange={(e) => setName(e.target.value)} placeholder="Server 1" required /></label>
-          <label>{t('servers.address')}<input value={host} onChange={(e) => setHost(e.target.value)} placeholder={launcher?.defaultHost} /></label>
-          <label>{t('servers.port')}<input type="number" value={port} onChange={(e) => setPort(e.target.value)} placeholder={String(launcher?.nextPort ?? 27015)} style={{ width: 90 }} /></label>
-          <label>{t('servers.rcon')}<input type="password" value={rcon} onChange={(e) => setRcon(e.target.value)} required={!managed} placeholder={managed ? t('srv.autoRcon') : ''} /></label>
-          <button type="submit">{t('common.add')}</button>
-        </div>
-        <label className="check"><input type="checkbox" checked={managed} onChange={(e) => setManaged(e.target.checked)} />{t('srv.managed')}</label>
-        <p className="muted">{managed ? t('srv.managedHint') : t('srv.externalHint')}</p>
-        <p className="muted small">{t('srv.autoHostHint')}</p>
-      </form>
-
+      <div className="pagehead"><h1>{t('servers.title')}</h1></div>
+      <p className="muted lead">{t('servers.hint')}</p>
       {error && <p className="error">{error}</p>}
       {info && <p className="muted">{info}</p>}
-      <div className="card">
+      <div className="card tablewrap srvlist">
         <table>
           <thead><tr><th>{t('servers.name')}</th><th>{t('servers.address')}</th><th>{t('servers.state')}</th><th /></tr></thead>
           <tbody>
@@ -283,17 +268,16 @@ export function Servers() {
                     {st && st !== 'loading' && st.lastError && <div className="muted">{t('servers.lastError', { error: err(st.lastError) })}</div>}
                   </td>
                   <td className="actions">
+                    {s.managed && <button className="ghost" disabled={busy[s.id]} onClick={() => run(s.id, 'start', {}, t('srv.starting'))}>{t('srv.start')}</button>}
                     <button className="ghost" onClick={() => check(s.id)}>{t('servers.check')}</button>
-                    {s.managed && (
-                      <>
-                        <button disabled={busy[s.id]} onClick={() => run(s.id, 'start', {}, t('srv.starting'))}>{t('srv.start')}</button>
-                        <button className="ghost" disabled={busy[s.id]} onClick={() => run(s.id, 'restart', {}, t('srv.starting'))}>{t('srv.restart')}</button>
-                        <button className="ghost" disabled={busy[s.id]} onClick={() => run(s.id, 'stop')}>{t('srv.stop')}</button>
-                      </>
-                    )}
-                    {s.managed && <button className="ghost" onClick={() => setLogOf(logOf === s.id ? null : s.id)}>{t('srv.log')}</button>}
-                    <button className="ghost" onClick={() => setEditing(editing === s.id ? null : s.id)}>{t('srv.settingsBtn')}</button>
-                    <button className="danger" onClick={() => remove(s.id)}>{t('common.delete')}</button>
+                    <button className="ghost" aria-pressed={editing === s.id} onClick={() => setEditing(editing === s.id ? null : s.id)}>{t('srv.settingsBtn')}</button>
+                    <ActionMenu label={s.name}>
+                      {s.managed && <button className="menuitem" disabled={busy[s.id]} onClick={() => run(s.id, 'restart', {}, t('srv.starting'))}>{t('srv.restart')}</button>}
+                      {s.managed && <button className="menuitem" disabled={busy[s.id]} onClick={() => run(s.id, 'stop')}>{t('srv.stop')}</button>}
+                      {s.managed && <button className="menuitem" onClick={() => setLogOf(logOf === s.id ? null : s.id)}>{t('srv.log')}</button>}
+                      {s.managed && <hr />}
+                      <button className="menuitem dangertext" onClick={() => remove(s.id)}>{t('common.delete')}</button>
+                    </ActionMenu>
                   </td>
                 </tr>,
                 logOf === s.id && (
@@ -307,7 +291,7 @@ export function Servers() {
                   <tr key={`${s.id}-edit`}>
                     <td colSpan={4}>
                       <ServerEditor server={s} maps={maps} onSaved={(msg) => { setInfo(msg); setEditing(null); load(); }} />
-                      <div className="row" style={{ marginTop: 12 }}>
+                      <div className="row mapnow">
                         <label>{t('srv.mapNow')}
                           <MapSelect maps={maps} value={mapNow[s.id] ?? s.settings.startMap} onChange={(v) => setMapNow((p) => ({ ...p, [s.id]: v }))} />
                         </label>
@@ -319,9 +303,25 @@ export function Servers() {
                 ),
               ];
             })}
-            {servers.length === 0 && <tr><td colSpan={4} className="muted">{t('servers.empty')}</td></tr>}
+            {servers.length === 0 && <tr><td colSpan={4}><div className="emptybox">{t('servers.empty')}</div></td></tr>}
           </tbody>
         </table>
+      </div>
+      <div className="grid2">
+      <form className="card" onSubmit={add}>
+        <h2>{t('srv.add')}</h2>
+        <div className="row">
+          <label>{t('servers.name')}<input value={name} onChange={(e) => setName(e.target.value)} placeholder="Server 1" required /></label>
+          <label>{t('servers.address')}<input value={host} onChange={(e) => setHost(e.target.value)} placeholder={launcher?.defaultHost} /></label>
+          <label>{t('servers.port')}<input type="number" value={port} onChange={(e) => setPort(e.target.value)} placeholder={String(launcher?.nextPort ?? 27015)} className="num" /></label>
+          <label>{t('servers.rcon')}<input type="password" value={rcon} onChange={(e) => setRcon(e.target.value)} required={!managed} placeholder={managed ? t('srv.autoRcon') : ''} /></label>
+          <button type="submit">{t('common.add')}</button>
+        </div>
+        <label className="check"><input type="checkbox" checked={managed} onChange={(e) => setManaged(e.target.checked)} />{t('srv.managed')}</label>
+        <p className="muted">{managed ? t('srv.managedHint') : t('srv.externalHint')}</p>
+        <p className="muted small">{t('srv.autoHostHint')}</p>
+      </form>
+      {launcher && <LauncherCard key={launcher.cs2Path} info={launcher} onSaved={setLauncher} />}
       </div>
     </>
   );

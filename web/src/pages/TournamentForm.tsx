@@ -88,9 +88,11 @@ export function TournamentForm() {
 
   return (
     <form onSubmit={submit}>
-      <h1>{t('form.title')}</h1>
+      <div className="pagehead"><h1>{t('form.title')}</h1></div>
+      <div className="formgrid">
+      <div className="formcol">
       <div className="card row">
-        <label style={{ flex: 1, minWidth: 220 }}>{t('common.name')}<input value={name} onChange={(e) => setName(e.target.value)} required /></label>
+        <label className="fill">{t('common.name')}<input value={name} onChange={(e) => setName(e.target.value)} required /></label>
         <label>{t('form.teamSize')}
           <select value={teamSize} onChange={(e) => setTeamSize(Number(e.target.value))}>
             {[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{n}v{n}</option>)}
@@ -106,19 +108,19 @@ export function TournamentForm() {
         )}
         <label>{t('tournaments.teams')}
           <input type="number" min={2} max={64} value={maxTeams} onChange={(e) => setMaxTeams(Number(e.target.value))}
-            readOnly={withGroups && groupFormat === 'gsl'} style={{ width: 90 }} />
+            readOnly={withGroups && groupFormat === 'gsl'} className="num" />
         </label>
       </div>
 
       <div className="card">
         <h2>{t('form.stages')}</h2>
-        <label style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+        <label className="check">
           <input type="checkbox" checked={withGroups} onChange={(e) => setWithGroups(e.target.checked)} />
           {t('form.withGroups')}
         </label>
         {withGroups && (
           <>
-            <div className="row" style={{ marginTop: 10 }}>
+            <div className="row">
               <label>{t('form.groupFormat')}
                 <select value={groupFormat} onChange={(e) => setGroupFormat(e.target.value as GroupFormat)}>
                   <option value="round_robin">{t('gf.round_robin')}</option>
@@ -128,15 +130,15 @@ export function TournamentForm() {
               </label>
               {groupFormat !== 'swiss' && (
                 <label>{t('form.groupsCount')}
-                  <input type="number" min={1} max={16} value={groupsCount} onChange={(e) => setGroupsCount(Number(e.target.value))} style={{ width: 80 }} />
+                  <input type="number" min={1} max={16} value={groupsCount} onChange={(e) => setGroupsCount(Number(e.target.value))} className="num" />
                 </label>
               )}
               <label>{groupFormat === 'swiss' ? t('form.advanceSwiss') : t('form.advance')}
-                <input type="number" min={1} max={32} value={advance} onChange={(e) => setAdvance(Number(e.target.value))} style={{ width: 80 }} />
+                <input type="number" min={1} max={32} value={advance} onChange={(e) => setAdvance(Number(e.target.value))} className="num" />
               </label>
               {groupFormat === 'swiss' && (
                 <label>{t('form.swissRounds')}
-                  <input type="number" min={1} max={15} value={swissRounds} placeholder={t('form.auto')} onChange={(e) => setSwissRounds(e.target.value)} style={{ width: 90 }} />
+                  <input type="number" min={1} max={15} value={swissRounds} placeholder={t('form.auto')} onChange={(e) => setSwissRounds(e.target.value)} className="num" />
                 </label>
               )}
               <label>{t('form.groupBo')}
@@ -146,7 +148,7 @@ export function TournamentForm() {
               </label>
             </div>
             <p className="muted">{t(`gf.${groupFormat}.hint` as 'gf.swiss.hint')}</p>
-            <label style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <label className="check">
               <input type="checkbox" checked={hasPlayoff} onChange={(e) => setHasPlayoff(e.target.checked)} />
               {t('form.hasPlayoff')}
             </label>
@@ -170,12 +172,12 @@ export function TournamentForm() {
               </select>
             </label>
           </div>
-          <table>
+          <table className="compact">
             <tbody>
               {rounds.map((r) => (
                 <tr key={r.key}>
                   <td>{roundLabel(t, r.bracket, r.fromEnd, format)}</td>
-                  <td style={{ textAlign: 'right' }}>
+                  <td className="actions">
                     <select value={boConfig[r.key] ?? defaultBo} onChange={(e) => setBoConfig({ ...boConfig, [r.key]: Number(e.target.value) })}>
                       {[1, 3, 5].map((n) => <option key={n} value={n}>BO{n}</option>)}
                     </select>
@@ -185,7 +187,7 @@ export function TournamentForm() {
             </tbody>
           </table>
           {format === 'double' && (
-            <label style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8 }}>
+            <label className="check">
               <input type="checkbox" checked={reset} onChange={(e) => setReset(e.target.checked)} />
               {t('form.reset')}
             </label>
@@ -194,16 +196,18 @@ export function TournamentForm() {
         </div>
       )}
 
+      </div>
+      <div className="formcol">
       <div className="card">
-        <label style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+        <label className="check">
           <input type="checkbox" checked={autoDispatch} onChange={(e) => setAutoDispatch(e.target.checked)} />
           {t('form.autoDispatch')}
         </label>
-        <label style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 }}>
+        <label className="check">
           <input type="checkbox" checked={vetoEnabled} onChange={(e) => setVetoEnabled(e.target.checked)} />
           {t('form.vetoEnabled')}
         </label>
-        <label style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 }}>
+        <label className="check">
           <input type="checkbox" checked={vetoSides} disabled={!vetoEnabled} onChange={(e) => setVetoSides(e.target.checked)} />
           {t('form.vetoSides')}
         </label>
@@ -230,8 +234,12 @@ export function TournamentForm() {
         </div>
       </div>
 
-      {error && <p className="error">{error}</p>}
-      <button type="submit">{t('form.submit')}</button>
+      </div>
+      </div>
+      <div className="formfoot">
+        {error && <p className="error flat">{error}</p>}
+        <button type="submit" className="big">{t('form.submit')}</button>
+      </div>
     </form>
   );
 }

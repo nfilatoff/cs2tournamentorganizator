@@ -60,26 +60,28 @@ export function Maps() {
 
   return (
     <>
-      <div className="between">
+      <div className="pagehead">
         <h1>{t('maps.title')}</h1>
         <button className="ghost" onClick={addDefaults}>{t('maps.addDefaults')}</button>
       </div>
       {info && <p className="muted">{info}</p>}
+      <div className="grid2">
       <form className="card row" onSubmit={addWorkshop}>
-        <label style={{ flex: 1, minWidth: 260 }}>
+        <label className="fill">
           {t('maps.workshopLabel')}
           <input value={workshop} onChange={(e) => setWorkshop(e.target.value)} placeholder="https://steamcommunity.com/sharedfiles/filedetails/?id=..." required />
         </label>
-        <button type="submit">{t('maps.addWorkshop')}</button>
+        <button type="submit" className="ghost">{t('maps.addWorkshop')}</button>
       </form>
       <form className="card row" onSubmit={addStandard}>
-        <label>{t('maps.mapFile')}<input value={mapFile} onChange={(e) => setMapFile(e.target.value)} placeholder="de_inferno" required /></label>
-        <label>{t('maps.mapName')}<input value={stdName} onChange={(e) => setStdName(e.target.value)} placeholder="Inferno" required /></label>
-        <button type="submit">{t('maps.addStandard')}</button>
+        <label className="fill">{t('maps.mapFile')}<input value={mapFile} onChange={(e) => setMapFile(e.target.value)} placeholder="de_inferno" required /></label>
+        <label className="fill">{t('maps.mapName')}<input value={stdName} onChange={(e) => setStdName(e.target.value)} placeholder="Inferno" required /></label>
+        <button type="submit" className="ghost">{t('maps.addStandard')}</button>
       </form>
+      </div>
       {error && <p className="error">{error}</p>}
       {maps.length === 0
-        ? <div className="card muted">{t('maps.empty')}</div>
+        ? <div className="emptybox">{t('maps.empty')}</div>
         : (
           <div className="mapgrid">
             {maps.map((m) => (
@@ -90,7 +92,7 @@ export function Maps() {
                     <div className="vname">{m.name}</div>
                     <div className="muted">{m.workshopId ? `Workshop ${m.workshopId}` : m.mapFile}</div>
                   </div>
-                  <button className="danger" onClick={() => remove(m.id)}>{t('common.delete')}</button>
+                  <button className="ghost small" onClick={() => remove(m.id)}>{t('common.delete')}</button>
                 </div>
               </div>
             ))}

@@ -6,11 +6,11 @@ import { useI18n } from '../i18n';
 export function PauseFields({ value, onChange }: { value: PauseLimits; onChange: (v: PauseLimits) => void }) {
   const { t } = useI18n();
   const num = (key: keyof PauseLimits, min: number, max: number) => (
-    <input type="number" min={min} max={max} value={value[key]} style={{ width: 90 }} required
+    <input className="num" type="number" min={min} max={max} value={value[key]} required
       onChange={(e) => onChange({ ...value, [key]: Number(e.target.value) })} />
   );
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'end' }}>
+    <div className="row">
       <label>{t('pauses.tactical')}{num('tactical', 0, 10)}</label>
       <label>{t('pauses.tacticalTime')}{num('tacticalTime', 10, 300)}</label>
       <label>{t('pauses.technical')}{num('technical', 0, 10)}</label>
@@ -26,9 +26,9 @@ export function PausesEditor({ value, onSave }: { value: PauseLimits; onSave: (v
   return (
     <form className="card" onSubmit={(e) => { e.preventDefault(); onSave(draft); }}>
       <h2>{t('pauses.title')}</h2>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'end' }}>
+      <div className="row">
         <PauseFields value={draft} onChange={setDraft} />
-        <button type="submit" disabled={!changed}>{t('pauses.save')}</button>
+        <button type="submit" className="ghost" disabled={!changed}>{t('pauses.save')}</button>
       </div>
       <p className="muted">{t('pauses.hint')} {t('pauses.liveHint')}</p>
     </form>

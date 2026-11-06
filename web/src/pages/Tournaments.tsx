@@ -15,7 +15,7 @@ export function Tournaments({ me }: { me: Me }) {
     <>
       <div className="pagehead">
         <h1>{t('tournaments.title')}</h1>
-        {isAdmin(me) && <Link to="/tournaments/new"><button>{t('tournaments.create')}</button></Link>}
+        {isAdmin(me) && <Link className="btn" to="/tournaments/new">{t('tournaments.create')}</Link>}
       </div>
       <TournamentRows list={list} empty={t('tournaments.empty')} />
     </>

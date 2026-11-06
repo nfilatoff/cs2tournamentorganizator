@@ -134,6 +134,10 @@ export const ru = {
   'match.undo': 'Отменить результат',
 
   'view.upTo': 'до {n} команд',
+  'match.actions': 'Действия с матчем',
+  'view.stage': 'На большой экран',
+  'view.stageExit': 'Закрыть',
+  'view.details': 'Команды, карты и настройки',
   'view.winner': 'Победитель',
   'view.teams': 'Команды ({n}/{max})',
   'view.players': 'Участники ({n}/{max})',

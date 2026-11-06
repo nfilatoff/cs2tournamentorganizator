@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { api, type MatchDto, type PlayoffPreview, type StandingRow, type TournamentDetails } from '../api';
 import { useI18n } from '../i18n';
 import { BracketTree, Canvas, gslLayout } from './BracketTree';
+import { IconDown, IconUp } from './Icons';
 import { MatchCard, type MatchActions } from './MatchCard';
 
 const groupName = (no: number) => String.fromCharCode(64 + no);
@@ -89,7 +90,7 @@ export function GroupsView({ tr, actions }: { tr: TournamentDetails; actions?: M
             )}
             {cfg.format !== 'gsl' && rounds.map((r) => (
               <div key={r}>
-                <div className="roundname" style={{ margin: '12px 0 6px' }}>{roundTitle(t, cfg.format, r)}</div>
+                <div className="roundname spaced">{roundTitle(t, cfg.format, r)}</div>
                 <div className="matchlist">
                   {ms.filter((m) => m.round === r).map((m) => <MatchCard key={m.code} m={m} actions={actions} />)}
                 </div>
@@ -165,9 +166,9 @@ export function PlayoffPanel({ tr, onDone }: { tr: TournamentDetails; onDone: (t
                 <td>#{i + 1}</td>
                 <td>{q?.name}</td>
                 <td className="muted">{q?.group ? t('playoff.from', { group: groupName(q.group), rank: q.rank ?? 0 }) : ''}</td>
-                <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                  <button className="ghost" disabled={i === 0} onClick={() => move(i, -1)}>▲</button>{' '}
-                  <button className="ghost" disabled={i === (order?.length ?? 0) - 1} onClick={() => move(i, 1)}>▼</button>
+                <td className="actions">
+                  <button className="iconbtn" aria-label={t('seeding.up')} disabled={i === 0} onClick={() => move(i, -1)}><IconUp /></button>
+                  <button className="iconbtn" aria-label={t('seeding.down')} disabled={i === (order?.length ?? 0) - 1} onClick={() => move(i, 1)}><IconDown /></button>
                 </td>
               </tr>
             );

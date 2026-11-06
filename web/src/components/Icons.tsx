@@ -1,5 +1,5 @@
-// Контурные иконки для навигации (24×24, цвет берётся из currentColor)
-const base = { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' } as const;
+// Контурные иконки интерфейса (24×24, цвет берётся из currentColor)
+const base = { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true } as const;
 
 export const IconHome = () => (
   <svg {...base}><path d="M3 10.5 12 3l9 7.5" /><path d="M5 9v11h5v-6h4v6h5V9" /></svg>
@@ -27,4 +27,28 @@ export const IconGlobe = () => (
 );
 export const IconShield = () => (
   <svg {...base}><path d="M12 3 4.5 6v5.5c0 4.6 3.2 8.4 7.5 9.5 4.3-1.1 7.5-4.9 7.5-9.5V6L12 3Z" /><path d="m9 12 2 2 4-4" /></svg>
+);
+export const IconMore = () => (
+  <svg {...base}><path d="M5 12h.01M12 12h.01M19 12h.01" strokeWidth={3} /></svg>
+);
+export const IconUp = () => (
+  <svg {...base}><path d="m6 15 6-6 6 6" /></svg>
+);
+export const IconDown = () => (
+  <svg {...base}><path d="m6 9 6 6 6-6" /></svg>
+);
+export const IconChevron = () => (
+  <svg {...base}><path d="m9 6 6 6-6 6" /></svg>
+);
+export const IconClose = () => (
+  <svg {...base}><path d="M6 6l12 12M18 6 6 18" /></svg>
+);
+export const IconExpand = () => (
+  <svg {...base}><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" /></svg>
+);
+export const IconShuffle = () => (
+  <svg {...base}><path d="M3 7h3.5c5 0 6 10 11 10H21" /><path d="M3 17h3.5c1.8 0 3-1.3 4-3M14 8.5c1-.9 2-1.5 3.500-1.500H21" /><path d="m18 4 3 3-3 3M18 14l3 3-3 3" /></svg>
+);
+export const IconStar = () => (
+  <svg {...base}><path d="m12 4 2.400 5 5.600.8-4 3.900.9 5.500-4.900-2.600-4.900 2.600.9-5.500-4-3.900 5.600-.8L12 4Z" fill="currentColor" /></svg>
 );

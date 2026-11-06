@@ -68,7 +68,7 @@ export function GameAdmins() {
 
       {d.canManage ? (
         <form className="card row" onSubmit={add}>
-          <label style={{ flex: 1, minWidth: 260 }}>{t('gadmins.steamId')}
+          <label className="fill">{t('gadmins.steamId')}
             <input list="gadmins-players" value={steamId} onChange={(e) => setSteamId(e.target.value)} placeholder="7656119…" required />
             <datalist id="gadmins-players">
               {d.players.map((p) => <option key={p.steamId} value={`${p.name} (${p.steamId})`} />)}
@@ -94,7 +94,7 @@ export function GameAdmins() {
 
       <div className="card">
         <h2>{t('gadmins.codeTitle')}</h2>
-        <p className="muted" style={{ marginTop: 0 }}>{t('gadmins.codeHint')}</p>
+        <p className="muted flat">{t('gadmins.codeHint')}</p>
         <div className="mconnect">
           <code>arenapro_auth {d.serverCode}</code>
           {d.canManage && (
@@ -107,10 +107,10 @@ export function GameAdmins() {
       {sync && (
         <div className="card">
           {sync.file
-            ? <p style={{ marginTop: 0 }}>{t('gadmins.written')} <code>{sync.file}</code></p>
-            : <p className="error" style={{ marginTop: 0 }}>{t('gadmins.noFolder')}</p>}
+            ? <p className="flat">{t('gadmins.written')} <code>{sync.file}</code></p>
+            : <p className="error flat">{t('gadmins.noFolder')}</p>}
           {sync.reloaded.length > 0 && <p className="muted small">{t('gadmins.reloaded', { list: sync.reloaded.join(', ') })}</p>}
-          {sync.failed.length > 0 && <p className="muted small" style={{ marginBottom: 0 }}>{t('gadmins.offline', { list: sync.failed.join(', ') })}</p>}
+          {sync.failed.length > 0 && <p className="muted small flat">{t('gadmins.offline', { list: sync.failed.join(', ') })}</p>}
         </div>
       )}
 

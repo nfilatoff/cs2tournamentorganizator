@@ -36,17 +36,17 @@ export function Login({ onLogin }: { onLogin: () => void }) {
 
   return (
     <div className="center">
-      <img src="/logo.png" alt="Arena Pro Gaming Club" style={{ display: 'block', width: 220, margin: '0 auto 28px' }} />
+      <img className="loginlogo" src="/logo-mark.png" alt="Arena Pro Gaming Club" />
       <div className="card">
         <h1>{t('login.playerTitle')}</h1>
-        <a className="btn big" style={{ width: '100%' }} href="/api/auth/steam">{t('login.steam')}</a>
+        <a className="btn big wide" href="/api/auth/steam">{t('login.steam')}</a>
       </div>
-      {adminForm && <form className="card" onSubmit={submit}>
+      {adminForm && <form className="card stack" onSubmit={submit}>
         <h1>{t('login.adminTitle')}</h1>
         <label>{t('login.username')}<input autoFocus value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="username" /></label>
-        <label style={{ marginTop: 8 }}>{t('login.password')}<input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" /></label>
+        <label>{t('login.password')}<input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" /></label>
         {error && <p className="error">{error}</p>}
-        <p><button type="submit">{t('login.submit')}</button></p>
+        <div><button type="submit" className="wide">{t('login.submit')}</button></div>
       </form>}
     </div>
   );

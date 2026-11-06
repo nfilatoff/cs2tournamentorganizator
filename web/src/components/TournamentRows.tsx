@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import type { TournamentSummary } from '../api';
 import { useI18n } from '../i18n';
-import { IconTrophy } from './Icons';
+import { IconChevron } from './Icons';
 
 type Row = Pick<TournamentSummary, 'id' | 'name' | 'format' | 'teamSize' | 'maxTeams' | 'status' | 'teamCount'>;
 
@@ -13,16 +13,16 @@ export function TournamentRows({ list, empty }: { list: Row[]; empty: string }) 
     <div className="tlist">
       {list.map((x) => (
         <Link key={x.id} to={`/tournaments/${x.id}`} className="trow">
-          <span className="ticon"><IconTrophy /></span>
-          <span style={{ minWidth: 0 }}>
-            <div className="tname">{x.name}</div>
-            <div className="tmeta">{t(`format.${x.format}`)} · {x.teamSize}v{x.teamSize}</div>
+          <span className="tmain">
+            <span className="tname">{x.name}</span>
+            <span className="tmeta">{t(`format.${x.format}`)} · {x.teamSize}v{x.teamSize}</span>
           </span>
           <span className="tslots">
-            <b>{x.teamCount}</b>/{x.maxTeams}
-            <div className="bar"><i style={{ width: `${Math.min(100, (x.teamCount / Math.max(1, x.maxTeams)) * 100)}%` }} /></div>
+            <span><b>{x.teamCount}</b> / {x.maxTeams}</span>
+            <span className="bar"><i style={{ width: `${Math.min(100, (x.teamCount / Math.max(1, x.maxTeams)) * 100)}%` }} /></span>
           </span>
           <span className={`pill ${x.status}`}>{t(`status.${x.status}`)}</span>
+          <span className="tgo"><IconChevron /></span>
         </Link>
       ))}
     </div>

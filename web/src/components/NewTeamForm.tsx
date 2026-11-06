@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { api, type TournamentDetails } from '../api';
 import { useI18n } from '../i18n';
+import { IconClose, IconDown } from './Icons';
 
 interface Row { steamId: string; name: string }
 const empty = (): Row => ({ steamId: '', name: '' });
@@ -27,25 +28,25 @@ export function NewTeamForm({ tr, onDone }: { tr: TournamentDetails; onDone: (t:
   };
 
   return (
-    <details style={{ marginTop: 12 }}>
-      <summary><b>{t('view.newTeam')}</b></summary>
-      <form onSubmit={submit} style={{ marginTop: 8 }}>
-        <label>{t('common.name')}<input value={name} onChange={(e) => setName(e.target.value)} required style={{ maxWidth: 320 }} /></label>
-        <p className="muted">{t('view.newTeamHint', { n: tr.teamSize })}</p>
+    <details className="subfold">
+      <summary>{t('view.newTeam')}<IconDown /></summary>
+      <form onSubmit={submit} className="stack">
+        <label>{t('common.name')}<input value={name} onChange={(e) => setName(e.target.value)} required /></label>
+        <p className="muted flat">{t('view.newTeamHint', { n: tr.teamSize })}</p>
         {rows.map((r, i) => (
-          <div className="row" key={i} style={{ marginBottom: 6 }}>
-            <label style={{ flex: 1, minWidth: 180 }}>{i === 0 ? t('adminTeams.steamId') : ''}
+          <div className="row" key={i}>
+            <label className="fill">{i === 0 ? t('adminTeams.steamId') : ''}
               <input value={r.steamId} onChange={(e) => setRow(i, { steamId: e.target.value })} placeholder="7656119…" pattern="\d{17}" required />
             </label>
-            <label style={{ flex: 1, minWidth: 120 }}>{i === 0 ? t('adminTeams.nick') : ''}
+            <label className="fill">{i === 0 ? t('adminTeams.nick') : ''}
               <input value={r.name} onChange={(e) => setRow(i, { name: e.target.value })} required />
             </label>
-            {rows.length > tr.teamSize && <button type="button" className="ghost" onClick={() => setRows((x) => x.filter((_, j) => j !== i))}>✕</button>}
+            {rows.length > tr.teamSize && <button type="button" className="iconbtn" aria-label={t('common.delete')} onClick={() => setRows((x) => x.filter((_, j) => j !== i))}><IconClose /></button>}
           </div>
         ))}
-        {rows.length < 10 && <p><button type="button" className="ghost" onClick={() => setRows((x) => [...x, empty()])}>{t('view.addSub')}</button></p>}
+        {rows.length < 10 && <div><button type="button" className="ghost" onClick={() => setRows((x) => [...x, empty()])}>{t('view.addSub')}</button></div>}
         {error && <p className="error">{error}</p>}
-        <button type="submit">{t('view.createRegister')}</button>
+        <div><button type="submit" className="ghost">{t('view.createRegister')}</button></div>
       </form>
     </details>
   );
