@@ -13,3 +13,4 @@ installation.json
 .plugin-build-*
 panel.local.json
 .claude
+out/
