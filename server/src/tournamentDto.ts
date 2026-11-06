@@ -63,7 +63,7 @@ interface TeamRowDb { team_id: number; seed: number | null; roster: string; name
 
 function teamsOf(tid: number): TeamRowDb[] {
   return db.prepare(`
-    SELECT tt.team_id, tt.seed, tt.roster, te.name FROM tournament_teams tt JOIN teams te ON te.id = tt.team_id
+    SELECT tt.team_id, tt.seed, tt.roster, COALESCE(te.deleted_name, te.name) AS name FROM tournament_teams tt JOIN teams te ON te.id = tt.team_id
     WHERE tt.tournament_id = ? ORDER BY COALESCE(tt.seed, 9999), tt.registered_at
   `).all(tid) as unknown as TeamRowDb[];
 }

@@ -67,7 +67,17 @@ h4 { font-size: 13px; }
   content: ''; position: absolute; left: -8px; top: 10px; bottom: 10px; width: 3px; border-radius: 0 3px 3px 0; background: var(--accent);
 }
 .sidebar .grow { flex: 1; }
-.sidebar select { width: 64px; padding: 4px; font-size: 11px; text-align: center; }
+.langswitch {
+  position: relative; display: inline-flex; flex-direction: column; align-items: center; gap: 2px; flex: none;
+  padding: 6px 10px; border-radius: 8px; color: var(--muted); font: 700 10px/1.1 var(--head); letter-spacing: .06em;
+  transition: color .15s, background .15s;
+}
+.langswitch:hover, .langswitch:focus-within { color: var(--accent); background: var(--panel2); }
+.langswitch svg { width: 22px; height: 22px; }
+.langswitch:hover svg { animation: planet-spin 1.6s linear infinite; }
+.langswitch select { position: absolute; inset: 0; width: 100%; height: 100%; padding: 0; opacity: 0; cursor: pointer; }
+@keyframes planet-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .langswitch:hover svg { animation: none; } }
 .userchip {
   display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%;
   background: var(--panel3); color: var(--text); font: 700 16px var(--head); border: 2px solid var(--line2); margin-top: 6px;
@@ -90,6 +100,7 @@ h4 { font-size: 13px; }
 .topbar .spacer { flex: 1; }
 .topbar .who { color: var(--muted); font-size: 13px; }
 .topbar .who b { color: var(--text); }
+.topbar a.who:hover, .topbar a.who:hover b { color: var(--accent); text-decoration: none; }
 main { width: 100%; max-width: 1280px; margin: 0 auto; padding: 28px 28px 64px; }
 
 /* ---------- Базовые элементы ---------- */
@@ -163,6 +174,14 @@ ul.attention li a { color: var(--text); }
 .pill.done, .pill.finished { background: var(--accent-dim); color: var(--accent); }
 .pill.registration { background: var(--accent); color: var(--accent-ink); }
 @keyframes blink { 50% { opacity: .3; } }
+
+/* Подтверждение удаления */
+.confirmdialog { width: min(420px, calc(100vw - 32px)); background: var(--panel); color: var(--text); border: 1px solid var(--danger); border-radius: 10px; padding: 20px; }
+.confirmdialog::backdrop { background: rgba(0, 0, 0, .7); }
+.confirmdialog p { margin: 0 0 12px; }
+.confirmdialog input { width: 100%; }
+.confirmword { font: 700 24px var(--head); letter-spacing: .08em; text-align: center; color: var(--danger); user-select: none; }
+.confirmactions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
 
 /* ---------- Заголовок страницы ---------- */
 .pagehead { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
@@ -403,7 +422,6 @@ details.mbox[open] > summary::after { transform: rotate(180deg); }
   .navitem { width: auto; min-width: 56px; padding: 6px 6px; }
   .navitem.active::before { display: none; }
   .sidebar .grow { flex: 1; min-width: 8px; }
-  .sidebar select { width: auto; }
   .userchip { margin: 0 4px; width: 34px; height: 34px; flex: none; }
   .topbar { display: none; }
   main { padding: 16px 16px 48px; }

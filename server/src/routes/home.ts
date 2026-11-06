@@ -91,7 +91,7 @@ function playerBlock(pid: number) {
     FROM tournaments t WHERE t.status = 'registration' ORDER BY t.id DESC`).all() as unknown as (TournamentRow & { n: number })[])
     .flatMap((t) => {
       if (t.n >= t.max_teams) return [];
-      const mine = db.prepare(`SELECT te.id, te.name FROM teams te WHERE te.captain_id = ?
+      const mine = db.prepare(`SELECT te.id, te.name FROM teams te WHERE te.captain_id = ? AND te.deleted_name IS NULL
         AND (SELECT COUNT(*) FROM team_members tm WHERE tm.team_id = te.id) >= ?
         AND te.id NOT IN (SELECT team_id FROM tournament_teams WHERE tournament_id = ?)`)
         .all(pid, t.team_size, t.id) as unknown as { id: number; name: string }[];

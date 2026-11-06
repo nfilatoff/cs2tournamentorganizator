@@ -254,3 +254,5 @@ db.exec(`CREATE TABLE IF NOT EXISTS game_admins (
 addColumn('game_admins', 'panel', 'INTEGER NOT NULL DEFAULT 0');
 // Код, который админ вводит в консоли игры (arenapro_auth), чтобы ему заработали команды админа в этом матче
 addColumn('matches', 'admin_code', 'TEXT');
+// Прежнее название удалённой команды, которая осталась в истории завершённых турниров (см. deleteTeam)
+addColumn('teams', 'deleted_name', 'TEXT');

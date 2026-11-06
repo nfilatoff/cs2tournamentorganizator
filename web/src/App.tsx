@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, NavLink, Navigate, Route, Routes, useParams } from 'react-router-dom';
 import { api, isAdmin, type Me } from './api';
-import { LANGS, useI18n, type Lang } from './i18n';
+import { useI18n } from './i18n';
+import { LanguageSwitcher } from './components/LanguageSwitcher';
 import { Login } from './pages/Login';
 import { Servers } from './pages/Servers';
 import { Maps } from './pages/Maps';
@@ -24,7 +25,7 @@ function VetoRedirect() {
 }
 
 export function App() {
-  const { t, lang, setLang } = useI18n();
+  const { t } = useI18n();
   const [me, setMe] = useState<Me | null>(null);
 
   const refresh = useCallback(() => {
@@ -53,9 +54,7 @@ export function App() {
           {admin && <NavLink to="/game-admins" className="navitem"><IconShield />{t('nav.gameAdmins')}</NavLink>}
         </nav>
         <div className="grow" />
-        <select value={lang} onChange={(e) => setLang(e.target.value as Lang)} aria-label={t('app.language')}>
-          {LANGS.map((l) => <option key={l.id} value={l.id}>{l.id.toUpperCase()}</option>)}
-        </select>
+        <LanguageSwitcher />
         {me.kind === 'admin' && <NavLink to="/account" className="userchip" title={me.username}>{me.username.slice(0, 1).toUpperCase()}</NavLink>}
         {me.kind === 'player' && <NavLink to="/profile" className="userchip" title={me.name}>{me.name.slice(0, 1).toUpperCase()}</NavLink>}
         {me.kind ? (
@@ -68,8 +67,8 @@ export function App() {
         <header className="topbar">
           <Link to="/" className="wordmark">Arena <b>Pro</b><small>Gaming Club · CS2</small></Link>
           <span className="spacer" />
-          {me.kind === 'admin' && <span className="who">{t('app.admin')}: <b>{me.username}</b></span>}
-          {me.kind === 'player' && <span className="who">{me.admin && <>{t('app.admin')}: </>}<b>{me.name}</b></span>}
+          {me.kind === 'admin' && <Link to="/account" className="who">{t('app.admin')}: <b>{me.username}</b></Link>}
+          {me.kind === 'player' && <Link to="/profile" className="who">{me.admin && <>{t('app.admin')}: </>}<b>{me.name}</b></Link>}
           {!me.kind && <NavLink to="/login"><button>{t('app.login')}</button></NavLink>}
         </header>
       <main>

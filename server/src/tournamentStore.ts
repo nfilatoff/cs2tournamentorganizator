@@ -97,7 +97,7 @@ export function boFn(t: TournamentRow) {
 }
 
 export function teamName(id: number): string {
-  const r = db.prepare('SELECT name FROM teams WHERE id = ?').get(id) as { name: string } | undefined;
+  const r = db.prepare('SELECT COALESCE(deleted_name, name) AS name FROM teams WHERE id = ?').get(id) as { name: string } | undefined;
   return r?.name ?? `Team ${id}`;
 }
 

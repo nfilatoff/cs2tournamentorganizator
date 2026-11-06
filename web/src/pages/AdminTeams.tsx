@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api, type Team } from '../api';
 import { useI18n } from '../i18n';
+import { ConfirmDeleteDialog } from '../components/ConfirmDeleteDialog';
 
 interface PlayerRow { steamId: string; name: string }
 const emptyRow = (): PlayerRow => ({ steamId: '', name: '' });
@@ -12,6 +13,8 @@ export function AdminTeams() {
   const [filter, setFilter] = useState('');
   const [adding, setAdding] = useState<Record<number, PlayerRow>>({});
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+  const [pendingDelete, setPendingDelete] = useState<{ question: string; action: () => Promise<unknown> } | null>(null);
 
   const load = useCallback(() => {
     api<Team[]>('/api/admin/teams').then(setTeams).catch((e) => setError(err(e)));
@@ -20,6 +23,7 @@ export function AdminTeams() {
 
   const run = async (fn: () => Promise<unknown>) => {
     setError('');
+    setNotice('');
     try {
       await fn();
       load();
@@ -36,16 +40,25 @@ export function AdminTeams() {
     });
   };
 
+  const deleteAll = async () => {
+    const r = await api<{ deleted: number; skipped: number }>('/api/admin/teams/delete-all', { method: 'POST', body: {} });
+    setNotice(t(r.skipped > 0 ? 'adminTeams.deleteAllSkipped' : 'adminTeams.deleteAllDone', r));
+  };
+
   const shown = teams.filter((x) => x.name.toLowerCase().includes(filter.trim().toLowerCase()));
 
   return (
     <>
       <div className="between">
         <h1>{t('adminTeams.title')}</h1>
-        <input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder={t('adminTeams.search')} style={{ maxWidth: 240 }} />
+        <div className="row">
+          <input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder={t('adminTeams.search')} style={{ maxWidth: 240 }} />
+          {teams.length > 0 && <button className="danger" onClick={() => setPendingDelete({ question: t('adminTeams.confirmDeleteAll', { count: teams.length }), action: deleteAll })}>{t('adminTeams.deleteAll')}</button>}
+        </div>
       </div>
       <p className="muted">{t('adminTeams.hint')}</p>
       {error && <p className="error">{error}</p>}
+      {notice && <p>{notice}</p>}
 
       <div className="card">
         {shown.map((team) => (
@@ -86,12 +99,20 @@ export function AdminTeams() {
                 <input value={adding[team.id]?.name ?? ''} onChange={(e) => setAdding((a) => ({ ...a, [team.id]: { ...(a[team.id] ?? emptyRow()), name: e.target.value } }))} />
               </label>
               <button className="ghost" type="button" onClick={() => addMember(team.id)}>{t('adminTeams.addMember')}</button>
-              <button className="danger" onClick={() => confirm(t('adminTeams.confirmDelete', { name: team.name })) && run(() => api(`/api/admin/teams/${team.id}`, { method: 'DELETE' }))}>{t('teams.deleteTeam')}</button>
+              <button className="danger" onClick={() => setPendingDelete({ question: t('adminTeams.confirmDelete', { name: team.name }), action: () => api(`/api/admin/teams/${team.id}`, { method: 'DELETE' }) })}>{t('teams.deleteTeam')}</button>
             </div>
           </details>
         ))}
         {shown.length === 0 && <p className="muted">{t('adminTeams.empty')}</p>}
       </div>
+
+      {pendingDelete && (
+        <ConfirmDeleteDialog
+          question={pendingDelete.question}
+          onCancel={() => setPendingDelete(null)}
+          onConfirm={() => { setPendingDelete(null); void run(pendingDelete.action); }}
+        />
+      )}
     </>
   );
 }

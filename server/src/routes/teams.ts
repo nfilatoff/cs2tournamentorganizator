@@ -51,6 +51,26 @@ export function inActiveTournament(teamId: number): boolean {
   `).get(teamId);
 }
 
+export const getTeam = (id: number) =>
+  db.prepare('SELECT * FROM teams WHERE id = ? AND deleted_name IS NULL').get(id) as unknown as TeamRow | undefined;
+
+// На команду из завершённых турниров ссылается их история, поэтому её запись остаётся: команда пропадает из списков
+// и освобождает название, а в истории показывается под прежним именем. Заглушка длиннее допустимого названия и не в
+// верхнем регистре, как коды приглашения, поэтому не совпадёт ни с названием новой команды, ни с вводом кода.
+export function deleteTeam(team: TeamRow): void {
+  tx(() => {
+    const inHistory = db.prepare(`SELECT 1 FROM tournament_teams WHERE team_id = ?
+      UNION ALL SELECT 1 FROM tournaments WHERE champion_team_id = ?`).get(team.id, team.id);
+    if (!inHistory) {
+      db.prepare('DELETE FROM teams WHERE id = ?').run(team.id);
+      return;
+    }
+    const stub = `deleted-team-${team.id}-${randomBytes(8).toString('hex')}`;
+    db.prepare('DELETE FROM team_members WHERE team_id = ?').run(team.id);
+    db.prepare('UPDATE teams SET deleted_name = ?, name = ?, join_code = ? WHERE id = ?').run(team.name, stub, stub, team.id);
+  });
+}
+
 export async function teamRoutes(app: FastifyInstance): Promise<void> {
   app.addHook('preHandler', requirePlayer);
 
@@ -99,7 +119,7 @@ export async function teamRoutes(app: FastifyInstance): Promise<void> {
   app.post<{ Params: { id: string } }>('/api/teams/:id/leave', async (req, reply) => {
     const id = Number(req.params.id);
     const pid = playerId(req);
-    const team = db.prepare('SELECT * FROM teams WHERE id = ?').get(id) as unknown as TeamRow | undefined;
+    const team = getTeam(id);
     if (!team || !members(id).some((m) => m.player_id === pid)) {
       return reply.code(404).send(E('notMember'));
     }
@@ -113,7 +133,7 @@ export async function teamRoutes(app: FastifyInstance): Promise<void> {
     tx(() => {
       db.prepare('DELETE FROM team_members WHERE team_id = ? AND player_id = ?').run(id, pid);
       if (rest.length === 0) {
-        db.prepare('DELETE FROM teams WHERE id = ?').run(id);
+        deleteTeam(team);
       } else if (team.captain_id === pid) {
         db.prepare('UPDATE teams SET captain_id = ? WHERE id = ?').run(rest[0]!.player_id, id);
       }
@@ -125,7 +145,7 @@ export async function teamRoutes(app: FastifyInstance): Promise<void> {
     const body = z.object({ playerId: z.number().int() }).safeParse(req.body);
     if (!body.success) return reply.code(400).send(E('needPlayer'));
     const id = Number(req.params.id);
-    const team = db.prepare('SELECT * FROM teams WHERE id = ?').get(id) as unknown as TeamRow | undefined;
+    const team = getTeam(id);
     if (!team || team.captain_id !== playerId(req)) return reply.code(403).send(E('onlyCaptainKick'));
     if (body.data.playerId === team.captain_id) return reply.code(400).send(E('cannotKickCaptain'));
     if (inActiveRoster(id, body.data.playerId)) {
@@ -140,7 +160,7 @@ export async function teamRoutes(app: FastifyInstance): Promise<void> {
     const body = z.object({ playerId: z.number().int() }).safeParse(req.body);
     if (!body.success) return reply.code(400).send(E('needPlayer'));
     const id = Number(req.params.id);
-    const team = db.prepare('SELECT * FROM teams WHERE id = ?').get(id) as unknown as TeamRow | undefined;
+    const team = getTeam(id);
     if (!team || team.captain_id !== playerId(req)) return reply.code(403).send(E('onlyCaptainAssign'));
     if (!members(id).some((m) => m.player_id === body.data.playerId)) return reply.code(400).send(E('notTeamMember'));
     db.prepare('UPDATE teams SET captain_id = ? WHERE id = ?').run(body.data.playerId, id);
@@ -149,10 +169,10 @@ export async function teamRoutes(app: FastifyInstance): Promise<void> {
 
   app.delete<{ Params: { id: string } }>('/api/teams/:id', async (req, reply) => {
     const id = Number(req.params.id);
-    const team = db.prepare('SELECT * FROM teams WHERE id = ?').get(id) as unknown as TeamRow | undefined;
+    const team = getTeam(id);
     if (!team || team.captain_id !== playerId(req)) return reply.code(403).send(E('onlyCaptainDelete'));
     if (inActiveTournament(id)) return reply.code(409).send(E('teamInTournament'));
-    db.prepare('DELETE FROM teams WHERE id = ?').run(id);
+    deleteTeam(team);
     return { ok: true };
   });
 }

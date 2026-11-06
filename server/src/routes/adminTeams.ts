@@ -5,7 +5,7 @@ import { db, tx } from '../db.js';
 import { requireAdmin } from '../auth.js';
 import { E } from '../errors.js';
 import {
-  MAX_MEMBERS, inActiveRoster, inActiveTournament, members, teamDto, type TeamRow,
+  MAX_MEMBERS, deleteTeam, getTeam, inActiveRoster, inActiveTournament, members, teamDto, type TeamRow,
 } from './teams.js';
 
 const playerBody = z.object({
@@ -25,9 +25,6 @@ function ensurePlayer(p: z.infer<typeof playerBody>): number {
   return Number(res.lastInsertRowid);
 }
 
-const getTeam = (id: number) =>
-  db.prepare('SELECT * FROM teams WHERE id = ?').get(id) as unknown as TeamRow | undefined;
-
 // Создаёт команду и игроков (если их ещё нет). Капитан — первый игрок списка. Бросает ошибку SQLite при занятом названии.
 export function createTeamWithPlayers(name: string, players: z.infer<typeof playerBody>[]): TeamRow {
   return tx(() => {
@@ -41,13 +38,21 @@ export function createTeamWithPlayers(name: string, players: z.infer<typeof play
   });
 }
 
+const listTeams = () =>
+  db.prepare('SELECT * FROM teams WHERE deleted_name IS NULL ORDER BY name').all() as unknown as TeamRow[];
+
 export async function adminTeamRoutes(app: FastifyInstance): Promise<void> {
   app.addHook('preHandler', requireAdmin);
 
-  app.get('/api/admin/teams', async () => {
-    const rows = db.prepare('SELECT * FROM teams ORDER BY name').all() as unknown as TeamRow[];
-    return rows.map(teamDto);
-  });
+  app.get('/api/admin/teams', async () => listTeams().map(teamDto));
+
+  // Удаляет все команды, кроме заявленных в незавершённых турнирах: без них эти турниры не смогут продолжиться
+  app.post('/api/admin/teams/delete-all', async () => tx(() => {
+    const teams = listTeams();
+    const deletable = teams.filter((team) => !inActiveTournament(team.id));
+    deletable.forEach(deleteTeam);
+    return { deleted: deletable.length, skipped: teams.length - deletable.length };
+  }));
 
   // Админ создаёт команду сам: игроки задаются SteamID64 и ником, капитан — первый в списке
   app.post('/api/admin/teams', async (req, reply) => {
@@ -113,7 +118,7 @@ export async function adminTeamRoutes(app: FastifyInstance): Promise<void> {
     const team = getTeam(Number(req.params.id));
     if (!team) return reply.code(404).send(E('teamNotFound'));
     if (inActiveTournament(team.id)) return reply.code(409).send(E('teamInTournament'));
-    db.prepare('DELETE FROM teams WHERE id = ?').run(team.id);
+    deleteTeam(team);
     return { ok: true };
   });
 }

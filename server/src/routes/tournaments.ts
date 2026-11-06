@@ -567,7 +567,7 @@ export async function tournamentRoutes(app: FastifyInstance): Promise<void> {
     const body = z.object({ teamId: z.number().int(), playerIds: z.array(z.number().int()).optional() }).safeParse(req.body);
     if (!body.success) return reply.code(400).send(E('needTeam'));
 
-    const team = db.prepare('SELECT id, captain_id FROM teams WHERE id = ?')
+    const team = db.prepare('SELECT id, captain_id FROM teams WHERE id = ? AND deleted_name IS NULL')
       .get(body.data.teamId) as { id: number; captain_id: number } | undefined;
     if (!team) return reply.code(404).send(E('teamNotFound'));
     if (session.kind === 'player' && !isPanelAdmin(session) && team.captain_id !== session.userId) {
