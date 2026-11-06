@@ -4,6 +4,7 @@ import { api, type HomeDto, type HomeMatch } from '../api';
 import { copyText } from '../clipboard';
 import { useI18n } from '../i18n';
 import { IconChevron } from '../components/Icons';
+import { ScoreBug } from '../components/ScoreBug';
 import { TournamentRows } from '../components/TournamentRows';
 
 function Copy({ text }: { text: string }) {
@@ -29,13 +30,9 @@ function MyMatch({ m }: { m: HomeMatch }) {
           <Link to={`/tournaments/${m.tournamentId}`}>{m.tournamentName}</Link>
           <span>BO{m.bestOf} · {m.code}</span>
         </div>
-        <div className="vs">
-          <span>{m.team}</span>
-          {m.state === 'live' && m.started && m.score
-            ? <span className="vsscore"><b>{m.score.a}</b><b>{m.score.b}</b></span>
-            : <span className="vsword">vs</span>}
-          <span>{m.opponent ?? t('match.tbd')}</span>
-        </div>
+        <ScoreBug big active={m.state === 'live'} a={m.team} b={m.opponent ?? t('match.tbd')}
+          scoreA={m.state === 'live' && m.started ? m.score?.a : undefined}
+          scoreB={m.state === 'live' && m.started ? m.score?.b : undefined} />
         <div className="state">
           {m.state === 'veto' && m.veto && (
             <b className={mine ? 'yourturn' : 'muted'}>
@@ -150,7 +147,7 @@ export function Home() {
                       <b>{o.tournamentName}</b>
                       <span className="muted small">{o.teams.map((x) => x.name).join(', ')}</span>
                     </span>
-                    <Link className="btn" to={`/tournaments/${o.tournamentId}`}>{t('home.register')}</Link>
+                    <Link className="btn ghost" to={`/tournaments/${o.tournamentId}`}>{t('home.register')}</Link>
                   </div>
                 ))}
               </div>
@@ -253,7 +250,7 @@ export function Home() {
                     <b>{s.name}</b>
                     <span className="muted small">{s.address}{s.match ? ` · ${s.match}` : ''}</span>
                   </span>
-                  <span className={`pill ${s.state === 'busy' ? 'live' : s.state === 'free' ? 'ok' : 'bad'}`}>{t(`home.server.${s.state}`)}</span>
+                  <span className={`pill ${s.state === 'busy' ? 'busy' : s.state === 'free' ? 'ok' : 'bad'}`}>{t(`home.server.${s.state}`)}</span>
                 </div>
               ))}
               {a.servers.list.length === 0 && <div className="emptybox">{t('servers.empty')}</div>}

@@ -103,7 +103,7 @@ export function gslLayout(ms: MatchDto[], label: (round: number) => string): Lay
 
 interface Link { d: string; dashed: boolean; settled: boolean }
 
-function Canvas({ layout, actions, scale }: { layout: Layout; actions?: MatchActions; scale?: number }) {
+function Canvas({ layout, actions, scale, offsetX }: { layout: Layout; actions?: MatchActions; scale?: number; offsetX?: number }) {
   const wrap = useRef<HTMLDivElement>(null);
   const cards = useRef(new Map<string, HTMLDivElement>());
   const [paths, setPaths] = useState<Link[]>([]);
@@ -139,6 +139,17 @@ function Canvas({ layout, actions, scale }: { layout: Layout; actions?: MatchAct
   };
 
   useLayoutEffect(draw);
+  // Широкая сетка открывается на идущем матче, а не обрезает его у края
+  useEffect(() => {
+    const el = wrap.current;
+    const scroller = el?.parentElement;
+    const target = el?.querySelector('.match.live') ?? el?.querySelector('.match.ready');
+    if (!scroller || !target || scale) return;
+    const box = scroller.getBoundingClientRect();
+    const r = target.getBoundingClientRect();
+    if (r.right > box.right) scroller.scrollLeft += r.left - box.left - 16;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   useEffect(() => {
     const el = wrap.current;
     if (!el) return;
@@ -153,9 +164,9 @@ function Canvas({ layout, actions, scale }: { layout: Layout; actions?: MatchAct
         className="tree"
         ref={wrap}
         style={{
-          gridTemplateColumns: `repeat(${layout.cols}, 240px)`,
+          gridTemplateColumns: `repeat(${layout.cols}, 216px)`,
           gridTemplateRows: `repeat(${layout.rows}, minmax(24px, auto))`,
-          ...(scale ? { transform: `scale(${scale})`, transformOrigin: 'top left' } : {}),
+          ...(scale ? { transform: `translateX(${offsetX ?? 0}px) scale(${scale})`, transformOrigin: 'top left' } : {}),
         }}
       >
         <svg className="links" aria-hidden>
@@ -188,6 +199,7 @@ export function BracketTree({ matches, format, actions, title }: Props): ReactNo
   const stageBody = useRef<HTMLDivElement>(null);
   const [onStage, setOnStage] = useState(false);
   const [scale, setScale] = useState(1);
+  const [offsetX, setOffsetX] = useState(0);
 
   // Режим показа работает и там, где браузер не даёт полноэкранный режим: сетка всё равно занимает всё окно
   const enterStage = () => {
@@ -215,7 +227,10 @@ export function BracketTree({ matches, format, actions, title }: Props): ReactNo
     const fit = () => {
       const tree = body.querySelector<HTMLElement>('.tree');
       if (!tree) return;
-      setScale(Math.min(body.clientWidth / tree.offsetWidth, body.clientHeight / tree.offsetHeight, 2.5));
+      const k = Math.min(body.clientWidth / tree.offsetWidth, body.clientHeight / tree.offsetHeight, 2.5);
+      setScale(k);
+      // Сетка, упёршаяся в высоту экрана, стоит по центру, а не прижата влево
+      setOffsetX(Math.max(0, (body.clientWidth - tree.offsetWidth * k) / 2));
     };
     fit();
     const ro = new ResizeObserver(fit);
@@ -251,7 +266,7 @@ export function BracketTree({ matches, format, actions, title }: Props): ReactNo
         </div>
       )}
       <div className="stagebody" ref={stageBody}>
-        <Canvas layout={layout} actions={onStage ? undefined : actions} scale={onStage ? scale : undefined} />
+        <Canvas layout={layout} actions={onStage ? undefined : actions} scale={onStage ? scale : undefined} offsetX={onStage ? offsetX : undefined} />
       </div>
     </div>
   );

@@ -1,0 +1,663 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-06T23:23:30.590Z",
+  "title": "Design System: Arena Pro",
+  "extensions": {
+    "colorMeta": {
+      "accent": {
+        "role": "primary",
+        "displayName": "Лайм логотипа",
+        "canonical": "#9be22d",
+        "tonalRamp": [
+          "#050f00",
+          "#182a00",
+          "#2e4900",
+          "#456b01",
+          "#5d8e00",
+          "#77b306",
+          "#abd979",
+          "#e6f5d8"
+        ]
+      },
+      "accent-hover": {
+        "role": "primary",
+        "displayName": "Лайм при наведении",
+        "canonical": "#aceb48",
+        "tonalRamp": [
+          "#060e00",
+          "#192a00",
+          "#304900",
+          "#486a00",
+          "#618d02",
+          "#7bb300",
+          "#afd77c",
+          "#e7f4d9"
+        ]
+      },
+      "accent-ink": {
+        "role": "primary",
+        "displayName": "Текст на лайме",
+        "canonical": "#10140a",
+        "tonalRamp": [
+          "#0a0c07",
+          "#22261c",
+          "#3d4236",
+          "#5b6054",
+          "#7a8073",
+          "#9ba193",
+          "#c5c9c0",
+          "#eeefec"
+        ]
+      },
+      "ct": {
+        "role": "secondary",
+        "displayName": "Сторона A, голубой эфирный",
+        "canonical": "#62aeff",
+        "tonalRamp": [
+          "#000b20",
+          "#002448",
+          "#004077",
+          "#035fa9",
+          "#3380cd",
+          "#56a2f2",
+          "#9eccff",
+          "#e3f0fe"
+        ]
+      },
+      "t": {
+        "role": "secondary",
+        "displayName": "Сторона B, янтарный эфирный",
+        "canonical": "#f0b54a",
+        "tonalRamp": [
+          "#130900",
+          "#322000",
+          "#553a00",
+          "#7b5602",
+          "#a47300",
+          "#cc931b",
+          "#e6c185",
+          "#f8eddb"
+        ]
+      },
+      "live": {
+        "role": "tertiary",
+        "displayName": "Красный эфира",
+        "canonical": "#ff5c5c",
+        "tonalRamp": [
+          "#200001",
+          "#4b0007",
+          "#7d0012",
+          "#b1001f",
+          "#da383e",
+          "#ff6362",
+          "#feb0aa",
+          "#ffe8e6"
+        ]
+      },
+      "live-ink": {
+        "role": "tertiary",
+        "displayName": "Текст живой метки",
+        "canonical": "#ff8a8a",
+        "tonalRamp": [
+          "#200002",
+          "#4b000b",
+          "#79091c",
+          "#9e3339",
+          "#c35558",
+          "#e97778",
+          "#fdb0ae",
+          "#fee9e8"
+        ]
+      },
+      "live-soft": {
+        "role": "tertiary",
+        "displayName": "Подложка эфира",
+        "canonical": "rgba(255, 92, 92, .13)",
+        "tonalRamp": [
+          "#200001",
+          "#4b0007",
+          "#7d0012",
+          "#b1001f",
+          "#da383e",
+          "#ff6362",
+          "#feb0aa",
+          "#ffe8e6"
+        ]
+      },
+      "warn": {
+        "role": "tertiary",
+        "displayName": "Янтарь внимания",
+        "canonical": "#f0b54a",
+        "tonalRamp": [
+          "#130900",
+          "#322000",
+          "#553a00",
+          "#7b5602",
+          "#a47300",
+          "#cc931b",
+          "#e6c185",
+          "#f8eddb"
+        ]
+      },
+      "warn-soft": {
+        "role": "tertiary",
+        "displayName": "Подложка внимания",
+        "canonical": "rgba(240, 181, 74, .13)",
+        "tonalRamp": [
+          "#130900",
+          "#322000",
+          "#553a00",
+          "#7b5602",
+          "#a47300",
+          "#cc931b",
+          "#e6c185",
+          "#f8eddb"
+        ]
+      },
+      "ok": {
+        "role": "tertiary",
+        "displayName": "Спокойный зелёный",
+        "canonical": "#72cf98",
+        "tonalRamp": [
+          "#001005",
+          "#002d17",
+          "#004d2b",
+          "#007041",
+          "#31925f",
+          "#57b47f",
+          "#9fd7b3",
+          "#e3f4e8"
+        ]
+      },
+      "ok-soft": {
+        "role": "tertiary",
+        "displayName": "Подложка спокойного зелёного",
+        "canonical": "rgba(114, 207, 152, .12)",
+        "tonalRamp": [
+          "#001005",
+          "#002d17",
+          "#004d2b",
+          "#007041",
+          "#31925f",
+          "#57b47f",
+          "#9fd7b3",
+          "#e3f4e8"
+        ]
+      },
+      "danger": {
+        "role": "tertiary",
+        "displayName": "Красный опасности",
+        "canonical": "#ff7474",
+        "tonalRamp": [
+          "#200001",
+          "#4b0009",
+          "#7c0016",
+          "#a9212e",
+          "#cf484d",
+          "#f66c6d",
+          "#ffafab",
+          "#fee9e7"
+        ]
+      },
+      "danger-soft": {
+        "role": "tertiary",
+        "displayName": "Подложка опасности",
+        "canonical": "rgba(255, 116, 116, .12)",
+        "tonalRamp": [
+          "#200001",
+          "#4b0009",
+          "#7c0016",
+          "#a9212e",
+          "#cf484d",
+          "#f66c6d",
+          "#ffafab",
+          "#fee9e7"
+        ]
+      },
+      "plate": {
+        "role": "neutral",
+        "displayName": "Вставка",
+        "canonical": "#0b0d10",
+        "tonalRamp": [
+          "#0b0d10",
+          "#0e1014",
+          "#14161b",
+          "#1b1e24",
+          "#23262e",
+          "#2e323b",
+          "#41464f",
+          "#959ba8"
+        ]
+      },
+      "g-0": {
+        "role": "neutral",
+        "displayName": "Графит 0",
+        "canonical": "#0e1014",
+        "tonalRamp": [
+          "#0b0d10",
+          "#0e1014",
+          "#14161b",
+          "#1b1e24",
+          "#23262e",
+          "#2e323b",
+          "#41464f",
+          "#959ba8"
+        ]
+      },
+      "g-1": {
+        "role": "neutral",
+        "displayName": "Графит 1",
+        "canonical": "#14161b",
+        "tonalRamp": [
+          "#0b0d10",
+          "#0e1014",
+          "#14161b",
+          "#1b1e24",
+          "#23262e",
+          "#2e323b",
+          "#41464f",
+          "#959ba8"
+        ]
+      },
+      "g-2": {
+        "role": "neutral",
+        "displayName": "Графит 2",
+        "canonical": "#1b1e24",
+        "tonalRamp": [
+          "#0b0d10",
+          "#0e1014",
+          "#14161b",
+          "#1b1e24",
+          "#23262e",
+          "#2e323b",
+          "#41464f",
+          "#959ba8"
+        ]
+      },
+      "g-3": {
+        "role": "neutral",
+        "displayName": "Графит 3",
+        "canonical": "#23262e",
+        "tonalRamp": [
+          "#0b0d10",
+          "#0e1014",
+          "#14161b",
+          "#1b1e24",
+          "#23262e",
+          "#2e323b",
+          "#41464f",
+          "#959ba8"
+        ]
+      },
+      "g-4": {
+        "role": "neutral",
+        "displayName": "Графит 4",
+        "canonical": "#2e323b",
+        "tonalRamp": [
+          "#0b0d10",
+          "#0e1014",
+          "#14161b",
+          "#1b1e24",
+          "#23262e",
+          "#2e323b",
+          "#41464f",
+          "#959ba8"
+        ]
+      },
+      "g-5": {
+        "role": "neutral",
+        "displayName": "Графит 5",
+        "canonical": "#41464f",
+        "tonalRamp": [
+          "#0b0d10",
+          "#0e1014",
+          "#14161b",
+          "#1b1e24",
+          "#23262e",
+          "#2e323b",
+          "#41464f",
+          "#959ba8"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Чернила",
+        "canonical": "#f1f2f5",
+        "tonalRamp": [
+          "#0b0b0c",
+          "#232426",
+          "#3f4042",
+          "#5d5d60",
+          "#7c7d80",
+          "#9d9ea1",
+          "#c6c7c9",
+          "#eeeeef"
+        ]
+      },
+      "ink-2": {
+        "role": "neutral",
+        "displayName": "Чернила 2",
+        "canonical": "#bcc1cb",
+        "tonalRamp": [
+          "#090b0f",
+          "#21242b",
+          "#3c4048",
+          "#595e66",
+          "#797d87",
+          "#9a9ea8",
+          "#c4c7ce",
+          "#edeef0"
+        ]
+      },
+      "ink-3": {
+        "role": "neutral",
+        "displayName": "Чернила 3",
+        "canonical": "#959ba8",
+        "tonalRamp": [
+          "#090b10",
+          "#20242d",
+          "#3b404b",
+          "#585e69",
+          "#787d8a",
+          "#989eab",
+          "#c3c7d0",
+          "#edeef1"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "hero-title": {
+        "displayName": "Hero title",
+        "purpose": "Заголовок главной для гостя."
+      },
+      "tournament-title": {
+        "displayName": "Tournament title",
+        "purpose": "Название турнира и заголовок большого экрана."
+      },
+      "page-title": {
+        "displayName": "Page title",
+        "purpose": "Заголовок страницы."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Заголовки секций."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Заголовки колонок и блоков комнаты матча."
+      },
+      "row-name": {
+        "displayName": "Row name",
+        "purpose": "Название турнира в строке списка."
+      },
+      "score-hero": {
+        "displayName": "Score hero",
+        "purpose": "Счёт в герое комнаты матча."
+      },
+      "team-plate": {
+        "displayName": "Team plate",
+        "purpose": "Имя команды в герое комнаты матча."
+      },
+      "timer": {
+        "displayName": "Timer",
+        "purpose": "Отсчёт лобби и таймеры."
+      },
+      "score-bug": {
+        "displayName": "Score bug",
+        "purpose": "Имена и счёт в плашке."
+      },
+      "score-bug-big": {
+        "displayName": "Score bug big",
+        "purpose": "Большая плашка на главной игрока."
+      },
+      "slot-name": {
+        "displayName": "Slot name",
+        "purpose": "Имя команды в карточке матча."
+      },
+      "slot-score": {
+        "displayName": "Slot score",
+        "purpose": "Цифра в карточке матча."
+      },
+      "stage-slot-name": {
+        "displayName": "Stage slot name",
+        "purpose": "Имя команды на большом экране до масштабирования."
+      },
+      "stage-slot-score": {
+        "displayName": "Stage slot score",
+        "purpose": "Цифра на большом экране до масштабирования."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Основной текст интерфейса."
+      },
+      "button": {
+        "displayName": "Button",
+        "purpose": "Подписи кнопок."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Подписи полей и метаданные строк."
+      },
+      "caption": {
+        "displayName": "Caption",
+        "purpose": "Статусы, заголовки таблиц, шапка карточки матча."
+      },
+      "mono": {
+        "displayName": "Mono",
+        "purpose": "Connect-строки и коды."
+      }
+    },
+    "shadows": [
+      {
+        "name": "menu",
+        "value": "0 12px 32px rgba(0, 0, 0, .45)",
+        "purpose": "Всплывающее меню действий."
+      },
+      {
+        "name": "dialog",
+        "value": "0 16px 48px rgba(0, 0, 0, .5)",
+        "purpose": "Диалог подтверждения удаления."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease",
+        "value": "cubic-bezier(.16, 1, .3, 1)",
+        "purpose": "Нажатие кнопки, сдвиг стрелок, поворот шеврона."
+      },
+      {
+        "name": "state",
+        "value": ".15s",
+        "purpose": "Цвет, фон и рамка при наведении."
+      },
+      {
+        "name": "move",
+        "value": ".2s",
+        "purpose": "Сдвиг и поворот иконок, смена линий сетки."
+      },
+      {
+        "name": "press",
+        "value": ".1s",
+        "purpose": "Смещение кнопки на 1 px при нажатии."
+      },
+      {
+        "name": "tally",
+        "value": "1.6s ease-in-out infinite",
+        "purpose": "Мигание точки эфира, отключается при prefers-reduced-motion; текущий шаг вето мигает за 1.2s."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "wide",
+        "value": "1240px"
+      },
+      {
+        "name": "rail-compact",
+        "value": "1060px"
+      },
+      {
+        "name": "mobile",
+        "value": "760px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Главная кнопка",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Лаймовая кнопка, одна на экран.",
+      "html": "<button class=\"ds-btn-primary\">Создать турнир</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 38px; padding: 7px 14px; background: var(--accent); color: var(--accent-ink); border: 1px solid var(--accent); border-radius: var(--r-m); font: 600 14px/1.25 var(--ui); cursor: pointer; transition: background .15s, border-color .15s, transform .1s var(--ease); } .ds-btn-primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); } .ds-btn-primary:active { transform: translateY(1px); } .ds-btn-primary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }"
+    },
+    {
+      "name": "Вторичная кнопка",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Основной вид всех вторичных действий.",
+      "html": "<button class=\"ds-btn-ghost\">На большой экран</button>",
+      "css": ".ds-btn-ghost { display: inline-flex; align-items: center; justify-content: center; min-height: 38px; padding: 7px 14px; background: var(--g-3); color: var(--ink); border: 1px solid var(--g-4); border-radius: var(--r-m); font: 600 14px/1.25 var(--ui); cursor: pointer; transition: background .15s, border-color .15s, transform .1s var(--ease); } .ds-btn-ghost:hover { background: var(--g-4); border-color: var(--g-5); } .ds-btn-ghost:active { transform: translateY(1px); } .ds-btn-ghost:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }"
+    },
+    {
+      "name": "Опасная кнопка",
+      "kind": "button",
+      "refersTo": "button-danger",
+      "description": "Удаление и необратимые действия.",
+      "html": "<button class=\"ds-btn-danger\">Удалить</button>",
+      "css": ".ds-btn-danger { display: inline-flex; align-items: center; justify-content: center; min-height: 38px; padding: 7px 14px; background: transparent; color: var(--danger); border: 1px solid var(--g-5); border-radius: var(--r-m); font: 600 14px/1.25 var(--ui); cursor: pointer; transition: background .15s, border-color .15s; } .ds-btn-danger:hover { background: var(--danger-soft); border-color: var(--danger); } .ds-btn-danger:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }"
+    },
+    {
+      "name": "Поле ввода",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Поле на графите 1 с подписью сверху, рамка лаймовая при фокусе.",
+      "html": "<label class=\"ds-field\">Название<input class=\"ds-input\" value=\"Arena Cup\" /></label>",
+      "css": ".ds-field { display: flex; flex-direction: column; gap: 6px; font: 500 13.5px var(--ui); color: var(--ink-2); } .ds-input { background: var(--g-1); color: var(--ink); border: 1px solid var(--g-4); border-radius: var(--r-m); padding: 8px 11px; min-height: 38px; font: 400 15px/1.4 var(--ui); outline: none; transition: border-color .15s; } .ds-input:hover { border-color: var(--g-5); } .ds-input:focus { border-color: var(--accent); }"
+    },
+    {
+      "name": "Пункт рейки",
+      "kind": "nav",
+      "refersTo": "nav-item",
+      "description": "Навигация на рейке, активный пункт решается графитом, а не лаймом.",
+      "html": "<nav class=\"ds-rail\"><a class=\"ds-nav active\" href=\"#\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M3 10.5 12 3l9 7.5\"/><path d=\"M5 9v11h5v-6h4v6h5V9\"/></svg>Главная</a><a class=\"ds-nav\" href=\"#\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M8 4h8v5a4 4 0 0 1-8 0V4Z\"/><path d=\"M16 6h3v2a3 3 0 0 1-3 3M8 6H5v2a3 3 0 0 0 3 3\"/><path d=\"M12 13v4M8 21h8M9 21l1-4h4l1 4\"/></svg>Турниры</a></nav>",
+      "css": ".ds-rail { display: flex; flex-direction: column; gap: 2px; width: 208px; padding: 12px; background: var(--g-0); } .ds-nav { display: flex; align-items: center; gap: 12px; min-height: 40px; padding: 8px 10px; border-radius: var(--r-m); color: var(--ink-2); font: 500 15px/1.5 var(--ui); text-decoration: none; transition: color .15s, background .15s; } .ds-nav svg { width: 20px; height: 20px; flex: none; color: var(--ink-3); } .ds-nav:hover { color: var(--ink); background: var(--g-2); } .ds-nav:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; } .ds-nav.active { color: var(--ink); background: var(--g-3); font-weight: 600; } .ds-nav.active svg { color: var(--ink); }"
+    },
+    {
+      "name": "Статусы",
+      "kind": "chip",
+      "refersTo": "pill",
+      "description": "Метка состояния с цветом роли, у эфира мигающий тальк.",
+      "html": "<span class=\"ds-pills\"><span class=\"ds-pill live\">Идёт</span><span class=\"ds-pill warn\">Вето карт</span><span class=\"ds-pill ok\">Регистрация</span><span class=\"ds-pill\">Завершён</span></span>",
+      "css": ".ds-pills { display: inline-flex; gap: 8px; flex-wrap: wrap; } .ds-pill { display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px; min-height: 24px; border-radius: var(--r-s); font: 500 13px var(--ui); background: var(--g-3); color: var(--ink-3); white-space: nowrap; } .ds-pill.live { background: var(--live-soft); color: #ff8a8a; } .ds-pill.live::before { content: \"\"; width: 7px; height: 7px; border-radius: 50%; background: var(--live); animation: ds-tally 1.6s ease-in-out infinite; } .ds-pill.warn { background: var(--warn-soft); color: var(--warn); } .ds-pill.ok { background: var(--ok-soft); color: var(--ok); } @keyframes ds-tally { 50% { opacity: .35; } }"
+    },
+    {
+      "name": "Карточка",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Плоская поверхность на графите 2.",
+      "html": "<div class=\"ds-card\"><h2>Команды</h2><p>Состав и регистрация турнира.</p></div>",
+      "css": ".ds-card { background: var(--g-2); border: 1px solid var(--g-3); border-radius: var(--r-l); padding: 20px; color: var(--ink); font: 400 15px/1.5 var(--ui); } .ds-card h2 { margin: 0 0 12px; font: 700 24px/1.15 var(--head); } .ds-card p { margin: 0; color: var(--ink-2); }"
+    },
+    {
+      "name": "Плашка счёта",
+      "kind": "custom",
+      "refersTo": "score-bug",
+      "description": "Сигнатурный приём: форма матча вне сетки, кромки сторон только в эфире.",
+      "html": "<span class=\"ds-bug\"><span class=\"ds-bugname a\">Dust Runners</span><span class=\"ds-bugscore\"><b>9</b><b>7</b></span><span class=\"ds-bugname b\">Red Harbor</span></span>",
+      "css": ".ds-bug { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: stretch; width: 100%; background: var(--g-3); border-radius: var(--r-s); overflow: hidden; color: var(--ink); font: 700 21px/1.15 var(--head); transition: background .15s; } .ds-bug:hover { background: var(--g-4); } .ds-bugname { display: flex; align-items: center; min-width: 0; padding: 8px 12px; overflow-wrap: anywhere; } .ds-bugname.a { justify-content: flex-end; text-align: right; box-shadow: inset 3px 0 0 var(--ct); } .ds-bugname.b { box-shadow: inset -3px 0 0 var(--t); } .ds-bugscore { display: flex; gap: 2px; background: var(--g-1); font-variant-numeric: tabular-nums; } .ds-bugscore b { display: flex; align-items: center; justify-content: center; min-width: 38px; background: var(--plate); font-weight: 800; }"
+    },
+    {
+      "name": "Карточка матча",
+      "kind": "custom",
+      "refersTo": "match-card",
+      "description": "Плашка, сложенная вертикально для сетки; победитель получает лаймовую цифру.",
+      "html": "<div class=\"ds-match\"><div class=\"ds-mhead\"><span>W1-1</span><span>BO1</span></div><div class=\"ds-slot won\"><span class=\"ds-sname\">Dust Runners</span><b>1</b></div><div class=\"ds-slot\"><span class=\"ds-sname\">Volt Syndicate</span><b>0</b></div></div>",
+      "css": ".ds-match { position: relative; width: 260px; background: var(--g-3); border: 1px solid var(--g-4); border-radius: var(--r-m); overflow: hidden; color: var(--ink-3); font: 400 14px/1.5 var(--ui); transition: border-color .15s; } .ds-match:hover { border-color: var(--g-5); } .ds-mhead { display: flex; justify-content: space-between; min-height: 26px; padding: 2px 10px; font-size: 13px; font-weight: 500; } .ds-slot { display: flex; align-items: stretch; gap: 8px; height: 34px; padding-left: 10px; border-top: 1px solid var(--g-4); color: var(--ink); } .ds-sname { flex: 1; align-self: center; font: 600 18px/1.1 var(--head); } .ds-slot b { display: flex; align-items: center; justify-content: center; width: 38px; background: var(--plate); color: var(--ink-2); font: 700 19px var(--head); font-variant-numeric: tabular-nums; } .ds-slot.won .ds-sname { font-weight: 800; } .ds-slot.won b { color: var(--accent); }"
+    },
+    {
+      "name": "Строка большого экрана",
+      "kind": "custom",
+      "refersTo": "stage-slot",
+      "description": "Карточка матча для зала: только имена и счёт, крупно, без действий.",
+      "html": "<div class=\"ds-stage\"><div class=\"ds-stageslot live a\"><span>Volt Syndicate</span><b>9</b></div><div class=\"ds-stageslot live b\"><span>Northern Lights</span><b>7</b></div></div>",
+      "css": ".ds-stage { width: 340px; background: var(--g-3); border: 1px solid var(--live); border-radius: var(--r-m); overflow: hidden; } .ds-stageslot { position: relative; display: flex; align-items: stretch; height: 44px; padding-left: 12px; border-top: 1px solid var(--g-4); color: var(--ink); font: 600 24px/1.1 var(--head); } .ds-stageslot:first-child { border-top: 0; } .ds-stageslot span { flex: 1; align-self: center; } .ds-stageslot b { display: flex; align-items: center; justify-content: center; width: 48px; background: var(--plate); font: 700 30px var(--head); font-variant-numeric: tabular-nums; } .ds-stageslot::before { content: \"\"; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; } .ds-stageslot.a::before { background: var(--ct); } .ds-stageslot.b::before { background: var(--t); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "Эфирная графика турнира",
+    "overview": "Панель говорит языком трансляции CS-турнира. Матч везде один и тот же предмет: плашка счёта с двумя именами по краям и тёмными вставками с цифрами в центре. На главной она стоит в строке, в сетке становится карточкой, в комнате матча вырастает на всю ширину, на большом экране читается с другого конца зала. Отказ от категорийного дефолта осознанный: никакого неонового лайма на чёрном, капса и одинаковых карточек.\n\nПанель рассчитана на многочасовой турнирный день, поэтому основа спокойная: холодный графит из одной лестницы, обычный регистр и размер текста от 13 px. Цвет здесь сообщает состояние, а не украшает: красный значит эфир, лайм значит победитель или ваш ход, голубой и янтарный значат стороны идущего матча. Плотность рабочая, но сетка читается раньше, чем действия: они убраны в меню, а на большом экране их нет совсем.\n\nЛоготип AP и его зелёный остаются узнаваемой частью продукта, отсюда лайм как единственный акцент. Единственные изображения в панели: логотип и превью карт из API.",
+    "keyCharacteristics": [
+      "Плашка счёта как единая форма матча на всех экранах",
+      "Все фоны и линии из одной графитовой лестницы",
+      "Лайм считается поштучно, красный закреплён за эфиром, стороны за идущим матчем и комнатой матча",
+      "Узкий Sofia Sans Condensed для названий и цифр, Golos Text для интерфейса, обычный регистр",
+      "Табличные цифры в каждом счёте, счётчике и таймере",
+      "Плоские тональные слои, тень только у того, что всплывает над страницей",
+      "Отдельный режим большого экрана без единого действия"
+    ],
+    "rules": [
+      {
+        "name": "Правило единой лестницы",
+        "body": "Любой фон и любая линия берутся из лестницы графита и вставки. Новых серых и цветных поверхностей нет: выше по лестнице значит ближе к зрителю.",
+        "section": "colors"
+      },
+      {
+        "name": "Правило счётного лайма",
+        "body": "Лайм считается поштучно: одна главная кнопка на экран, счёт победителя (и его родня: кубок чемпиона, место прошедшей команды в таблице), «ваш ход» в его формах (строка на главной, заголовок вето, текущий шаг вето). Служебный слой доступности в счёт не идёт: кольцо фокуса, рамка активного поля, каретка и выделение текста всегда лаймовые. Всё остальное решается графитом и чернилами: активный пункт меню, выбранная карта, полоса прогресса, галочка и карточка «моего» матча лайма не получают.",
+        "section": "colors"
+      },
+      {
+        "name": "Правило сторон в эфире",
+        "body": "Голубой и янтарный появляются только у матча в игре и в комнате матча. У ожидающего, готового и сыгранного матча в сетке и на главной кромок нет, поэтому сама кромка уже сигнал «идёт». Это знак позиции, а не игровой стороны: команда A всегда слева и всегда голубая, команда B справа и янтарная. CT и T как игровые стороны эти цвета получают только в кнопках выбора на вето.",
+        "section": "colors"
+      },
+      {
+        "name": "Правило красного талька",
+        "body": "Красный эфира значит одно: матч сейчас идёт. Занятый сервер получает ту же метку, потому что на нём идёт матч. Статус турнира «идёт» остаётся нейтральной графитовой меткой: красный получает только число идущих матчей. Ошибки и удаление используют красный опасности.",
+        "section": "colors"
+      },
+      {
+        "name": "Правило обычного регистра",
+        "body": "Текст пишется как в предложении: нет преобразования в капс и нет разрядки ради «спортивности». Заглавные остаются только там, где они родные: BO3, CT, T, код матча W1-1, буква аватара.",
+        "section": "typography"
+      },
+      {
+        "name": "Правило табличных цифр",
+        "body": "Любая цифра, которую сравнивают или ждут, стоит на табличных цифрах: счёт, сид, счётчик слотов, таймер, таблицы. Счёт не должен дёргаться при опросе каждые 2-5 секунд.",
+        "section": "typography"
+      },
+      {
+        "name": "Правило нижней границы 13 px",
+        "body": "Текст интерфейса не опускается ниже 13 px. Исключение одно: лог сервера в 12.5 px моноширинным.",
+        "section": "typography"
+      },
+      {
+        "name": "Правило плоских слоёв",
+        "body": "Карточки, плашки и кнопки теней не отбрасывают. Тень получает только то, что действительно лежит над страницей: меню и диалог.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do показывать матч плашкой счёта или её вариантом карточки в сетке, в том числе на новых экранах.",
+      "Do брать все фоны и линии из лестницы графита (графит 0-5 и вставка).",
+      "Do считать лайм поштучно: одна главная кнопка на экран, счёт победителя и «ваш ход», остальные действия делать вторичной кнопкой.",
+      "Do ставить кромки сторон только на матч в игре и в комнате матча, команда A всегда голубая, команда B всегда янтарная.",
+      "Do отмечать эфир красным тальком и отключать его мигание при prefers-reduced-motion.",
+      "Do ставить табличные цифры на вставку под любой счёт.",
+      "Do отмечать выбранное графитом и чернилами: рамка чернила 2 или 3, фон на шаг выше по лестнице.",
+      "Do учитывать длину русских строк: имена в плашке и героях переносить, а не обрезать.",
+      "Do оставлять на большом экране только состояние: чем дальше зритель, тем меньше элементов и крупнее цифры."
+    ],
+    "donts": [
+      "Don't использовать капс и разрядку для подписей и заголовков; BO3, CT, T и коды матчей остаются как есть.",
+      "Don't применять лайм как заливку секций, свечение, цвет активной навигации, полос прогресса и выбранных элементов.",
+      "Don't красить сторонами ожидающие, готовые и сыгранные матчи в сетке и на главной, а также любые блоки вне матча.",
+      "Don't использовать красный эфира для ошибок и удаления, а красный опасности для эфира.",
+      "Don't опускать текст интерфейса ниже 13 px.",
+      "Don't добавлять тени карточкам, плашкам и кнопкам; тень остаётся у меню и диалога.",
+      "Don't подкладывать декоративные градиенты: затемнение существует только поверх превью карт.",
+      "Don't выводить действия на большой экран.",
+      "Don't вставлять выдуманные фотографии клуба и отзывы: изображения в панели это логотип и превью карт."
+    ]
+  }
+}

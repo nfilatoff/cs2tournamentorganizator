@@ -136,6 +136,8 @@ export const en: Dict = {
 
   'view.upTo': 'up to {n} teams',
   'match.actions': 'Match actions',
+  'view.nowPlaying': 'Current matches',
+  'form.roundsBo': 'Format by round',
   'view.stage': 'Show on big screen',
   'view.stageExit': 'Close',
   'view.details': 'Teams, maps and settings',

@@ -19,7 +19,7 @@ export function TournamentRows({ list, empty }: { list: Row[]; empty: string }) 
           </span>
           <span className="tslots">
             <span><b>{x.teamCount}</b> / {x.maxTeams}</span>
-            <span className="bar"><i style={{ width: `${Math.min(100, (x.teamCount / Math.max(1, x.maxTeams)) * 100)}%` }} /></span>
+            {x.status === 'registration' && <span className="bar"><i style={{ width: `${Math.min(100, (x.teamCount / Math.max(1, x.maxTeams)) * 100)}%` }} /></span>}
           </span>
           <span className={`pill ${x.status}`}>{t(`status.${x.status}`)}</span>
           <span className="tgo"><IconChevron /></span>

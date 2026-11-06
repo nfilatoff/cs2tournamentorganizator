@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { api, isAdmin, type Me, type Preview, type Team, type TournamentDetails } from '../api';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { api, isAdmin, type EntryDto, type Me, type Preview, type Team, type TournamentDetails } from '../api';
 import { useI18n } from '../i18n';
 import { ActionMenu } from '../components/ActionMenu';
 import { IconDown, IconShuffle, IconTrophy, IconUp } from '../components/Icons';
+import { ScoreBug } from '../components/ScoreBug';
 import { BracketTree } from '../components/BracketTree';
 import type { MatchActions } from '../components/MatchCard';
 import { GroupAssignment, GroupsView, PlayoffPanel } from '../components/GroupsView';
@@ -96,6 +97,12 @@ export function TournamentView({ me }: { me: Me }) {
   } : undefined;
 
   const inReg = tr.status === 'registration';
+  const entry = (e: EntryDto) => (e.type === 'team' ? e.name : t('match.tbd'));
+  // Сверху то, что идёт сейчас, затем ближайшие готовые матчи
+  const active = tr.matches
+    .filter((m) => m.status === 'live' || m.status === 'ready')
+    .sort((x, y) => Number(y.status === 'live') - Number(x.status === 'live'))
+    .slice(0, 6);
   const teamsCard = (
     <div className="card">
       <h2>{t(tr.teamSize === 1 ? 'view.players' : 'view.teams', { n: tr.teams.length, max: tr.maxTeams })}</h2>
@@ -238,6 +245,25 @@ export function TournamentView({ me }: { me: Me }) {
       {!inReg && (
         <>
           {tr.groups && <p className="muted lead">{t(`phase.${tr.groupConfig.phase}` as 'phase.groups')}</p>}
+          {active.length > 0 && (
+            <section className="section nowplaying">
+              <h2>{t('view.nowPlaying')}</h2>
+              <div className="buglist">
+                {active.map((m) => {
+                  const bo1Map = m.bestOf === 1 && m.live && m.curMap;
+                  const live = m.status === 'live';
+                  return (
+                    <Link key={m.code} to={`/tournaments/${tr.id}/matches/${m.code}`} className={`bugrow${live ? ' onair' : ''}`}>
+                      <ScoreBug active={live} a={entry(m.a)} b={entry(m.b)}
+                        scoreA={live ? (bo1Map ? m.curMap!.scoreA : m.seriesA ?? 0) : undefined}
+                        scoreB={live ? (bo1Map ? m.curMap!.scoreB : m.seriesB ?? 0) : undefined} />
+                      <span className="bugmeta">{m.code} · {m.server?.name ?? t(m.veto && !m.veto.done ? 'mp.phase.veto' : 'mp.phase.queued')}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            </section>
+          )}
           {tr.matches.some((m) => m.stage === 'playoff') && <BracketTree title={tr.name} matches={tr.matches} format={tr.format} actions={actions} />}
           {admin && tr.groupConfig.phase === 'groups_done' && tr.groupConfig.hasPlayoff && <PlayoffPanel tr={tr} onDone={setTr} />}
           {admin && tr.groupConfig.stageMode === 'groups' && tr.groupConfig.phase === 'playoff' && (

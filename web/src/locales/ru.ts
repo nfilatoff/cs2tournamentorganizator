@@ -135,6 +135,8 @@ export const ru = {
 
   'view.upTo': 'до {n} команд',
   'match.actions': 'Действия с матчем',
+  'view.nowPlaying': 'Текущие матчи',
+  'form.roundsBo': 'Формат по раундам',
   'view.stage': 'На большой экран',
   'view.stageExit': 'Закрыть',
   'view.details': 'Команды, карты и настройки',

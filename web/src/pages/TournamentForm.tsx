@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, type MapItem, type PauseLimits, type TournamentDetails } from '../api';
+import { IconDown } from '../components/Icons';
 import { PauseFields } from '../components/PauseFields';
 import { useI18n } from '../i18n';
 import { roundLabel } from '../rounds';
@@ -172,6 +173,8 @@ export function TournamentForm() {
               </select>
             </label>
           </div>
+          <details className="subfold">
+          <summary>{t('form.roundsBo')}<IconDown /></summary>
           <table className="compact">
             <tbody>
               {rounds.map((r) => (
@@ -186,6 +189,7 @@ export function TournamentForm() {
               ))}
             </tbody>
           </table>
+          </details>
           {format === 'double' && (
             <label className="check">
               <input type="checkbox" checked={reset} onChange={(e) => setReset(e.target.checked)} />
