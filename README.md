@@ -188,6 +188,8 @@ New-NetFirewallRule -DisplayName 'CS2 RCON 27016' -Direction Inbound -Protocol T
 
 ## Настройка и обслуживание панели
 
+Все команды, флаги и настройки проекта собраны в [COMMANDS.md](COMMANDS.md).
+
 ### Запуск панели из репозитория
 
 Нужны Node.js 24 или новее и npm. В Windows PowerShell используйте `npm.cmd`: этот файл запускается и при стандартной политике, которая блокирует `npm.ps1`. Команды выполняются из корня репозитория:
@@ -217,6 +219,8 @@ npm.cmd start
 | `DATA_DIR` | `server/data` при запуске через npm | Каталог файла `app.db` и превью карт |
 | `ADMIN_PASSWORD` | Случайный пароль | Пароль `admin` только при создании первой учётной записи |
 | `CS2_PATH` | — | Папка выделенного сервера CS2 для запуска серверов из панели |
+| `JOIN_TIME_S` | `600` | Секунды на подключение к матчу |
+| `VETO_TURN_S` | `30` | Секунды на ход в вето |
 
 При первом запуске с пустой базой создаётся администратор `admin`. Случайный пароль выводится в консоль один раз. Изменение `ADMIN_PASSWORD` после первого запуска не меняет пароль существующего администратора.
 
@@ -255,7 +259,7 @@ npm.cmd run admin -- create логин 'пароль-не-короче-8-сим�
 npm.cmd run dev:server     # API с перезапуском при изменениях
 npm.cmd run dev:web        # Vite на порту 5173
 npm.cmd run build          # сборка панели
-npm.cmd test -w server     # тесты сеток, групп и вето
+npm.cmd test -w server     # тесты панели
 npm.cmd run plugin:test    # тесты ArenaPro; нужен .NET SDK
 npm.cmd run plugin:build   # пакет ArenaPro в plugin-dist/
 ```
@@ -291,6 +295,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts\build-plugin.ps1 -De
 | `scripts/test-installer.ps1` | Offline-проверки установщика |
 | `install-cs2.ps1` | Установщик (описание в INSTALLATION.md) |
 | `PRACTICE.md` | Тренировки и товарищеские матчи: команды ArenaPro в игре |
+| `COMMANDS.md` | Справочник всех команд, флагов и настроек |
 
 `global.json` выбирает стабильный .NET SDK 10 с установленным обновлением. В `package.json` закреплены исправленные версии `glob/minimatch`, пока `@fastify/static` использует более старую ветку, и разрешён установочный скрипт `esbuild@0.28.2`, необходимый для сборки. При обновлении esbuild это разрешение нужно пересмотреть. Проверка зависимостей: `npm.cmd audit` и `dotnet list plugin/ArenaPro.csproj package --vulnerable --include-transitive`.
 

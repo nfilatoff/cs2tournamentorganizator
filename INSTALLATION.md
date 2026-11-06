@@ -74,6 +74,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\install-cs2.ps1 -InstallRo
 
 ### Параметры скрипта
 
+Остальные команды и флаги проекта собраны в [COMMANDS.md](COMMANDS.md).
+
 | Параметр | По умолчанию | Назначение |
 | --- | --- | --- |
 | `-InstallRoot` | `<диск CS2>:\CS2Tournament` | Папка установки на диске CS2 |

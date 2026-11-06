@@ -68,10 +68,10 @@ Again, inside `csgo/cfg/ArenaPro`, a file named `config.cfg` should be present. 
 :   Same as [`arenapro_time_to_start`](#arenapro_time_to_start), for readying up for map selection (Get5's `get5_time_to_start_veto`). Set to 0 for no limit.<br>**`Default: 0`**
 
 ####`arenapro_ready_mode`
-:   How teams get ready in a loaded match. `0`: players type `.ready`. `1`: joining is ready: a team is ready once `min_players_to_ready` of its players (coaches do not count) have joined their side, and the match (or the map selection, or a pending backup restore) starts on its own [`arenapro_join_start_delay`](#arenapro_join_start_delay) seconds after everyone has joined. A player leaving during that countdown stops it. `.ready` / `.unready` are not needed and say so. Works together with [`arenapro_time_to_start`](#arenapro_time_to_start): teams that have not joined in time forfeit, or the series ends in a tie.<br>**`Default: 0`**
+:   How teams get ready in a loaded match. `0`: players type `.ready`. `1`: joining is ready: a team is ready once `min_players_to_ready` of its players (coaches do not count) have joined their side, and the match (or the map selection, or a pending backup restore) starts on its own [`arenapro_join_start_delay`](#arenapro_join_start_delay) seconds after everyone has joined. A player leaving during that countdown stops it. `.ready` / `.unready` are not needed and say so. Works together with [`arenapro_time_to_start`](#arenapro_time_to_start): teams that have not joined in time forfeit, or the series ends in a tie. `2`: as `1`, plus the team's captain types `.ready` once the team is complete; while the captain is not on the server, any player of the team can.<br>**`Default: 0`**
 
 ####`arenapro_join_start_delay`
-:   With `arenapro_ready_mode 1`: seconds between all players having joined and the match starting. Set to 0 to start right away.<br>**`Default: 10`**
+:   With `arenapro_ready_mode` `1` or `2`: seconds between all players having joined and the match starting. Set to 0 to start right away.<br>**`Default: 10`**
 
 ####`arenapro_admin_auth_code`
 :   If set, ArenaPro admins (from `admins.json` or CounterStrikeSharp) can use admin commands only after typing `arenapro_auth <code>` in their client console (`~`). The authorization lasts until the player leaves the server or the code changes; 5 wrong codes lock the player out for 5 minutes. A match config can set it for the match. Leave empty to not require a code.<br>**`Default: ""`**
@@ -94,6 +94,9 @@ Again, inside `csgo/cfg/ArenaPro`, a file named `config.cfg` should be present. 
 ####`arenapro_kick_when_no_match_loaded`
 :   Whether to kick all clients and prevent anyone from joining the server if no match is loaded. This means if server is in match mode, a match needs to be set-up using `arenapro_loadmatch`/`arenapro_loadmatch_url` to load and configure a match.<br>**`Default: false`**
 
+####`arenapro_demo_recording_enabled`
+:   Whether to automatically start demo recording when the match goes live.<br>**`Default: true`**
+
 ####`arenapro_demo_path`
 :   Path of folder in which demos will be saved. If defined, it must not start with a slash and must end with a slash. Set to empty string to use the csgo root. Example: `arenapro_demo_path ArenaPro/`<br>**`Default: ArenaPro/`**
 
@@ -104,8 +107,11 @@ Again, inside `csgo/cfg/ArenaPro`, a file named `config.cfg` should be present. 
 :   If defined, recorded demo will be [uploaded](../gotv#automatic-upload) to this URL once the map ends. Make sure that the URL is wrapped in double quotes (""). 
 Example: `arenapro_demo_upload_url "https://your-website.com/upload-endpoint"` <br>**`Default: ""`**
 
-####`arenapro_kick_when_no_match_loaded`
-:   Whether to kick all clients and prevent anyone from joining the server if no match is loaded. This means if server is in match mode, a match needs to be set-up using `arenapro_loadmatch`/`arenapro_loadmatch_url` to load and configure a match.<br>**`Default: false`**
+####`arenapro_demo_upload_header_key`
+:   If defined, a custom HTTP header with this name is added to the demo upload request (Get5's `get5_demo_upload_header_key`, which also works).<br>**`Default: ""`**
+
+####`arenapro_demo_upload_header_value`
+:   The value of the custom header added to the demo upload request (Get5's `get5_demo_upload_header_value`, which also works).<br>**`Default: ""`**
 
 ####`arenapro_chat_prefix`
 :   Chat prefix to show whenever a ArenaPro message is sent to players. Available Colors: {Default}, {Darkred}, {Green}, {LightYellow}, {LightBlue}, {Olive}, {Lime}, {Red}, {Purple}, {Grey}, {Yellow}, {Gold}, {Silver}, {Blue}, {DarkBlue}, {BlueGrey}, {Magenta} and {LightRed}. Make sure to end your prefix with {Default} to avoid coloring the messages in your prefix color.<br>**`Default: [{Green}ArenaPro{Default}]`**
@@ -114,7 +120,7 @@ Example: `arenapro_demo_upload_url "https://your-website.com/upload-endpoint"` <
 :   Chat prefix to show whenever an admin sends message using `.asay <message>`. Avaiable Colors are mentioned above.<br>**`Default: [{Red}ADMIN{Default}]`**
 
 ####`arenapro_chat_messages_timer_delay`
-:   Number of seconds of delay before sending reminder messages from ArenaPro (like unready message, paused message, etc). Note: Changing this timer wont affect the active timer, so if you change this setting in warmup, you will have to restart warmup to make the change effective.<br>**`Default: 13[{Red}ADMIN{Default}]`**
+:   Number of seconds of delay before sending reminder messages from ArenaPro (like unready message, paused message, etc). Note: Changing this timer wont affect the active timer, so if you change this setting in warmup, you will have to restart warmup to make the change effective.<br>**`Default: 13`**
 
 ####`arenapro_playout_enabled_default`
 :   Whether playout (play max rounds) is enabled. This is the default value, but playout can be toggled by admin using `.playout` command.<br>**`Default: false`**
@@ -124,6 +130,12 @@ Example: `arenapro_demo_upload_url "https://your-website.com/upload-endpoint"` <
 
 ####`arenapro_use_pause_command_for_tactical_pause`
 :   Whether to use !pause/.pause command for tactical pause or normal pause (unpauses only when both teams use unpause command, for admin force-unpauses the game).<br>**`Default: false`**
+
+####`arenapro_enable_tech_pause`
+:   Whether the `.tech` command is enabled (Get5's `get5_allow_technical_pause`, which also works).<br>**`Default: true`**
+
+####`arenapro_tech_pause_flag`
+:   Flag a player needs to call a technical pause. Leave empty to let anyone call it.<br>**`Default: ""`**
 
 ####`arenapro_max_tech_pauses`
 :   Number of technical pauses (`.tech`, and `.pause` unless [`arenapro_use_pause_command_for_tactical_pause`](#arenapro_use_pause_command_for_tactical_pause) is set) each team can call per map (Get5's `get5_max_tech_pauses`, which also works). A pause is counted once it takes effect in freeze time; until then the pausing team can cancel it with `.unpause`. Set to 0 for unlimited. Replaces `arenapro_max_tech_pauses_allowed`, which never had an effect and has been removed.<br>**`Default: 0`**
@@ -150,7 +162,7 @@ Example: `arenapro_demo_upload_url "https://your-website.com/upload-endpoint"` <
 :   If set to true, everyone will be granted admin permissions for ArenaPro.<br>**`Default: false`**
 
 ####`arenapro_show_credits_on_match_start`
-:   Whether to show 'ArenaPro Plugin by WD-' message on match start.<br>**`Default: true`**
+:   Whether to show 'ArenaPro Plugin by WD-' message on match start.<br>**`Default: false`**
 
 ####`arenapro_hostname_format`
 :   The server hostname to use. Set to "" to disable/use existing. Available variables: {TIME}, {MATCH_ID}, {MAP}, {MAPNUMBER}, {TEAM1}, {TEAM2}, {TEAM1_SCORE}, {TEAM2_SCORE}<br>**`Default: ArenaPro | {TEAM1} vs {TEAM2}`**
@@ -164,6 +176,9 @@ Example: `arenapro_demo_upload_url "https://your-website.com/upload-endpoint"` <
 
 ####`arenapro_loadbackup_url`
 :   Loads a match backup from a remote host by sending an HTTP(S) GET to the given URL. You may optionally provide an HTTP header and value pair using the header name and header value arguments. You should put all arguments inside quotation marks ("").
+
+####`arenapro_listbackups [matchid]`
+:   Lists the backups of the given match, or of the current match without an argument (Get5's `get5_listbackups`, which also works).
 
 ####`arenapro_remote_backup_url`
 :   If defined, ArenaPro will automatically send backups to this URL in an HTTP POST request. If no protocol is provided, http:// will be prepended to this value. Requires the SteamWorks extension. 
@@ -200,7 +215,7 @@ Updating ArenaPro overwrites the CFGs that come with it, so don't put your own s
 | `live_wingman.cfg` | `live_wingman_override.cfg` | When a wingman match goes live |
 | `prac.cfg` | `prac_override.cfg` | Practice mode |
 | `dryrun.cfg` | `dryrun_override.cfg` | Dry run (`.dryrun`) |
-| `sleep.cfg` | `sleep_override.cfg` | Sleep mode (`.sleep`) |
+| `sleep.cfg` | `sleep_override.cfg` | Sleep mode (`!sleep`) |
 
 Like `config.cfg`, `config_override.cfg` is only for ArenaPro settings (`arenapro_*` and `get5_*`). It is executed only when the plugin is loaded, so the warmup, knife and live CFGs overwrite any game convars (such as `mp_*` or `sv_*`) set in it; put those in the override CFG of the phase they belong to.
 
